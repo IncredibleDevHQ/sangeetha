@@ -280,6 +280,16 @@ describe("School access boundary", () => {
 });
 it("normalizes Indian phones and rejects reserved subdomains", () => {
   expect(normalizePhone("98765 43210")).toBe("+919876543210");
-  expect(() => normalizePhone("1234567890")).toThrow();
+  expect(() => normalizePhone("0000000000")).toThrow();
   expect(() => schoolSlug("auth")).toThrow();
+});
+
+it("accepts international country codes without assuming every number is Indian", () => {
+  expect(normalizePhone("+1 (202) 555-0123")).toBe("+12025550123");
+  expect(normalizePhone("+44 7911 123456")).toBe("+447911123456");
+  expect(normalizePhone("+61 412 345 678")).toBe("+61412345678");
+  expect(normalizePhone("+65 8123 4567")).toBe("+6581234567");
+  expect(normalizePhone("020 7946 0018", "GB")).toBe("+442079460018");
+  expect(() => normalizePhone("+999123456789")).toThrow();
+  expect(() => normalizePhone("+12025550123 ext. 12")).toThrow();
 });

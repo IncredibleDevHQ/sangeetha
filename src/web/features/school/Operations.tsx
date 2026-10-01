@@ -1,8 +1,975 @@
-import {useEffect,useState} from 'react';
-import {text,num,today,money,Select,type Row,type SchoolTools} from './common';
-export type Roster={learners:Row[];batches:Row[];enrollments:Row[];staff:Row[]};
-export function RosterView({tools:t}:{tools:SchoolTools}){const [data,setData]=useState<Roster>({learners:[],batches:[],enrollments:[],staff:[]}),[batch,setBatch]=useState(''),[learner,setLearner]=useState(''),[household,setHousehold]=useState(''),[households,setHouseholds]=useState<Row[]>([]);async function load(){setData(await t.read<Roster>('roster'));setHouseholds(await t.read<Row[]>('households'));}useEffect(()=>{load().catch(e=>t.setError(e.message));},[t.read]);return <><h2>Batches & enrollments</h2><div className="form-grid"><section className="panel"><h3>Create a batch</h3><form onSubmit={async e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);await t.command('batch.create',{name:f.get('name'),course:f.get('course'),capacity:Number(f.get('capacity'))});form.reset();await load();}}><label>Batch name<input name="name" required placeholder="Saturday beginners"/></label><label>Course<input name="course" required defaultValue="Carnatic vocal"/></label><label>Capacity<input name="capacity" required type="number" min="1" max="500" defaultValue="10"/></label><button className="button primary" disabled={t.busy}>Create batch</button></form></section><section className="panel"><h3>Enroll a learner</h3><form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('learner.enroll',{learner,batch,household,starts:f.get('starts')});await load();}}><Select label="Learner" value={learner} onChange={v=>{setLearner(v);setHousehold(text(data.learners.find(l=>l.id===v)||{},'household_id'));}} rows={data.learners}/><Select label="Batch" value={batch} onChange={setBatch} rows={data.batches}/><Select label="Billing household" value={household} onChange={setHousehold} rows={households}/><label>Starts on<input name="starts" type="date" required defaultValue={today()}/></label><button className="button primary" disabled={t.busy}>Enroll learner</button></form></section></div><section className="panel"><h3>Current enrollments</h3><div className="table-wrap"><table><thead><tr><th>Learner</th><th>Batch</th><th>Status</th><th>Future billing household</th></tr></thead><tbody>{data.enrollments.map(e=><tr key={e.id}><td>{text(data.learners.find(l=>l.id===e.learner_id)||{},'name')}</td><td>{text(data.batches.find(b=>b.id===e.batch_id)||{},'name')}</td><td><select aria-label="Enrollment status" value={text(e,'status')} onChange={async event=>{await t.command('enrollment.status',{id:e.id,status:event.target.value});await load();}}><option value="active">Active</option><option value="paused">Paused</option><option value="ended">Ended</option></select></td><td><select aria-label="Future billing household" value={text(e,'household_id')} onChange={async event=>{await t.command('learner.transfer',{learner:e.learner_id,household:event.target.value});await load();}}>{households.map(h=><option key={h.id} value={h.id}>{text(h,'name')}</option>)}</select></td></tr>)}</tbody></table></div><p className="fine">Changing the billing household affects future fees. Existing charges stay with the original household.</p></section></>;}
-const ist=(v:string)=>new Date(v).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
-const localInput=(v:string)=>new Date(v).toLocaleString('sv-SE',{timeZone:'Asia/Kolkata'}).replace(' ','T').slice(0,16);
-export function ScheduleView({tools:t}:{tools:SchoolTools}){const [data,setData]=useState<{classes:Row[];attendance:Row[]}>({classes:[],attendance:[]}),[roster,setRoster]=useState<Roster>({learners:[],batches:[],enrollments:[],staff:[]}),[selected,setSelected]=useState<Row|null>(null),[att,setAtt]=useState<Record<string,string>>({}),[batch,setBatch]=useState(''),[teacher,setTeacher]=useState(''),[todayOnly,setTodayOnly]=useState(false);async function load(){setData(await t.read('schedule'));setRoster(await t.read('roster'));}useEffect(()=>{load().catch(e=>t.setError(e.message));},[t.read]);function open(o:Row){setSelected(o);setAtt(Object.fromEntries(data.attendance.filter(a=>a.occurrence_id===o.id).map(a=>[text(a,'learner_id'),text(a,'status')])));}const enrolled=selected?roster.enrollments.filter(e=>e.batch_id===selected.batch_id&&text(e,'starts_on').slice(0,10)<=text(selected,'starts_at').slice(0,10)):[];return <><h2>Classes & attendance</h2><section className="panel"><h3>Schedule classes · India time</h3><form className="form-grid" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('class.create',{batch,teacher,starts:new Date(String(f.get('starts'))+'+05:30').toISOString(),ends:new Date(String(f.get('ends'))+'+05:30').toISOString(),location:f.get('location'),repeatWeeks:Number(f.get('weeks')),makeupFor:f.get('makeup')||undefined});await load();}}><Select label="Batch" value={batch} onChange={setBatch} rows={roster.batches}/><Select label="Teacher" value={teacher} onChange={setTeacher} rows={roster.staff} labelKey="display_name"/><label>Starts · IST<input name="starts" required type="datetime-local"/></label><label>Ends · IST<input name="ends" required type="datetime-local"/></label><label>Meeting link or location<input name="location" placeholder="Studio / Meet link"/></label><label>Repeat weekly for<input name="weeks" type="number" min="1" max="52" defaultValue="1"/></label><label>Make-up for (optional)<select name="makeup"><option value="">None</option>{data.classes.map(c=><option key={c.id} value={c.id}>{text(c,'batch_name')} · {ist(text(c,'starts_at'))}</option>)}</select></label><button className="button primary" disabled={t.busy}>Schedule</button></form></section><div className="toolbar"><button className="text-button" onClick={()=>setTodayOnly(!todayOnly)}>{todayOnly?'Show all classes':'Show today’s classes'}</button></div><section className="panel">{data.classes.filter(c=>!todayOnly||new Date(text(c,'starts_at')).toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})===today()).map(c=><div className="list-row" key={c.id}><div className="row-detail"><strong>{text(c,'batch_name')}</strong><small>{ist(text(c,'starts_at'))} · {text(c,'teacher')} · {text(c,'status')}</small><small>{text(c,'location')}</small></div><button className="text-button" onClick={()=>open(c)}>Attendance / edit</button></div>)}{!data.classes.length&&<p className="empty">Schedule your first lesson.</p>}</section>{selected&&<section className="panel"><div className="section-heading"><h3>{text(selected,'batch_name')}</h3><button className="text-button" onClick={()=>setSelected(null)}>Close</button></div><form className="form-grid" key={String(selected.version)+selected.id} onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const r=await t.command('class.update',{id:selected.id,version:selected.version,starts:new Date(String(f.get('starts'))+'+05:30').toISOString(),ends:new Date(String(f.get('ends'))+'+05:30').toISOString(),teacher:f.get('teacher'),location:f.get('location'),status:f.get('status')});if(r){setSelected(null);await load();}}}><label>Starts · IST<input type="datetime-local" name="starts" defaultValue={localInput(text(selected,'starts_at'))}/></label><label>Ends · IST<input type="datetime-local" name="ends" defaultValue={localInput(text(selected,'ends_at'))}/></label><label>Teacher / substitute<select name="teacher" defaultValue={text(selected,'teacher_id')}>{roster.staff.map(s=><option key={s.id} value={s.id}>{text(s,'display_name')}</option>)}</select></label><label>Location<input name="location" defaultValue={text(selected,'location')}/></label><label>Status<select name="status" defaultValue={text(selected,'status')}><option value="scheduled">Scheduled</option><option value="cancelled">Cancelled</option><option value="completed">Completed</option></select></label><button className="button secondary" disabled={t.busy}>Update this occurrence</button></form><p className="fine">Only this class occurrence changes. Old queued reminders are cancelled.</p><h3>Attendance</h3><form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('class.attendance',{id:selected.id,entries:Object.entries(att).map(([learner,status])=>({learner,status})),notes:f.get('notes')});await load();}}>{enrolled.map(e=><label key={e.id}>{text(roster.learners.find(l=>l.id===e.learner_id)||{},'name')}<select value={att[text(e,'learner_id')]||''} onChange={event=>setAtt(a=>({...a,[text(e,'learner_id')]:event.target.value}))}><option value="">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="excused">Excused</option></select></label>)}<label>Lesson notes<textarea name="notes" defaultValue={text(selected,'notes')}/></label><button className="button primary" disabled={t.busy}>Save attendance</button></form></section>}</>;}
-export function BillingView({tools:t}:{tools:SchoolTools}){const [data,setData]=useState<{charges:Row[];payments:Row[];plans:Row[]}>({charges:[],payments:[],plans:[]}),[households,setHouseholds]=useState<Row[]>([]),[roster,setRoster]=useState<Roster>({learners:[],batches:[],enrollments:[],staff:[]}),[household,setHousehold]=useState(''),[statement,setStatement]=useState<{charges:Row[];payments:Row[];allocations:Row[];entries:Row[]}|null>(null),[payment,setPayment]=useState(''),[amounts,setAmounts]=useState<Record<string,string>>({}),[chargeKey,setChargeKey]=useState(crypto.randomUUID()),[paymentKey,setPaymentKey]=useState(crypto.randomUUID()),[allocationKey,setAllocationKey]=useState(crypto.randomUUID());async function load(){setData(await t.read('billing'));const meta=await t.read<Roster&{households:Row[]}>('billing-metadata');setHouseholds(meta.households);setRoster(meta);if(household)setStatement(await t.read('statement','?id='+household));}useEffect(()=>{load().catch(e=>t.setError(e.message));},[t.read,household]);const due=data.charges.reduce((n,c)=>n+num(c,'due'),0);return <><h2>Fees & household billing</h2><div className="metrics"><div><small>Outstanding</small><strong>{money(due)}</strong></div><div><small>Unverified payment claims</small><strong>{data.payments.filter(p=>p.status==='claim').length}</strong></div></div><div className="form-grid"><section className="panel"><h3>Create learner charge</h3><form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget),r=await t.command('billing.charge',{household:f.get('household'),learner:f.get('learner')||undefined,description:f.get('description'),amount:Math.round(Number(f.get('amount'))*100),due:f.get('due'),key:chargeKey});if(r)setChargeKey(crypto.randomUUID());await load();}}><label>Household<select required name="household"><option value="">Choose…</option>{households.map(h=><option value={h.id} key={h.id}>{text(h,'name')}</option>)}</select></label><label>Learner<select name="learner"><option value="">Household charge</option>{roster.learners.map(l=><option value={l.id} key={l.id}>{text(l,'name')}</option>)}</select></label><label>Description<input required name="description" placeholder="October tuition"/></label><label>Amount · INR<input required name="amount" type="number" min="0.01" step="0.01"/></label><label>Due date<input required name="due" type="date" defaultValue={today()}/></label><button className="button primary" disabled={t.busy}>Create charge</button></form></section><section className="panel"><h3>Recurring fee plan</h3><form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('billing.plan',{enrollment:f.get('enrollment'),amount:Math.round(Number(f.get('amount'))*100),concession:Math.round(Number(f.get('concession'))*100),dueDay:Number(f.get('day'))});await load();}}><label>Enrollment<select required name="enrollment"><option value="">Choose…</option>{roster.enrollments.map(e=><option value={e.id} key={e.id}>{text(roster.learners.find(l=>l.id===e.learner_id)||{},'name')} · {text(roster.batches.find(b=>b.id===e.batch_id)||{},'name')}</option>)}</select></label><label>Monthly fee · INR<input required name="amount" type="number" min="0.01" step="0.01"/></label><label>Concession · INR<input name="concession" type="number" min="0" step="0.01" defaultValue="0"/></label><label>Due day (1–28)<input name="day" type="number" min="1" max="28" defaultValue="10"/></label><button className="button primary" disabled={t.busy}>Save fee plan</button></form><form className="toolbar" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('billing.generate',{period:f.get('period')});await load();}}><label>Billing month<input name="period" required type="month" defaultValue={today().slice(0,7)}/></label><button className="button secondary" disabled={t.busy}>Generate charges</button></form></section></div><section className="panel"><h3>Household statement</h3><Select label="Choose household" value={household} onChange={v=>{setHousehold(v);setPayment('');setAmounts({});}} rows={households}/>{statement&&<><div className="table-wrap"><table><thead><tr><th>Learner / charge</th><th>Fund</th><th>Amount</th><th>Due</th></tr></thead><tbody>{statement.charges.map(ch=><tr key={ch.id}><td>{text(ch,'learner_name')}<small>{text(ch,'description')}</small></td><td>{text(ch,'category')}</td><td>{money(num(ch,'amount'))}</td><td>{money(num(ch,'due'))}</td></tr>)}</tbody></table></div><h3 className="pending-title">Record money received</h3><p className="fine">A payment claim is not settled money. Verify it against your bank, UPI or cash records before allocation.</p><form className="form-grid" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget),r=await t.command('billing.payment',{household,amount:Math.round(Number(f.get('amount'))*100),method:f.get('method'),reference:f.get('reference'),key:paymentKey});if(r)setPaymentKey(crypto.randomUUID());await load();}}><label>Amount · INR<input required name="amount" type="number" min="0.01" step="0.01"/></label><label>Method<select name="method"><option value="upi">UPI</option><option value="cash">Cash</option><option value="bank">Bank</option></select></label><label>Reference<input name="reference" placeholder="UTR / cash note"/></label><button className="button primary" disabled={t.busy}>Record payment claim</button></form>{statement.payments.map(p=><div className="list-row" key={p.id}><div className="row-detail"><strong>{money(num(p,'amount'))} · {text(p,'method')} · {text(p,'status')}</strong><small>{text(p,'reference')} · {p.status==='verified'?'Credit '+money(num(p,'credit')):''}</small><small>{text(p,'receipt')}</small></div>{p.status==='claim'&&<button className="text-button" onClick={async()=>{await t.command('billing.verify',{id:p.id});await load();}}>Verify received</button>}{p.status==='verified'&&<><button className="text-button" onClick={()=>{setPayment(p.id);setAmounts({});}}>Allocate</button><button className="text-button" onClick={()=>t.download('receipt-'+p.id+'.txt',`${t.school.name}\nReceipt ${p.receipt}\nAmount: ${money(num(p,'amount'))}\nMethod: ${p.method}\nReference: ${p.reference}\nDate: ${p.created_at}`,'text/plain')}>Receipt</button></>}</div>)}{payment&&<form onSubmit={async e=>{e.preventDefault();const lines=Object.entries(amounts).filter(([,amount])=>Number(amount)>0).map(([charge,amount])=>({charge,amount:Math.round(Number(amount)*100)})),r=await t.command('billing.allocate',{id:payment,key:allocationKey,lines});if(r){setAllocationKey(crypto.randomUUID());setPayment('');await load();}}}><h3>Allocate payment to named charges</h3>{statement.charges.filter(c=>num(c,'due')>0).map(ch=><label key={ch.id}>{text(ch,'learner_name')} · {text(ch,'description')} · due {money(num(ch,'due'))}<input type="number" step="0.01" min="0" max={num(ch,'due')/100} value={amounts[ch.id]||''} onChange={e=>setAmounts(a=>({...a,[ch.id]:e.target.value}))}/></label>)}<button className="button primary" disabled={t.busy}>Allocate payment</button></form>}<details><summary>Corrections, refunds & reversals</summary><form className="form-grid" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await t.command('billing.correct',{kind:f.get('kind'),id:f.get('id'),amount:f.get('amount')?Math.round(Number(f.get('amount'))*100):undefined,reason:f.get('reason'),key:crypto.randomUUID()});await load();}}><label>Correction type<select name="kind"><option value="adjustment">Charge adjustment</option><option value="refund">Refund unallocated credit</option><option value="reverse-payment">Reverse payment</option><option value="reverse-allocation">Reverse allocation</option></select></label><label>Record<select name="id">{[...statement.charges.map(c=>({...c,label:'Charge · '+text(c,'description')})),...statement.payments.map(p=>({...p,label:'Payment · '+money(num(p,'amount'))})),...statement.allocations.filter(a=>!a.reversed_at).map(a=>({...a,label:'Allocation · '+money(num(a,'amount'))}))].map(r=><option key={r.id} value={r.id}>{r.label}</option>)}</select></label><label>Amount · INR (negative for concession)<input type="number" name="amount" step="0.01"/></label><label>Reason<input name="reason" required minLength={3}/></label><button className="button secondary" disabled={t.busy}>Record correction</button></form></details></>}</section></>;}
+import { useEffect, useState } from "react";
+import {
+  text,
+  num,
+  today,
+  money,
+  Select,
+  type Row,
+  type SchoolTools,
+} from "./common";
+export type Roster = {
+  learners: Row[];
+  batches: Row[];
+  enrollments: Row[];
+  staff: Row[];
+};
+export function RosterView({ tools: t }: { tools: SchoolTools }) {
+  const [data, setData] = useState<Roster>({
+      learners: [],
+      batches: [],
+      enrollments: [],
+      staff: [],
+    }),
+    [batch, setBatch] = useState(""),
+    [learner, setLearner] = useState(""),
+    [household, setHousehold] = useState(""),
+    [households, setHouseholds] = useState<Row[]>([]);
+  async function load() {
+    setData(await t.read<Roster>("roster"));
+    setHouseholds(await t.read<Row[]>("households"));
+  }
+  useEffect(() => {
+    load().catch((e) => t.setError(e.message));
+  }, [t.read]);
+  return (
+    <>
+      <h2>Batches & enrollments</h2>
+      <div className="form-grid">
+        <section className="panel">
+          <h3>Create a batch</h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const form = e.currentTarget,
+                f = new FormData(form);
+              await t.command("batch.create", {
+                name: f.get("name"),
+                course: f.get("course"),
+                capacity: Number(f.get("capacity")),
+              });
+              form.reset();
+              await load();
+            }}
+          >
+            <label>
+              Batch name
+              <input name="name" required placeholder="Saturday beginners" />
+            </label>
+            <label>
+              Course
+              <input name="course" required defaultValue="Carnatic vocal" />
+            </label>
+            <label>
+              Capacity
+              <input
+                name="capacity"
+                required
+                type="number"
+                min="1"
+                max="500"
+                defaultValue="10"
+              />
+            </label>
+            <button className="button primary" disabled={t.busy}>
+              Create batch
+            </button>
+          </form>
+        </section>
+        <section className="panel">
+          <h3>Enroll a learner</h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              await t.command("learner.enroll", {
+                learner,
+                batch,
+                household,
+                starts: f.get("starts"),
+              });
+              await load();
+            }}
+          >
+            <Select
+              label="Learner"
+              value={learner}
+              onChange={(v) => {
+                setLearner(v);
+                setHousehold(
+                  text(
+                    data.learners.find((l) => l.id === v) || {},
+                    "household_id",
+                  ),
+                );
+              }}
+              rows={data.learners}
+            />
+            <Select
+              label="Batch"
+              value={batch}
+              onChange={setBatch}
+              rows={data.batches}
+            />
+            <Select
+              label="Billing household"
+              value={household}
+              onChange={setHousehold}
+              rows={households}
+            />
+            <label>
+              Starts on
+              <input
+                name="starts"
+                type="date"
+                required
+                defaultValue={today()}
+              />
+            </label>
+            <button className="button primary" disabled={t.busy}>
+              Enroll learner
+            </button>
+          </form>
+        </section>
+      </div>
+      <section className="panel">
+        <h3>Current enrollments</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Learner</th>
+                <th>Batch</th>
+                <th>Status</th>
+                <th>Future billing household</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.enrollments.map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    {text(
+                      data.learners.find((l) => l.id === e.learner_id) || {},
+                      "name",
+                    )}
+                  </td>
+                  <td>
+                    {text(
+                      data.batches.find((b) => b.id === e.batch_id) || {},
+                      "name",
+                    )}
+                  </td>
+                  <td>
+                    <select
+                      aria-label="Enrollment status"
+                      value={text(e, "status")}
+                      onChange={async (event) => {
+                        await t.command("enrollment.status", {
+                          id: e.id,
+                          status: event.target.value,
+                        });
+                        await load();
+                      }}
+                    >
+                      <option value="active">Active</option>
+                      <option value="paused">Paused</option>
+                      <option value="ended">Ended</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      aria-label="Future billing household"
+                      value={text(e, "household_id")}
+                      onChange={async (event) => {
+                        await t.command("learner.transfer", {
+                          learner: e.learner_id,
+                          household: event.target.value,
+                        });
+                        await load();
+                      }}
+                    >
+                      {households.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {text(h, "name")}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="fine">
+          Changing the billing household affects future fees. Existing charges
+          stay with the original household.
+        </p>
+      </section>
+    </>
+  );
+}
+const ist = (v: string) =>
+  new Date(v).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+const localInput = (v: string) =>
+  new Date(v)
+    .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+    .replace(" ", "T")
+    .slice(0, 16);
+export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
+  const [data, setData] = useState<{ classes: Row[]; attendance: Row[] }>({
+      classes: [],
+      attendance: [],
+    }),
+    [roster, setRoster] = useState<Roster>({
+      learners: [],
+      batches: [],
+      enrollments: [],
+      staff: [],
+    }),
+    [selected, setSelected] = useState<Row | null>(null),
+    [att, setAtt] = useState<Record<string, string>>({}),
+    [batch, setBatch] = useState(""),
+    [teacher, setTeacher] = useState(""),
+    [todayOnly, setTodayOnly] = useState(false);
+  async function load() {
+    setData(await t.read("schedule"));
+    setRoster(await t.read("roster"));
+  }
+  useEffect(() => {
+    load().catch((e) => t.setError(e.message));
+  }, [t.read]);
+  function open(o: Row) {
+    setSelected(o);
+    setAtt(
+      Object.fromEntries(
+        data.attendance
+          .filter((a) => a.occurrence_id === o.id)
+          .map((a) => [text(a, "learner_id"), text(a, "status")]),
+      ),
+    );
+  }
+  const enrolled = selected
+    ? roster.enrollments.filter(
+        (e) =>
+          e.batch_id === selected.batch_id &&
+          text(e, "starts_on").slice(0, 10) <=
+            text(selected, "starts_at").slice(0, 10),
+      )
+    : [];
+  return (
+    <>
+      <h2>Classes & attendance</h2>
+      <section className="panel">
+        <h3>Schedule classes · India time</h3>
+        <form
+          className="form-grid"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            await t.command("class.create", {
+              batch,
+              teacher,
+              starts: new Date(
+                String(f.get("starts")) + "+05:30",
+              ).toISOString(),
+              ends: new Date(String(f.get("ends")) + "+05:30").toISOString(),
+              location: f.get("location"),
+              repeatWeeks: Number(f.get("weeks")),
+              makeupFor: f.get("makeup") || undefined,
+            });
+            await load();
+          }}
+        >
+          <Select
+            label="Batch"
+            value={batch}
+            onChange={setBatch}
+            rows={roster.batches}
+          />
+          <Select
+            label="Teacher"
+            value={teacher}
+            onChange={setTeacher}
+            rows={roster.staff}
+            labelKey="display_name"
+          />
+          <label>
+            Starts · IST
+            <input name="starts" required type="datetime-local" />
+          </label>
+          <label>
+            Ends · IST
+            <input name="ends" required type="datetime-local" />
+          </label>
+          <label>
+            Meeting link or location
+            <input name="location" placeholder="Studio / Meet link" />
+          </label>
+          <label>
+            Repeat weekly for
+            <input
+              name="weeks"
+              type="number"
+              min="1"
+              max="52"
+              defaultValue="1"
+            />
+          </label>
+          <label>
+            Make-up for (optional)
+            <select name="makeup">
+              <option value="">None</option>
+              {data.classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {text(c, "batch_name")} · {ist(text(c, "starts_at"))}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button primary" disabled={t.busy}>
+            Schedule
+          </button>
+        </form>
+      </section>
+      <div className="toolbar">
+        <button
+          className="text-button"
+          onClick={() => setTodayOnly(!todayOnly)}
+        >
+          {todayOnly ? "Show all classes" : "Show today’s classes"}
+        </button>
+      </div>
+      <section className="panel">
+        {data.classes
+          .filter(
+            (c) =>
+              !todayOnly ||
+              new Date(text(c, "starts_at")).toLocaleDateString("en-CA", {
+                timeZone: "Asia/Kolkata",
+              }) === today(),
+          )
+          .map((c) => (
+            <div className="list-row" key={c.id}>
+              <div className="row-detail">
+                <strong>{text(c, "batch_name")}</strong>
+                <small>
+                  {ist(text(c, "starts_at"))} · {text(c, "teacher")} ·{" "}
+                  {text(c, "status")}
+                </small>
+                <small>{text(c, "location")}</small>
+              </div>
+              <button className="text-button" onClick={() => open(c)}>
+                Attendance / edit
+              </button>
+            </div>
+          ))}
+        {!data.classes.length && (
+          <p className="empty">Schedule your first lesson.</p>
+        )}
+      </section>
+      {selected && (
+        <section className="panel">
+          <div className="section-heading">
+            <h3>{text(selected, "batch_name")}</h3>
+            <button className="text-button" onClick={() => setSelected(null)}>
+              Close
+            </button>
+          </div>
+          <form
+            className="form-grid"
+            key={String(selected.version) + selected.id}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              const r = await t.command("class.update", {
+                id: selected.id,
+                version: selected.version,
+                starts: new Date(
+                  String(f.get("starts")) + "+05:30",
+                ).toISOString(),
+                ends: new Date(String(f.get("ends")) + "+05:30").toISOString(),
+                teacher: f.get("teacher"),
+                location: f.get("location"),
+                status: f.get("status"),
+              });
+              if (r) {
+                setSelected(null);
+                await load();
+              }
+            }}
+          >
+            <label>
+              Starts · IST
+              <input
+                type="datetime-local"
+                name="starts"
+                defaultValue={localInput(text(selected, "starts_at"))}
+              />
+            </label>
+            <label>
+              Ends · IST
+              <input
+                type="datetime-local"
+                name="ends"
+                defaultValue={localInput(text(selected, "ends_at"))}
+              />
+            </label>
+            <label>
+              Teacher / substitute
+              <select
+                name="teacher"
+                defaultValue={text(selected, "teacher_id")}
+              >
+                {roster.staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {text(s, "display_name")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Location
+              <input
+                name="location"
+                defaultValue={text(selected, "location")}
+              />
+            </label>
+            <label>
+              Status
+              <select name="status" defaultValue={text(selected, "status")}>
+                <option value="scheduled">Scheduled</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="completed">Completed</option>
+              </select>
+            </label>
+            <button className="button secondary" disabled={t.busy}>
+              Update this occurrence
+            </button>
+          </form>
+          <p className="fine">
+            Only this class occurrence changes. Old queued reminders are
+            cancelled.
+          </p>
+          <h3>Attendance</h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              await t.command("class.attendance", {
+                id: selected.id,
+                entries: Object.entries(att).map(([learner, status]) => ({
+                  learner,
+                  status,
+                })),
+                notes: f.get("notes"),
+              });
+              await load();
+            }}
+          >
+            {enrolled.map((e) => (
+              <label key={e.id}>
+                {text(
+                  roster.learners.find((l) => l.id === e.learner_id) || {},
+                  "name",
+                )}
+                <select
+                  value={att[text(e, "learner_id")] || ""}
+                  onChange={(event) =>
+                    setAtt((a) => ({
+                      ...a,
+                      [text(e, "learner_id")]: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Not marked</option>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="excused">Excused</option>
+                </select>
+              </label>
+            ))}
+            <label>
+              Lesson notes
+              <textarea name="notes" defaultValue={text(selected, "notes")} />
+            </label>
+            <button className="button primary" disabled={t.busy}>
+              Save attendance
+            </button>
+          </form>
+        </section>
+      )}
+    </>
+  );
+}
+export function BillingView({ tools: t }: { tools: SchoolTools }) {
+  const [data, setData] = useState<{
+      charges: Row[];
+      payments: Row[];
+      plans: Row[];
+    }>({ charges: [], payments: [], plans: [] }),
+    [households, setHouseholds] = useState<Row[]>([]),
+    [roster, setRoster] = useState<Roster>({
+      learners: [],
+      batches: [],
+      enrollments: [],
+      staff: [],
+    }),
+    [household, setHousehold] = useState(""),
+    [statement, setStatement] = useState<{
+      charges: Row[];
+      payments: Row[];
+      allocations: Row[];
+      entries: Row[];
+    } | null>(null),
+    [payment, setPayment] = useState(""),
+    [amounts, setAmounts] = useState<Record<string, string>>({}),
+    [chargeKey, setChargeKey] = useState(crypto.randomUUID()),
+    [paymentKey, setPaymentKey] = useState(crypto.randomUUID()),
+    [allocationKey, setAllocationKey] = useState(crypto.randomUUID());
+  async function load() {
+    setData(await t.read("billing"));
+    const meta = await t.read<Roster & { households: Row[] }>(
+      "billing-metadata",
+    );
+    setHouseholds(meta.households);
+    setRoster(meta);
+    if (household) setStatement(await t.read("statement", "?id=" + household));
+  }
+  useEffect(() => {
+    load().catch((e) => t.setError(e.message));
+  }, [t.read, household]);
+  const due = data.charges.reduce((n, c) => n + num(c, "due"), 0);
+  return (
+    <>
+      <h2>Fees & household billing</h2>
+      <div className="metrics">
+        <div>
+          <small>Outstanding</small>
+          <strong>{money(due)}</strong>
+        </div>
+        <div>
+          <small>Unverified payment claims</small>
+          <strong>
+            {data.payments.filter((p) => p.status === "claim").length}
+          </strong>
+        </div>
+      </div>
+      <div className="form-grid">
+        <section className="panel">
+          <h3>Create learner charge</h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget),
+                r = await t.command("billing.charge", {
+                  household: f.get("household"),
+                  learner: f.get("learner") || undefined,
+                  description: f.get("description"),
+                  amount: Math.round(Number(f.get("amount")) * 100),
+                  due: f.get("due"),
+                  key: chargeKey,
+                });
+              if (r) setChargeKey(crypto.randomUUID());
+              await load();
+            }}
+          >
+            <label>
+              Household
+              <select required name="household">
+                <option value="">Choose…</option>
+                {households.map((h) => (
+                  <option value={h.id} key={h.id}>
+                    {text(h, "name")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Learner
+              <select name="learner">
+                <option value="">Household charge</option>
+                {roster.learners.map((l) => (
+                  <option value={l.id} key={l.id}>
+                    {text(l, "name")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Description
+              <input
+                required
+                name="description"
+                placeholder="October tuition"
+              />
+            </label>
+            <label>
+              Amount · INR
+              <input
+                required
+                name="amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+              />
+            </label>
+            <label>
+              Due date
+              <input required name="due" type="date" defaultValue={today()} />
+            </label>
+            <button className="button primary" disabled={t.busy}>
+              Create charge
+            </button>
+          </form>
+        </section>
+        <section className="panel">
+          <h3>Recurring fee plan</h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              await t.command("billing.plan", {
+                enrollment: f.get("enrollment"),
+                amount: Math.round(Number(f.get("amount")) * 100),
+                concession: Math.round(Number(f.get("concession")) * 100),
+                dueDay: Number(f.get("day")),
+              });
+              await load();
+            }}
+          >
+            <label>
+              Enrollment
+              <select required name="enrollment">
+                <option value="">Choose…</option>
+                {roster.enrollments.map((e) => (
+                  <option value={e.id} key={e.id}>
+                    {text(
+                      roster.learners.find((l) => l.id === e.learner_id) || {},
+                      "name",
+                    )}{" "}
+                    ·{" "}
+                    {text(
+                      roster.batches.find((b) => b.id === e.batch_id) || {},
+                      "name",
+                    )}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Monthly fee · INR
+              <input
+                required
+                name="amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+              />
+            </label>
+            <label>
+              Concession · INR
+              <input
+                name="concession"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue="0"
+              />
+            </label>
+            <label>
+              Due day (1–28)
+              <input
+                name="day"
+                type="number"
+                min="1"
+                max="28"
+                defaultValue="10"
+              />
+            </label>
+            <button className="button primary" disabled={t.busy}>
+              Save fee plan
+            </button>
+          </form>
+          <form
+            className="toolbar"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              await t.command("billing.generate", { period: f.get("period") });
+              await load();
+            }}
+          >
+            <label>
+              Billing month
+              <input
+                name="period"
+                required
+                type="month"
+                defaultValue={today().slice(0, 7)}
+              />
+            </label>
+            <button className="button secondary" disabled={t.busy}>
+              Generate charges
+            </button>
+          </form>
+        </section>
+      </div>
+      <section className="panel">
+        <h3>Household statement</h3>
+        <Select
+          label="Choose household"
+          value={household}
+          onChange={(v) => {
+            setHousehold(v);
+            setPayment("");
+            setAmounts({});
+          }}
+          rows={households}
+        />
+        {statement && (
+          <>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Learner / charge</th>
+                    <th>Fund</th>
+                    <th>Amount</th>
+                    <th>Due</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statement.charges.map((ch) => (
+                    <tr key={ch.id}>
+                      <td>
+                        {text(ch, "learner_name")}
+                        <small>{text(ch, "description")}</small>
+                      </td>
+                      <td>{text(ch, "category")}</td>
+                      <td>{money(num(ch, "amount"))}</td>
+                      <td>{money(num(ch, "due"))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <h3 className="pending-title">Record money received</h3>
+            <p className="fine">
+              A payment claim is not settled money. Verify it against your bank,
+              UPI or cash records before allocation.
+            </p>
+            <form
+              className="form-grid"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget),
+                  r = await t.command("billing.payment", {
+                    household,
+                    amount: Math.round(Number(f.get("amount")) * 100),
+                    method: f.get("method"),
+                    reference: f.get("reference"),
+                    key: paymentKey,
+                  });
+                if (r) setPaymentKey(crypto.randomUUID());
+                await load();
+              }}
+            >
+              <label>
+                Amount · INR
+                <input
+                  required
+                  name="amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                />
+              </label>
+              <label>
+                Method
+                <select name="method">
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="bank">Bank</option>
+                </select>
+              </label>
+              <label>
+                Reference
+                <input name="reference" placeholder="UTR / cash note" />
+              </label>
+              <button className="button primary" disabled={t.busy}>
+                Record payment claim
+              </button>
+            </form>
+            {statement.payments.map((p) => (
+              <div className="list-row" key={p.id}>
+                <div className="row-detail">
+                  <strong>
+                    {money(num(p, "amount"))} · {text(p, "method")} ·{" "}
+                    {text(p, "status")}
+                  </strong>
+                  <small>
+                    {text(p, "reference")} ·{" "}
+                    {p.status === "verified"
+                      ? "Credit " + money(num(p, "credit"))
+                      : ""}
+                  </small>
+                  <small>{text(p, "receipt")}</small>
+                </div>
+                {p.status === "claim" && (
+                  <button
+                    className="text-button"
+                    onClick={async () => {
+                      await t.command("billing.verify", { id: p.id });
+                      await load();
+                    }}
+                  >
+                    Verify received
+                  </button>
+                )}
+                {p.status === "verified" && (
+                  <>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setPayment(p.id);
+                        setAmounts({});
+                      }}
+                    >
+                      Allocate
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        t.download(
+                          "receipt-" + p.id + ".txt",
+                          `${t.school.name}\nReceipt ${p.receipt}\nAmount: ${money(num(p, "amount"))}\nMethod: ${p.method}\nReference: ${p.reference}\nDate: ${p.created_at}`,
+                          "text/plain",
+                        )
+                      }
+                    >
+                      Receipt
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {payment && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const lines = Object.entries(amounts)
+                      .filter(([, amount]) => Number(amount) > 0)
+                      .map(([charge, amount]) => ({
+                        charge,
+                        amount: Math.round(Number(amount) * 100),
+                      })),
+                    r = await t.command("billing.allocate", {
+                      id: payment,
+                      key: allocationKey,
+                      lines,
+                    });
+                  if (r) {
+                    setAllocationKey(crypto.randomUUID());
+                    setPayment("");
+                    await load();
+                  }
+                }}
+              >
+                <h3>Allocate payment to named charges</h3>
+                {statement.charges
+                  .filter((c) => num(c, "due") > 0)
+                  .map((ch) => (
+                    <label key={ch.id}>
+                      {text(ch, "learner_name")} · {text(ch, "description")} ·
+                      due {money(num(ch, "due"))}
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={num(ch, "due") / 100}
+                        value={amounts[ch.id] || ""}
+                        onChange={(e) =>
+                          setAmounts((a) => ({ ...a, [ch.id]: e.target.value }))
+                        }
+                      />
+                    </label>
+                  ))}
+                <button className="button primary" disabled={t.busy}>
+                  Allocate payment
+                </button>
+              </form>
+            )}
+            <details>
+              <summary>Corrections, refunds & reversals</summary>
+              <form
+                className="form-grid"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  await t.command("billing.correct", {
+                    kind: f.get("kind"),
+                    id: f.get("id"),
+                    amount: f.get("amount")
+                      ? Math.round(Number(f.get("amount")) * 100)
+                      : undefined,
+                    reason: f.get("reason"),
+                    key: crypto.randomUUID(),
+                  });
+                  await load();
+                }}
+              >
+                <label>
+                  Correction type
+                  <select name="kind">
+                    <option value="adjustment">Charge adjustment</option>
+                    <option value="refund">Refund unallocated credit</option>
+                    <option value="reverse-payment">Reverse payment</option>
+                    <option value="reverse-allocation">
+                      Reverse allocation
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  Record
+                  <select name="id">
+                    {[
+                      ...statement.charges.map((c) => ({
+                        ...c,
+                        label: "Charge · " + text(c, "description"),
+                      })),
+                      ...statement.payments.map((p) => ({
+                        ...p,
+                        label: "Payment · " + money(num(p, "amount")),
+                      })),
+                      ...statement.allocations
+                        .filter((a) => !a.reversed_at)
+                        .map((a) => ({
+                          ...a,
+                          label: "Allocation · " + money(num(a, "amount")),
+                        })),
+                    ].map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Amount · INR (negative for concession)
+                  <input type="number" name="amount" step="0.01" />
+                </label>
+                <label>
+                  Reason
+                  <input name="reason" required minLength={3} />
+                </label>
+                <button className="button secondary" disabled={t.busy}>
+                  Record correction
+                </button>
+              </form>
+            </details>
+          </>
+        )}
+      </section>
+    </>
+  );
+}

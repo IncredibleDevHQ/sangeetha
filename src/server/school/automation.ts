@@ -1,27 +1,628 @@
-import {createHmac,randomUUID,timingSafeEqual,createHash} from 'node:crypto';
-import {z} from 'zod';
-import {SchoolAccess,activity,type Context} from './shared';
-import {AccessError} from '../admin-service';
-import {BillingService} from './billing';
-import {ScheduleService} from './schedule';
-import type {Database,Executor} from '../db';
-export function validSignature(raw:Buffer,signature:string|undefined,secret:string|undefined,prefix=''){if(!secret||!signature||!signature.startsWith(prefix))return false;const s=signature.slice(prefix.length);if(!/^[a-f0-9]{64}$/i.test(s))return false;return timingSafeEqual(Buffer.from(s,'hex'),createHmac('sha256',secret).update(raw).digest());}
-export class AutomationService extends SchoolAccess {
- async settings(c:Context,input?:unknown){const owner=await this.db.query("SELECT role FROM memberships WHERE school_id=$1 AND account_id=$2 AND role='owner' AND revoked_at IS NULL",[c.schoolId,c.session.accountId]);if(!owner.rows.length)throw new AccessError('Only the owner can configure integrations.');if(input){const b=z.object({enabled:z.boolean(),phoneId:z.string().regex(/^\d+$/).optional(),template:z.string().regex(/^[a-z0-9_]+$/).optional(),language:z.string().max(10).default('en'),dailyLimit:z.number().int().min(1).max(10000).default(200)}).parse(input);await this.db.query('INSERT INTO school_integrations(school_id,automated_messages,whatsapp_phone_id,whatsapp_template,whatsapp_language,daily_message_limit) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(school_id) DO UPDATE SET automated_messages=EXCLUDED.automated_messages,whatsapp_phone_id=EXCLUDED.whatsapp_phone_id,whatsapp_template=EXCLUDED.whatsapp_template,whatsapp_language=EXCLUDED.whatsapp_language,daily_message_limit=EXCLUDED.daily_message_limit',[c.schoolId,b.enabled,b.phoneId||null,b.template||null,b.language,b.dailyLimit]);}return {settings:(await this.db.query('SELECT * FROM school_integrations WHERE school_id=$1',[c.schoolId])).rows[0]||{automated_messages:false,daily_message_limit:200},whatsappConfigured:!!process.env.WHATSAPP_GRAPH_VERSION&&!!(process.env.WHATSAPP_TOKEN||process.env.WHATSAPP_TOKENS_JSON),paymentsConfigured:!!(process.env.RAZORPAY_KEY_ID||process.env.RAZORPAY_KEYS_JSON)};}
- async messages(c:Context){await this.require(c,'communicate.manage');return (await this.db.query('SELECT * FROM communications WHERE school_id=$1 ORDER BY created_at DESC LIMIT 500',[c.schoolId])).rows;}
- async valid(tx:Executor,row:Record<string,unknown>){const school=String(row.school_id),household=String(row.household_id),kind=String(row.kind),h=await tx.query<{primary_person_id:string;billing_person_id:string;archived_at:Date}>('SELECT * FROM households WHERE school_id=$1 AND id=$2',[school,household]);if(!h.rows.length||h.rows[0].archived_at)return false;const contact=['fee'].includes(kind)?h.rows[0].billing_person_id:h.rows[0].primary_person_id;if(contact!==row.person_id)return false;const p=await tx.query<{phone:string;contact_opt_out:boolean}>('SELECT phone,contact_opt_out FROM people WHERE school_id=$1 AND id=$2',[school,contact]);if(!p.rows.length||p.rows[0].contact_opt_out||p.rows[0].phone!==row.destination)return false;
- if(kind==='class'){const o=await tx.query<{version:number;status:string;starts_at:Date;batch_id:string}>('SELECT version,status,starts_at,batch_id FROM class_occurrences WHERE school_id=$1 AND id=$2',[school,row.occurrence_id]);if(!o.rows.length||o.rows[0].status!=='scheduled'||o.rows[0].version!==row.occurrence_version||new Date(o.rows[0].starts_at)<new Date())return false;const learners=await tx.query<{id:string}>("SELECT learner_id AS id FROM enrollments WHERE school_id=$1 AND batch_id=$2 AND household_id=$3 AND status='active' AND starts_on<=$4::date AND (ends_on IS NULL OR ends_on>=$4::date)",[school,o.rows[0].batch_id,household,o.rows[0].starts_at]);if(JSON.stringify(learners.rows.map(l=>l.id).sort())!==JSON.stringify((row.subjects as string[]).slice().sort()))return false;}
- const context=row.context as {balance?:number;test?:string;submission?:string;event?:string};
- if(kind==='fee'){const balances=await new BillingService(this.db).balances(tx,{schoolId:school,session:{} as Context['session']},household);if(balances.reduce((n,b)=>n+Number(b.due),0)!==context.balance||!context.balance)return false;}
- if(kind==='test'){const a=await tx.query<{due_at:Date;published:boolean}>('SELECT due_at,published FROM assessments WHERE school_id=$1 AND id=$2',[school,context.test]);if(!a.rows[0]?.published||new Date(a.rows[0].due_at)<new Date())return false;const sub=await tx.query('SELECT id FROM submission_versions WHERE school_id=$1 AND assessment_id=$2 AND learner_id=ANY($3::uuid[])',[school,context.test,row.subjects]);if(sub.rows.length)return false;}
- if(kind==='feedback'){const v=await tx.query('SELECT id FROM submission_versions WHERE school_id=$1 AND id=$2 AND review_published_at IS NOT NULL',[school,context.submission]);if(!v.rows.length)return false;}
- if(kind==='event'){const e=await tx.query<{cancelled_at:Date;starts_at:Date}>('SELECT cancelled_at,starts_at FROM school_events WHERE school_id=$1 AND id=$2',[school,context.event]);if(!e.rows.length||e.rows[0].cancelled_at||new Date(e.rows[0].starts_at)<new Date())return false;}
- return true;}
- async manual(c:Context,id:string){await this.require(c,'communicate.manage');return this.db.transaction(async tx=>{const r=await tx.query('SELECT * FROM communications WHERE school_id=$1 AND id=$2 FOR UPDATE',[c.schoolId,id]),row=r.rows[0];if(!row||['sent','delivered','unknown','sending','cancelled','opted_out'].includes(String(row.status)))throw new AccessError('This notice cannot be shared again.',409);if(!await this.valid(tx,row)){await tx.query("UPDATE communications SET status='cancelled' WHERE school_id=$1 AND id=$2",[c.schoolId,id]);return {cancelled:true};}await tx.query("UPDATE communications SET status='manual' WHERE school_id=$1 AND id=$2",[c.schoolId,id]);return {url:'https://wa.me/'+String(row.destination).replace('+','')+'?text='+encodeURIComponent(String(row.message)),message:row.message};});}
- async refresh(c:Context){await this.require(c,'communicate.manage');return this.db.transaction(async tx=>{const classes=await tx.query('SELECT id FROM class_occurrences WHERE school_id=$1 AND starts_at>now() AND status=\'scheduled\'',[c.schoolId]);for(const o of classes.rows)await new ScheduleService(this.db).queue(tx,c,String(o.id));const households=await tx.query<{id:string;primary_person_id:string;billing_person_id:string}>('SELECT id,primary_person_id,billing_person_id FROM households WHERE school_id=$1 AND archived_at IS NULL',[c.schoolId]);for(const h of households.rows){const balances=await new BillingService(this.db).balances(tx,c,h.id),balance=balances.reduce((n,ch)=>n+Number(ch.due),0);if(balance>0)await this.notice(tx,c,h.id,h.billing_person_id,'fee',[],`Your music-school statement has ${new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(balance/100)} outstanding. Please check the learner line items in your statement.`,{balance});const tests=await tx.query<{id:string;title:string;learner_id:string;name:string;due_at:Date}>("SELECT a.*,t.learner_id,p.name FROM assessments a JOIN assessment_targets t ON t.school_id=a.school_id AND t.assessment_id=a.id JOIN learners l ON l.school_id=t.school_id AND l.id=t.learner_id JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN household_members m ON m.school_id=p.school_id AND m.person_id=p.id WHERE a.school_id=$1 AND m.household_id=$2 AND m.ended_at IS NULL AND a.published AND a.due_at>now() AND NOT EXISTS(SELECT 1 FROM submission_versions v WHERE v.school_id=a.school_id AND v.assessment_id=a.id AND v.learner_id=l.id)",[c.schoolId,h.id]);for(const test of tests.rows)await this.notice(tx,c,h.id,h.primary_person_id,'test',[test.learner_id],`${test.name}: ${test.title} is due ${new Date(test.due_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST. Sign in to submit recordings.`,{test:test.id});const reviews=await tx.query<{id:string;learner_id:string;name:string}>("SELECT v.id,v.learner_id,p.name FROM submission_versions v JOIN learners l ON l.school_id=v.school_id AND l.id=v.learner_id JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN household_members m ON m.school_id=p.school_id AND m.person_id=p.id WHERE v.school_id=$1 AND m.household_id=$2 AND m.ended_at IS NULL AND v.review_published_at IS NOT NULL",[c.schoolId,h.id]);for(const v of reviews.rows)await this.notice(tx,c,h.id,h.primary_person_id,'feedback',[v.learner_id],`Feedback for ${v.name} is ready. Sign in with your authorised learner or guardian account to read it.`,{submission:v.id});const events=await tx.query<{id:string;title:string;starts_at:Date;venue:string}>('SELECT DISTINCT e.* FROM school_events e JOIN event_registrations r ON r.school_id=e.school_id AND r.event_id=e.id WHERE e.school_id=$1 AND r.household_id=$2 AND r.cancelled_at IS NULL AND e.cancelled_at IS NULL AND e.starts_at>now()',[c.schoolId,h.id]);for(const event of events.rows)await this.notice(tx,c,h.id,h.primary_person_id,'event',[],`${event.title}: ${new Date(event.starts_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST, ${event.venue}.`,{event:event.id});}return {ok:true};});}
- private async notice(tx:Executor,c:Context,household:string,person:string,kind:string,subjects:string[],message:string,context:Record<string,unknown>){const row=await tx.query<{phone:string;contact_opt_out:boolean;version:number}>('SELECT phone,contact_opt_out,version FROM people WHERE school_id=$1 AND id=$2',[c.schoolId,person]),p=row.rows[0];if(!p?.phone||p.contact_opt_out)return;const key=kind+':'+createHash('sha256').update(JSON.stringify({person,version:p.version,message,context})).digest('hex');await tx.query('INSERT INTO communications(school_id,id,key,household_id,person_id,kind,destination,subjects,message,due_at,context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10) ON CONFLICT(school_id,key) DO NOTHING',[c.schoolId,randomUUID(),key,household,person,kind,p.phone,JSON.stringify(subjects),message,JSON.stringify(context)]);}
- async retry(c:Context,id:string){await this.require(c,'communicate.manage');const r=await this.db.query("UPDATE communications SET status='queued',due_at=now(),error=NULL WHERE school_id=$1 AND id=$2 AND status='failed' AND attempts<5 RETURNING id",[c.schoolId,id]);if(!r.rows.length)throw new AccessError('Only definitively failed notices can be retried. Reconcile unknown outcomes first.',409);}
- async reconcile(c:Context,input:unknown){await this.require(c,'communicate.manage');const b=z.object({id:z.string().uuid(),status:z.enum(['sent','cancelled']),reason:z.string().min(3).max(500),providerId:z.string().max(200).optional()}).parse(input);await this.db.transaction(async tx=>{await tx.query("UPDATE communications SET status=$1,error=$2,provider_id=coalesce($3,provider_id) WHERE school_id=$4 AND id=$5 AND status='unknown'",[b.status,b.reason,b.providerId||null,c.schoolId,b.id]);await activity(tx,c,'communication.reconciled',{communicationId:b.id,reason:b.reason});});}
- async reports(c:Context){await this.require(c,'reports.read');const finance=await this.can(c,'finance.manage');return {attendance:(await this.db.query('SELECT l.id,p.name,count(a.occurrence_id)::int AS marked,count(a.occurrence_id) FILTER(WHERE a.status=\'present\')::int AS present FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN attendance a ON a.school_id=l.school_id AND a.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name',[c.schoolId])).rows,collections:finance?await new BillingService(this.db).balances(this.db,c):[],learning:(await this.db.query('SELECT l.id,p.name,count(DISTINCT v.id)::int AS submissions,count(DISTINCT v.id) FILTER(WHERE v.review_published_at IS NOT NULL)::int AS reviewed FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN submission_versions v ON v.school_id=l.school_id AND v.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name',[c.schoolId])).rows,failures:(await this.db.query("SELECT * FROM communications WHERE school_id=$1 AND status IN ('failed','unknown') ORDER BY created_at DESC",[c.schoolId])).rows,tasks:(await this.db.query('SELECT f.*,h.name AS household FROM followups f JOIN households h ON h.school_id=f.school_id AND h.id=f.household_id WHERE f.school_id=$1 AND f.done_at IS NULL ORDER BY due_on',[c.schoolId])).rows};}
+import {
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+  createHash,
+} from "node:crypto";
+import { z } from "zod";
+import { SchoolAccess, activity, type Context } from "./shared";
+import { AccessError } from "../admin-service";
+import { BillingService } from "./billing";
+import { ScheduleService } from "./schedule";
+import type { Database, Executor } from "../db";
+export function validSignature(
+  raw: Buffer,
+  signature: string | undefined,
+  secret: string | undefined,
+  prefix = "",
+) {
+  if (!secret || !signature || !signature.startsWith(prefix)) return false;
+  const s = signature.slice(prefix.length);
+  if (!/^[a-f0-9]{64}$/i.test(s)) return false;
+  return timingSafeEqual(
+    Buffer.from(s, "hex"),
+    createHmac("sha256", secret).update(raw).digest(),
+  );
 }
-export async function dispatchMessages(db:Database,maximum=50){const service=new AutomationService(db);await db.query("UPDATE communications SET status='unknown',error='Worker lease expired; reconcile before retry' WHERE status='sending' AND lease_until<now()");let processed=0;for(let i=0;i<maximum;i++){const job=await db.transaction(async tx=>{const r=await tx.query("SELECT m.*,s.whatsapp_phone_id,s.whatsapp_template,s.whatsapp_language,s.daily_message_limit FROM communications m JOIN school_integrations s ON s.school_id=m.school_id WHERE m.status='queued' AND m.due_at<=now() AND s.automated_messages ORDER BY m.due_at FOR UPDATE OF m SKIP LOCKED LIMIT 1"),row=r.rows[0];if(!row)return null;if(!await service.valid(tx,row)){await tx.query("UPDATE communications SET status='cancelled' WHERE school_id=$1 AND id=$2",[row.school_id,row.id]);return {skipped:true};}await tx.query('SELECT school_id FROM school_integrations WHERE school_id=$1 FOR UPDATE',[row.school_id]);const daily=await tx.query<{n:number}>("SELECT count(*)::int AS n FROM communications WHERE school_id=$1 AND status IN ('sending','sent','delivered','unknown') AND lease_until>=current_date",[row.school_id]);if(daily.rows[0].n>=Number(row.daily_message_limit))return null;await tx.query("UPDATE communications SET status='sending',attempts=attempts+1,lease_until=now()+interval '5 minutes' WHERE school_id=$1 AND id=$2",[row.school_id,row.id]);return row;});if(!job)break;if(job.skipped){processed++;continue;}let status='unknown',provider:string|null=null,error:string|null=null;try{const tokens=JSON.parse(process.env.WHATSAPP_TOKENS_JSON||'{}') as Record<string,string>,token=tokens[String(job.whatsapp_phone_id)]||process.env.WHATSAPP_TOKEN,version=process.env.WHATSAPP_GRAPH_VERSION;if(!token||!version||!job.whatsapp_phone_id||!job.whatsapp_template){status='failed';error='WhatsApp configuration missing';}else {const r=await fetch(`https://graph.facebook.com/${version}/${job.whatsapp_phone_id}/messages`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:String(job.destination).replace('+',''),type:'template',template:{name:job.whatsapp_template,language:{code:job.whatsapp_language},components:[{type:'body',parameters:[{type:'text',text:job.message}]}]},biz_opaque_callback_data:job.id}),signal:AbortSignal.timeout(15000)});if(r.ok){const data=await r.json() as {messages?:{id:string}[]};provider=data.messages?.[0]?.id||null;status=provider?'sent':'unknown';}else{status=r.status>=500?'unknown':'failed';error='WhatsApp HTTP '+r.status;}}}catch{error='Provider outcome unknown; do not blindly resend';}await db.transaction(async tx=>{await tx.query('UPDATE communications SET status=$1,provider_id=$2,error=$3 WHERE school_id=$4 AND id=$5',[status,provider,error,job.school_id,job.id]);await tx.query('INSERT INTO delivery_events(school_id,id,communication_id,status,provider_id) VALUES($1,$2,$3,$4,$5)',[job.school_id,randomUUID(),job.id,status,provider]);});processed++;}return {processed};}
+export class AutomationService extends SchoolAccess {
+  async settings(c: Context, input?: unknown) {
+    const owner = await this.db.query(
+      "SELECT role FROM memberships WHERE school_id=$1 AND account_id=$2 AND role='owner' AND revoked_at IS NULL",
+      [c.schoolId, c.session.accountId],
+    );
+    if (!owner.rows.length)
+      throw new AccessError("Only the owner can configure integrations.");
+    if (input) {
+      const b = z
+        .object({
+          enabled: z.boolean(),
+          phoneId: z.string().regex(/^\d+$/).optional(),
+          template: z
+            .string()
+            .regex(/^[a-z0-9_]+$/)
+            .optional(),
+          language: z.string().max(10).default("en"),
+          dailyLimit: z.number().int().min(1).max(10000).default(200),
+        })
+        .parse(input);
+      await this.db.query(
+        "INSERT INTO school_integrations(school_id,automated_messages,whatsapp_phone_id,whatsapp_template,whatsapp_language,daily_message_limit) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(school_id) DO UPDATE SET automated_messages=EXCLUDED.automated_messages,whatsapp_phone_id=EXCLUDED.whatsapp_phone_id,whatsapp_template=EXCLUDED.whatsapp_template,whatsapp_language=EXCLUDED.whatsapp_language,daily_message_limit=EXCLUDED.daily_message_limit",
+        [
+          c.schoolId,
+          b.enabled,
+          b.phoneId || null,
+          b.template || null,
+          b.language,
+          b.dailyLimit,
+        ],
+      );
+    }
+    return {
+      settings: (
+        await this.db.query(
+          "SELECT * FROM school_integrations WHERE school_id=$1",
+          [c.schoolId],
+        )
+      ).rows[0] || { automated_messages: false, daily_message_limit: 200 },
+      whatsappConfigured:
+        !!process.env.WHATSAPP_GRAPH_VERSION &&
+        !!(process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_TOKENS_JSON),
+      paymentsConfigured: !!(
+        process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEYS_JSON
+      ),
+    };
+  }
+  async messages(c: Context) {
+    await this.require(c, "communicate.manage");
+    return (
+      await this.db.query(
+        "SELECT * FROM communications WHERE school_id=$1 ORDER BY created_at DESC LIMIT 500",
+        [c.schoolId],
+      )
+    ).rows;
+  }
+  async valid(tx: Executor, row: Record<string, unknown>) {
+    const school = String(row.school_id),
+      household = String(row.household_id),
+      kind = String(row.kind),
+      h = await tx.query<{
+        primary_person_id: string;
+        billing_person_id: string;
+        archived_at: Date;
+      }>("SELECT * FROM households WHERE school_id=$1 AND id=$2", [
+        school,
+        household,
+      ]);
+    if (!h.rows.length || h.rows[0].archived_at) return false;
+    const contact = ["fee"].includes(kind)
+      ? h.rows[0].billing_person_id
+      : h.rows[0].primary_person_id;
+    if (contact !== row.person_id) return false;
+    const p = await tx.query<{ phone: string; contact_opt_out: boolean }>(
+      "SELECT phone,contact_opt_out FROM people WHERE school_id=$1 AND id=$2",
+      [school, contact],
+    );
+    if (
+      !p.rows.length ||
+      p.rows[0].contact_opt_out ||
+      p.rows[0].phone !== row.destination
+    )
+      return false;
+    if (kind === "class") {
+      const o = await tx.query<{
+        version: number;
+        status: string;
+        starts_at: Date;
+        batch_id: string;
+      }>(
+        "SELECT version,status,starts_at,batch_id FROM class_occurrences WHERE school_id=$1 AND id=$2",
+        [school, row.occurrence_id],
+      );
+      if (
+        !o.rows.length ||
+        o.rows[0].status !== "scheduled" ||
+        o.rows[0].version !== row.occurrence_version ||
+        new Date(o.rows[0].starts_at) < new Date()
+      )
+        return false;
+      const learners = await tx.query<{ id: string }>(
+        "SELECT learner_id AS id FROM enrollments WHERE school_id=$1 AND batch_id=$2 AND household_id=$3 AND status='active' AND starts_on<=$4::date AND (ends_on IS NULL OR ends_on>=$4::date)",
+        [school, o.rows[0].batch_id, household, o.rows[0].starts_at],
+      );
+      if (
+        JSON.stringify(learners.rows.map((l) => l.id).sort()) !==
+        JSON.stringify((row.subjects as string[]).slice().sort())
+      )
+        return false;
+    }
+    const context = row.context as {
+      balance?: number;
+      test?: string;
+      submission?: string;
+      event?: string;
+    };
+    if (kind === "fee") {
+      const balances = await new BillingService(this.db).balances(
+        tx,
+        { schoolId: school, session: {} as Context["session"] },
+        household,
+      );
+      if (
+        balances.reduce((n, b) => n + Number(b.due), 0) !== context.balance ||
+        !context.balance
+      )
+        return false;
+    }
+    if (kind === "test") {
+      const a = await tx.query<{ due_at: Date; published: boolean }>(
+        "SELECT due_at,published FROM assessments WHERE school_id=$1 AND id=$2",
+        [school, context.test],
+      );
+      if (!a.rows[0]?.published || new Date(a.rows[0].due_at) < new Date())
+        return false;
+      const sub = await tx.query(
+        "SELECT id FROM submission_versions WHERE school_id=$1 AND assessment_id=$2 AND learner_id=ANY($3::uuid[])",
+        [school, context.test, row.subjects],
+      );
+      if (sub.rows.length) return false;
+    }
+    if (kind === "feedback") {
+      const v = await tx.query(
+        "SELECT id FROM submission_versions WHERE school_id=$1 AND id=$2 AND review_published_at IS NOT NULL",
+        [school, context.submission],
+      );
+      if (!v.rows.length) return false;
+    }
+    if (kind === "event") {
+      const e = await tx.query<{ cancelled_at: Date; starts_at: Date }>(
+        "SELECT cancelled_at,starts_at FROM school_events WHERE school_id=$1 AND id=$2",
+        [school, context.event],
+      );
+      if (
+        !e.rows.length ||
+        e.rows[0].cancelled_at ||
+        new Date(e.rows[0].starts_at) < new Date()
+      )
+        return false;
+    }
+    return true;
+  }
+  async manual(c: Context, id: string) {
+    await this.require(c, "communicate.manage");
+    return this.db.transaction(async (tx) => {
+      const r = await tx.query(
+          "SELECT * FROM communications WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          [c.schoolId, id],
+        ),
+        row = r.rows[0];
+      if (
+        !row ||
+        [
+          "sent",
+          "delivered",
+          "unknown",
+          "sending",
+          "cancelled",
+          "opted_out",
+        ].includes(String(row.status))
+      )
+        throw new AccessError("This notice cannot be shared again.", 409);
+      if (!(await this.valid(tx, row))) {
+        await tx.query(
+          "UPDATE communications SET status='cancelled' WHERE school_id=$1 AND id=$2",
+          [c.schoolId, id],
+        );
+        return { cancelled: true };
+      }
+      await tx.query(
+        "UPDATE communications SET status='manual' WHERE school_id=$1 AND id=$2",
+        [c.schoolId, id],
+      );
+      return {
+        url:
+          "https://wa.me/" +
+          String(row.destination).replace("+", "") +
+          "?text=" +
+          encodeURIComponent(String(row.message)),
+        message: row.message,
+      };
+    });
+  }
+  async announce(c: Context, input: unknown) {
+    await this.require(c, "communicate.manage");
+    const b = z
+      .object({
+        households: z.array(z.string().uuid()).min(1).max(500),
+        message: z.string().trim().min(1).max(3000),
+        key: z.string().min(8).max(120),
+      })
+      .parse(input);
+    return this.db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        c.schoolId,
+      ]);
+      const fingerprint = createHash("sha256")
+          .update(
+            JSON.stringify({
+              households: [...new Set(b.households)].sort(),
+              message: b.message,
+            }),
+          )
+          .digest("hex"),
+        key = "announcement:" + b.key,
+        existing = (
+          await tx.query<{ fingerprint: string; result: unknown }>(
+            "SELECT fingerprint,result FROM import_runs WHERE school_id=$1 AND key=$2",
+            [c.schoolId, key],
+          )
+        ).rows[0];
+      if (existing) {
+        if (existing.fingerprint !== fingerprint)
+          throw new AccessError(
+            "Announcement key already belongs to different recipients or text.",
+            409,
+          );
+        return existing.result;
+      }
+      for (const id of new Set(b.households)) {
+        const h = (
+          await tx.query<{ primary_person_id: string }>(
+            "SELECT primary_person_id FROM households WHERE school_id=$1 AND id=$2 AND archived_at IS NULL",
+            [c.schoolId, id],
+          )
+        ).rows[0];
+        if (!h)
+          throw new AccessError(
+            "Select active households in this school.",
+            400,
+          );
+        await this.notice(
+          tx,
+          c,
+          id,
+          h.primary_person_id,
+          "announcement",
+          [],
+          b.message,
+          { announcement: b.key },
+        );
+      }
+      const result = { ok: true };
+      await tx.query(
+        "INSERT INTO import_runs(school_id,key,result,fingerprint) VALUES($1,$2,$3,$4)",
+        [c.schoolId, key, JSON.stringify(result), fingerprint],
+      );
+      await activity(tx, c, "announcement.queued", {
+        households: [...new Set(b.households)],
+      });
+      return result;
+    });
+  }
+  async refresh(c: Context) {
+    await this.require(c, "communicate.manage");
+    return this.db.transaction(async (tx) => {
+      const classes = await tx.query(
+        "SELECT id FROM class_occurrences WHERE school_id=$1 AND starts_at>now() AND status='scheduled'",
+        [c.schoolId],
+      );
+      for (const o of classes.rows)
+        await new ScheduleService(this.db).queue(tx, c, String(o.id));
+      const households = await tx.query<{
+        id: string;
+        primary_person_id: string;
+        billing_person_id: string;
+      }>(
+        "SELECT id,primary_person_id,billing_person_id FROM households WHERE school_id=$1 AND archived_at IS NULL",
+        [c.schoolId],
+      );
+      for (const h of households.rows) {
+        const balances = await new BillingService(this.db).balances(
+            tx,
+            c,
+            h.id,
+          ),
+          balance = balances.reduce((n, ch) => n + Number(ch.due), 0);
+        if (balance > 0)
+          await this.notice(
+            tx,
+            c,
+            h.id,
+            h.billing_person_id,
+            "fee",
+            [],
+            `Your music-school statement has ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(balance / 100)} outstanding. Please check the learner line items in your statement.`,
+            { balance },
+          );
+        const tests = await tx.query<{
+          id: string;
+          title: string;
+          learner_id: string;
+          name: string;
+          due_at: Date;
+        }>(
+          "SELECT a.*,t.learner_id,p.name FROM assessments a JOIN assessment_targets t ON t.school_id=a.school_id AND t.assessment_id=a.id JOIN learners l ON l.school_id=t.school_id AND l.id=t.learner_id JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN household_members m ON m.school_id=p.school_id AND m.person_id=p.id WHERE a.school_id=$1 AND m.household_id=$2 AND m.ended_at IS NULL AND a.published AND a.due_at>now() AND NOT EXISTS(SELECT 1 FROM submission_versions v WHERE v.school_id=a.school_id AND v.assessment_id=a.id AND v.learner_id=l.id)",
+          [c.schoolId, h.id],
+        );
+        for (const test of tests.rows)
+          await this.notice(
+            tx,
+            c,
+            h.id,
+            h.primary_person_id,
+            "test",
+            [test.learner_id],
+            `${test.name}: ${test.title} is due ${new Date(test.due_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. Sign in to submit recordings.`,
+            { test: test.id },
+          );
+        const reviews = await tx.query<{
+          id: string;
+          learner_id: string;
+          name: string;
+        }>(
+          "SELECT v.id,v.learner_id,p.name FROM submission_versions v JOIN learners l ON l.school_id=v.school_id AND l.id=v.learner_id JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN household_members m ON m.school_id=p.school_id AND m.person_id=p.id WHERE v.school_id=$1 AND m.household_id=$2 AND m.ended_at IS NULL AND v.review_published_at IS NOT NULL",
+          [c.schoolId, h.id],
+        );
+        for (const v of reviews.rows)
+          await this.notice(
+            tx,
+            c,
+            h.id,
+            h.primary_person_id,
+            "feedback",
+            [v.learner_id],
+            `Feedback for ${v.name} is ready. Sign in with your authorised learner or guardian account to read it.`,
+            { submission: v.id },
+          );
+        const events = await tx.query<{
+          id: string;
+          title: string;
+          starts_at: Date;
+          venue: string;
+        }>(
+          "SELECT DISTINCT e.* FROM school_events e JOIN event_registrations r ON r.school_id=e.school_id AND r.event_id=e.id WHERE e.school_id=$1 AND r.household_id=$2 AND r.cancelled_at IS NULL AND e.cancelled_at IS NULL AND e.starts_at>now()",
+          [c.schoolId, h.id],
+        );
+        for (const event of events.rows)
+          await this.notice(
+            tx,
+            c,
+            h.id,
+            h.primary_person_id,
+            "event",
+            [],
+            `${event.title}: ${new Date(event.starts_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST, ${event.venue}.`,
+            { event: event.id },
+          );
+      }
+      return { ok: true };
+    });
+  }
+  private async notice(
+    tx: Executor,
+    c: Context,
+    household: string,
+    person: string,
+    kind: string,
+    subjects: string[],
+    message: string,
+    context: Record<string, unknown>,
+  ) {
+    const row = await tx.query<{
+        phone: string;
+        contact_opt_out: boolean;
+        version: number;
+      }>(
+        "SELECT phone,contact_opt_out,version FROM people WHERE school_id=$1 AND id=$2",
+        [c.schoolId, person],
+      ),
+      p = row.rows[0];
+    if (!p?.phone || p.contact_opt_out) return;
+    const key =
+      kind +
+      ":" +
+      createHash("sha256")
+        .update(
+          JSON.stringify({
+            household,
+            person,
+            version: p.version,
+            message,
+            context,
+          }),
+        )
+        .digest("hex");
+    await tx.query(
+      "INSERT INTO communications(school_id,id,key,household_id,person_id,kind,destination,subjects,message,due_at,context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10) ON CONFLICT(school_id,key) DO NOTHING",
+      [
+        c.schoolId,
+        randomUUID(),
+        key,
+        household,
+        person,
+        kind,
+        p.phone,
+        JSON.stringify(subjects),
+        message,
+        JSON.stringify(context),
+      ],
+    );
+  }
+  async retry(c: Context, id: string) {
+    await this.require(c, "communicate.manage");
+    const r = await this.db.query(
+      "UPDATE communications SET status='queued',due_at=now(),error=NULL WHERE school_id=$1 AND id=$2 AND status='failed' AND attempts<5 RETURNING id",
+      [c.schoolId, id],
+    );
+    if (!r.rows.length)
+      throw new AccessError(
+        "Only definitively failed notices can be retried. Reconcile unknown outcomes first.",
+        409,
+      );
+  }
+  async reconcile(c: Context, input: unknown) {
+    await this.require(c, "communicate.manage");
+    const b = z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["sent", "cancelled"]),
+        reason: z.string().min(3).max(500),
+        providerId: z.string().max(200).optional(),
+      })
+      .parse(input);
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE communications SET status=$1,error=$2,provider_id=coalesce($3,provider_id) WHERE school_id=$4 AND id=$5 AND status='unknown'",
+        [b.status, b.reason, b.providerId || null, c.schoolId, b.id],
+      );
+      await activity(tx, c, "communication.reconciled", {
+        communicationId: b.id,
+        reason: b.reason,
+      });
+    });
+  }
+  async reports(c: Context) {
+    await this.require(c, "reports.read");
+    const finance = await this.can(c, "finance.manage");
+    return {
+      attendance: (
+        await this.db.query(
+          "SELECT l.id,p.name,count(a.occurrence_id)::int AS marked,count(a.occurrence_id) FILTER(WHERE a.status='present')::int AS present FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN attendance a ON a.school_id=l.school_id AND a.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name",
+          [c.schoolId],
+        )
+      ).rows,
+      collections: finance
+        ? await new BillingService(this.db).balances(this.db, c)
+        : [],
+      learning: (
+        await this.db.query(
+          "SELECT l.id,p.name,count(DISTINCT v.id)::int AS submissions,count(DISTINCT v.id) FILTER(WHERE v.review_published_at IS NOT NULL)::int AS reviewed FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN submission_versions v ON v.school_id=l.school_id AND v.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name",
+          [c.schoolId],
+        )
+      ).rows,
+      failures: (
+        await this.db.query(
+          "SELECT * FROM communications WHERE school_id=$1 AND status IN ('failed','unknown') ORDER BY created_at DESC",
+          [c.schoolId],
+        )
+      ).rows,
+      tasks: (
+        await this.db.query(
+          "SELECT f.*,h.name AS household FROM followups f JOIN households h ON h.school_id=f.school_id AND h.id=f.household_id WHERE f.school_id=$1 AND f.done_at IS NULL ORDER BY due_on",
+          [c.schoolId],
+        )
+      ).rows,
+    };
+  }
+}
+export async function dispatchMessages(db: Database, maximum = 50) {
+  const service = new AutomationService(db);
+  await db.query(
+    "UPDATE communications SET status='unknown',error='Worker lease expired; reconcile before retry' WHERE status='sending' AND lease_until<now()",
+  );
+  let processed = 0;
+  for (let i = 0; i < maximum; i++) {
+    const job = await db.transaction(async (tx) => {
+      const r = await tx.query(
+          "SELECT m.*,s.whatsapp_phone_id,s.whatsapp_template,s.whatsapp_language,s.daily_message_limit FROM communications m JOIN school_integrations s ON s.school_id=m.school_id WHERE m.status='queued' AND m.due_at<=now() AND s.automated_messages ORDER BY m.due_at FOR UPDATE OF m SKIP LOCKED LIMIT 1",
+        ),
+        row = r.rows[0];
+      if (!row) return null;
+      if (!(await service.valid(tx, row))) {
+        await tx.query(
+          "UPDATE communications SET status='cancelled' WHERE school_id=$1 AND id=$2",
+          [row.school_id, row.id],
+        );
+        return { skipped: true };
+      }
+      await tx.query(
+        "SELECT school_id FROM school_integrations WHERE school_id=$1 FOR UPDATE",
+        [row.school_id],
+      );
+      const daily = await tx.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM communications WHERE school_id=$1 AND status IN ('sending','sent','delivered','unknown') AND lease_until>=current_date",
+        [row.school_id],
+      );
+      if (daily.rows[0].n >= Number(row.daily_message_limit)) return null;
+      await tx.query(
+        "UPDATE communications SET status='sending',attempts=attempts+1,lease_until=now()+interval '5 minutes' WHERE school_id=$1 AND id=$2",
+        [row.school_id, row.id],
+      );
+      return row;
+    });
+    if (!job) break;
+    if (job.skipped) {
+      processed++;
+      continue;
+    }
+    let status = "unknown",
+      provider: string | null = null,
+      error: string | null = null;
+    try {
+      const tokens = JSON.parse(
+          process.env.WHATSAPP_TOKENS_JSON || "{}",
+        ) as Record<string, string>,
+        token =
+          tokens[String(job.whatsapp_phone_id)] || process.env.WHATSAPP_TOKEN,
+        version = process.env.WHATSAPP_GRAPH_VERSION;
+      if (
+        !token ||
+        !version ||
+        !job.whatsapp_phone_id ||
+        !job.whatsapp_template
+      ) {
+        status = "failed";
+        error = "WhatsApp configuration missing";
+      } else {
+        const r = await fetch(
+          `https://graph.facebook.com/${version}/${job.whatsapp_phone_id}/messages`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + token,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: String(job.destination).replace("+", ""),
+              type: "template",
+              template: {
+                name: job.whatsapp_template,
+                language: { code: job.whatsapp_language },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [{ type: "text", text: job.message }],
+                  },
+                ],
+              },
+              biz_opaque_callback_data: job.id,
+            }),
+            signal: AbortSignal.timeout(15000),
+          },
+        );
+        if (r.ok) {
+          const data = (await r.json()) as { messages?: { id: string }[] };
+          provider = data.messages?.[0]?.id || null;
+          status = provider ? "sent" : "unknown";
+        } else {
+          status = r.status >= 500 ? "unknown" : "failed";
+          error = "WhatsApp HTTP " + r.status;
+        }
+      }
+    } catch {
+      error = "Provider outcome unknown; do not blindly resend";
+    }
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE communications SET status=$1,provider_id=$2,error=$3 WHERE school_id=$4 AND id=$5",
+        [status, provider, error, job.school_id, job.id],
+      );
+      await tx.query(
+        "INSERT INTO delivery_events(school_id,id,communication_id,status,provider_id) VALUES($1,$2,$3,$4,$5)",
+        [job.school_id, randomUUID(), job.id, status, provider],
+      );
+    });
+    processed++;
+  }
+  return { processed };
+}

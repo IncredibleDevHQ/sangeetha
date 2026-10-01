@@ -1,3 +1,4 @@
+import PhoneInput from "./PhoneInput";
 import { useEffect, useState, type FormEvent } from "react";
 import { ShieldCheck, ArrowRight, Phone } from "lucide-react";
 import { api } from "../../lib/api";
@@ -78,8 +79,8 @@ export default function SignIn({
           <ArrowRight size={17} />
         </a>
         <p className="fine">
-          Enter your mobile number with +91 on the secure sign-in page. Your SMS
-          code verifies your number.
+          Enter your mobile number with its country code on the secure sign-in
+          page. Your SMS code verifies your number.
         </p>
       </div>
     );
@@ -116,26 +117,30 @@ export default function SignIn({
             setDestination("");
           }}
         >
-          Phone · +91
+          Phone
         </button>
       </div>
       {!flow ? (
         <form onSubmit={request}>
-          <label>
-            {method === "email"
-              ? "Email address for local simulation"
-              : "Mobile number"}
-            <input
-              autoComplete={method === "email" ? "email" : "tel"}
-              type={method === "email" ? "email" : "tel"}
-              required
+          {method === "phone" ? (
+            <PhoneInput
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder={
-                method === "email" ? "you@example.com" : "98765 43210"
-              }
+              onChange={setDestination}
+              required
             />
-          </label>
+          ) : (
+            <label>
+              Email address for local simulation
+              <input
+                autoComplete="email"
+                type="email"
+                required
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </label>
+          )}
           <button className="button primary" disabled={busy}>
             {busy ? "Requesting…" : "Request verification code"}
             <ArrowRight size={17} />

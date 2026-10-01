@@ -1,3 +1,4 @@
+import PhoneInput from "./features/auth/PhoneInput";
 import SchoolWorkspace from "./features/school/Workspace";
 import type { Me, Team } from "./contracts";
 import { api, ApiError } from "./lib/api";
@@ -37,6 +38,7 @@ export default function App() {
   const [me, setMe] = useState<Me | null>(null),
     [loaded, setLoaded] = useState(false),
     [local, setLocal] = useState(false),
+    [authReady, setAuthReady] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [page, setPage] = useState("overview"),
@@ -47,7 +49,29 @@ export default function App() {
     [name, setName] = useState(""),
     [channel, setChannel] = useState("email"),
     [destination, setDestination] = useState("");
+  const [workspaceAccess, setWorkspaceAccess] = useState<{
+    capabilities: string[];
+    scopes: { capability: string }[];
+  }>({ capabilities: [], scopes: [] });
   const school = me?.schools.find((s) => s.id === schoolId) || me?.schools[0];
+  useEffect(() => {
+    setWorkspaceAccess({ capabilities: [], scopes: [] });
+    if (school)
+      api<typeof workspaceAccess>("/schools/" + school.id + "/views/bootstrap")
+        .then(setWorkspaceAccess)
+        .catch((e) => setError(e.message));
+  }, [school?.id, me?.account]);
+  const adminExperience = workspaceAccess.capabilities.some((c) =>
+    ["crm.manage", "schedule.manage", "finance.manage"].includes(c),
+  );
+  const learningExperience = workspaceAccess.scopes.some((s) =>
+    ["portal.learn", "classes.teach", "household.billing"].includes(
+      s.capability,
+    ),
+  );
+  const reviewerExperience = workspaceAccess.scopes.some(
+    (s) => s.capability === "assessments.review",
+  );
   async function refresh() {
     try {
       const next = await api<Me>("/me");
@@ -63,6 +87,7 @@ export default function App() {
       api<{ mode: string; school?: { name: string } }>("/auth/config").then(
         (c) => {
           setLocal(c.mode === "local");
+          setAuthReady(true);
           setTenantName(c.school?.name || "");
         },
       ),
@@ -120,6 +145,18 @@ export default function App() {
     </>
   );
   if (!loaded) return <main className="loading">Opening Sangeetha…</main>;
+  if (!authReady)
+    return (
+      <main className="loading">
+        <p>Connection unavailable. Please try again.</p>
+        <button
+          className="button secondary"
+          onClick={() => window.location.reload()}
+        >
+          Retry connection
+        </button>
+      </main>
+    );
   if (!me)
     return (
       <main className="login-layout">
@@ -194,7 +231,27 @@ export default function App() {
         <nav>
           {[
             { id: "overview", label: "Overview", icon: LayoutDashboard },
-              ...(school?[{id:"operations",label:"School operations",icon:BookOpen}]:[]),
+            ...(adminExperience
+              ? [
+                  {
+                    id: "operations",
+                    label: "School administration",
+                    icon: Users,
+                  },
+                ]
+              : []),
+            ...(learningExperience
+              ? [
+                  {
+                    id: "learning",
+                    label: "My learning & teaching",
+                    icon: BookOpen,
+                  },
+                ]
+              : []),
+            ...(reviewerExperience && !adminExperience
+              ? [{ id: "review", label: "Assigned reviews", icon: BookOpen }]
+              : []),
             ...(school?.role === "owner"
               ? [{ id: "team", label: "Team & access", icon: Users }]
               : []),
@@ -221,7 +278,11 @@ export default function App() {
           <div>
             {me.account.displayName}
             <small>
-              {school?.role === "owner" ? "School owner" : "Administrator"}
+              {school?.role === "owner"
+                ? "School owner"
+                : adminExperience
+                  ? "School staff"
+                  : "Learning community"}
             </small>
           </div>
           <button aria-label="Sign out" disabled={busy} onClick={signOut}>
@@ -235,9 +296,15 @@ export default function App() {
             Workspace /{" "}
             {page === "overview"
               ? "Overview"
-              : page === "team"
-                ? "Team & access"
-                : "My account"}
+              : page === "operations"
+                ? "School administration"
+                : page === "learning"
+                  ? "Learning portal"
+                  : page === "review"
+                    ? "Assigned reviews"
+                    : page === "team"
+                      ? "Team & access"
+                      : "My account"}
           </span>
           <div className="header-actions">
             <button
@@ -256,7 +323,23 @@ export default function App() {
         </header>
         <main className="content">
           {alerts}
-          {page === "operations" && school && <SchoolWorkspace key={school.id} school={school}/>}
+          {page === "operations" && school && adminExperience && (
+            <SchoolWorkspace key={school.id} school={school} />
+          )}
+          {page === "learning" && school && learningExperience && (
+            <SchoolWorkspace
+              key={school.id + "learning"}
+              school={school}
+              experience="learning"
+            />
+          )}
+          {page === "review" && school && reviewerExperience && (
+            <SchoolWorkspace
+              key={school.id + "review"}
+              school={school}
+              experience="review"
+            />
+          )}
           {page === "overview" && (
             <>
               <div className="page-heading">
@@ -270,7 +353,7 @@ export default function App() {
                 </h1>
                 <p>
                   {school
-                    ? "Your workspace is ready. Let’s lay a strong foundation."
+                    ? "Your school administration and learning spaces are ready."
                     : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
                 </p>
               </div>
@@ -278,23 +361,33 @@ export default function App() {
                 <>
                   <section className="welcome-banner">
                     <div>
-                      <span className="tag">PHASE 1 · FOUNDATION</span>
+                      <span className="tag">YOUR MUSIC SCHOOL</span>
                       <h2>A place for your whole school.</h2>
                       <p>
-                        Start with secure access for yourself and your admin
-                        team.
-                        <br />
-                        Students, classes and fees come next.
+                        Manage your school and learning through the workspace
+                        assigned to you.
                       </p>
                       <button
                         className="button cream"
                         onClick={() =>
-                          setPage(school.role === "owner" ? "team" : "account")
+                          setPage(
+                            adminExperience
+                              ? "operations"
+                              : learningExperience
+                                ? "learning"
+                                : reviewerExperience
+                                  ? "review"
+                                  : "account",
+                          )
                         }
                       >
-                        {school.role === "owner"
-                          ? "Manage your team"
-                          : "Manage your account"}
+                        {adminExperience
+                          ? "Open school administration"
+                          : learningExperience
+                            ? "Open learning portal"
+                            : reviewerExperience
+                              ? "Open assigned reviews"
+                              : "Manage your account"}
                         <ArrowRight size={16} />
                       </button>
                     </div>
@@ -331,8 +424,8 @@ export default function App() {
                     )}
                   </div>
                   <div className="section-heading">
-                    <h2>Growing with your school</h2>
-                    <span>Coming in later phases</span>
+                    <h2>School workflows</h2>
+                    <span>Available through assigned access</span>
                   </div>
                   <div className="future-grid">
                     {[
@@ -412,23 +505,27 @@ export default function App() {
                       onChange={(e) => setChannel(e.target.value)}
                     >
                       <option value="email">Google email</option>
-                      <option value="phone">Phone · +91</option>
+                      <option value="phone">Phone</option>
                     </select>
                   </label>
-                  <label>
-                    {channel === "email" ? "Email address" : "Mobile number"}
-                    <input
-                      required
-                      type={channel === "email" ? "email" : "tel"}
+                  {channel === "phone" ? (
+                    <PhoneInput
                       value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      placeholder={
-                        channel === "email"
-                          ? "admin@example.com"
-                          : "98765 43210"
-                      }
+                      onChange={setDestination}
+                      required
                     />
-                  </label>
+                  ) : (
+                    <label>
+                      Email address
+                      <input
+                        required
+                        type="email"
+                        value={destination}
+                        onChange={(e) => setDestination(e.target.value)}
+                        placeholder="admin@example.com"
+                      />
+                    </label>
+                  )}
                   <button className="button primary" disabled={busy}>
                     <Plus size={17} />
                     Create invitation

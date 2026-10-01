@@ -1,13 +1,304 @@
-import {randomUUID,createHash} from 'node:crypto';
-import {z} from 'zod';
-import {SchoolAccess,activity,type Context} from './shared';
-import {validSignature} from './automation';
-import {BillingService} from './billing';
-import {AccessError} from '../admin-service';
-export function gatewayKeys(school:string){const configured=JSON.parse(process.env.RAZORPAY_KEYS_JSON||'{}') as Record<string,{keyId:string;secret:string;webhookSecret:string}>;return configured[school]||{keyId:process.env.RAZORPAY_KEY_ID,secret:process.env.RAZORPAY_KEY_SECRET,webhookSecret:process.env.RAZORPAY_WEBHOOK_SECRET};}
+import { randomUUID, createHash } from "node:crypto";
+import { z } from "zod";
+import { SchoolAccess, activity, type Context } from "./shared";
+import { validSignature } from "./automation";
+import { BillingService } from "./billing";
+import { AccessError } from "../admin-service";
+export function gatewayKeys(school: string) {
+  const configured = JSON.parse(
+    process.env.RAZORPAY_KEYS_JSON || "{}",
+  ) as Record<string, { keyId: string; secret: string; webhookSecret: string }>;
+  return (
+    configured[school] || {
+      keyId: process.env.RAZORPAY_KEY_ID,
+      secret: process.env.RAZORPAY_KEY_SECRET,
+      webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    }
+  );
+}
 export class PaymentLinkService extends SchoolAccess {
- async list(c:Context){await this.require(c,'finance.manage');return (await this.db.query('SELECT * FROM payment_links WHERE school_id=$1 ORDER BY created_at DESC',[c.schoolId])).rows;}
- async create(c:Context,input:unknown){await this.require(c,'finance.manage');const b=z.object({household:z.string().uuid(),charges:z.array(z.string().uuid()).min(1).max(100),key:z.string().min(8).max(120)}).parse(input),keys=gatewayKeys(c.schoolId);if(!keys.keyId||!keys.secret)throw new AccessError('Razorpay is not configured for this school.',503);const result=await this.db.transaction(async tx=>{await tx.query('SELECT id FROM schools WHERE id=$1 FOR UPDATE',[c.schoolId]);const old=await tx.query('SELECT * FROM payment_links WHERE school_id=$1 AND key=$2',[c.schoolId,b.key]);if(old.rows.length)return {existing:old.rows[0]};const balances=await new BillingService(this.db).balances(tx,c,b.household),charges=[...new Set(b.charges)],selected=charges.map(id=>balances.find(ch=>ch.id===id));if(selected.some(ch=>!ch||Number(ch.due)<=0))throw new AccessError('Select outstanding charges from this household.',400);const amount=selected.reduce((sum,ch)=>sum+Number(ch!.due),0),id=randomUUID();await tx.query("INSERT INTO payment_links(school_id,id,household_id,amount,status,charge_ids,key,requested_by) VALUES($1,$2,$3,$4,'creating',$5,$6,$7)",[c.schoolId,id,b.household,amount,charges,b.key,c.session.accountId]);return {id,amount};});if(result.existing)return result.existing;try{const r=await fetch('https://api.razorpay.com/v1/payment_links',{method:'POST',headers:{Authorization:'Basic '+Buffer.from(keys.keyId+':'+keys.secret).toString('base64'),'Content-Type':'application/json'},body:JSON.stringify({amount:result.amount,currency:'INR',accept_partial:false,reference_id:result.id,description:'Music school statement',notify:{sms:false,email:false},reminder_enable:false,notes:{school_id:c.schoolId,household_id:b.household}}),signal:AbortSignal.timeout(15000)});if(!r.ok){await this.db.query("UPDATE payment_links SET status='unknown' WHERE school_id=$1 AND id=$2",[c.schoolId,result.id]);throw new AccessError('Payment-link creation was not confirmed. Reconcile it before retrying.',409);}const link=z.object({id:z.string(),short_url:z.string().url()}).parse(await r.json());if(!link.short_url.startsWith('https://'))throw new AccessError('Invalid provider URL.',502);await this.db.query("UPDATE payment_links SET provider_id=$1,url=$2,status='created' WHERE school_id=$3 AND id=$4",[link.id,link.short_url,c.schoolId,result.id]);return {id:result.id,url:link.short_url,status:'created'};}catch(error){await this.db.query("UPDATE payment_links SET status='unknown' WHERE school_id=$1 AND id=$2 AND status='creating'",[c.schoolId,result.id]);throw error;}}
- async reconcile(c:Context,input:unknown){await this.require(c,'finance.manage');const b=z.object({id:z.string().uuid(),providerId:z.string().regex(/^plink_[a-zA-Z0-9]+$/)}).parse(input),keys=gatewayKeys(c.schoolId);if(!keys.keyId||!keys.secret)throw new AccessError('Payment provider is not configured.',503);const row=await this.db.query<{amount:number}>('SELECT amount FROM payment_links WHERE school_id=$1 AND id=$2',[c.schoolId,b.id]);if(!row.rows.length)throw new AccessError('Payment link not found.',404);const r=await fetch('https://api.razorpay.com/v1/payment_links/'+b.providerId,{headers:{Authorization:'Basic '+Buffer.from(keys.keyId+':'+keys.secret).toString('base64')},signal:AbortSignal.timeout(15000)});if(!r.ok)throw new AccessError('Provider could not verify this link.',409);const data=await r.json() as {reference_id:string;amount:number;short_url:string;status:string};if(data.reference_id!==b.id||data.amount!==row.rows[0].amount)throw new AccessError('Provider link does not match this statement.',409);await this.db.query("UPDATE payment_links SET provider_id=$1,url=$2,status=CASE WHEN $3='cancelled' THEN 'cancelled' ELSE 'created' END WHERE school_id=$4 AND id=$5 AND status IN ('unknown','creating','created')",[b.providerId,data.short_url,data.status,c.schoolId,b.id]);return {ok:true};}
- async webhook(raw:Buffer,signature:string|undefined,eventId:string|undefined){let event:unknown;try{event=JSON.parse(raw.toString());}catch{throw new AccessError('Invalid webhook.',400);}const shape=z.object({event:z.string(),payload:z.object({payment_link:z.object({entity:z.object({id:z.string(),reference_id:z.string().optional(),amount_paid:z.number().optional()})}),payment:z.object({entity:z.object({id:z.string(),status:z.string(),amount:z.number().int(),currency:z.string()})}).optional()})}).parse(event),link=(await this.db.query<{id:string;school_id:string;household_id:string;amount:number;charge_ids:string[];requested_by:string}>('SELECT * FROM payment_links WHERE provider_id=$1',[shape.payload.payment_link.entity.id])).rows[0];if(!link||!validSignature(raw,signature,gatewayKeys(link.school_id).webhookSecret))throw new AccessError('Invalid webhook signature.',401);if(shape.event!=='payment_link.paid')return {ignored:true};const payment=shape.payload.payment?.entity;if(!payment||payment.status!=='captured'||payment.currency!=='INR'||payment.amount!==link.amount||shape.payload.payment_link.entity.reference_id!==link.id||shape.payload.payment_link.entity.amount_paid!==link.amount)throw new AccessError('Captured payment does not match the payment link.',409);return this.db.transaction(async tx=>{await tx.query('SELECT id FROM schools WHERE id=$1 FOR UPDATE',[link.school_id]);const id=link.school_id+':'+(eventId||createHash('sha256').update(raw).digest('hex')),seen=await tx.query("INSERT INTO provider_events(provider,id) VALUES('razorpay',$1) ON CONFLICT DO NOTHING RETURNING id",[id]);if(!seen.rows.length)return {duplicate:true};const paymentId=randomUUID(),inserted=await tx.query("INSERT INTO payments(school_id,id,household_id,amount,method,reference,status,key,receipt,verified_by) VALUES($1,$2,$3,$4,'gateway',$5,'verified',$6,$7,$8) ON CONFLICT(school_id,key) DO NOTHING RETURNING id",[link.school_id,paymentId,link.household_id,payment.amount,payment.id,'razorpay:'+payment.id,'SG-'+paymentId,link.requested_by]);if(inserted.rows.length){const context={schoolId:link.school_id,session:{accountId:link.requested_by} as Context['session']},balances=await new BillingService(this.db).balances(tx,context,link.household_id);let credit=payment.amount;for(const charge of link.charge_ids){const ch=balances.find(ch=>ch.id===charge);if(!ch)throw new AccessError('Linked charge is unavailable.',409);const amount=Math.min(credit,Number(ch.due));if(amount>0){await tx.query('INSERT INTO allocations(school_id,id,payment_id,charge_id,amount) VALUES($1,$2,$3,$4,$5)',[link.school_id,randomUUID(),paymentId,charge,amount]);credit-=amount;}}await activity(tx,context,'gateway.payment_captured',{providerPaymentId:payment.id,paymentId,credit,source:'signed-webhook'});}await tx.query("UPDATE payment_links SET status='paid' WHERE school_id=$1 AND id=$2",[link.school_id,link.id]);return {ok:true};});}
+  async list(c: Context) {
+    await this.require(c, "finance.manage");
+    return (
+      await this.db.query(
+        "SELECT * FROM payment_links WHERE school_id=$1 ORDER BY created_at DESC",
+        [c.schoolId],
+      )
+    ).rows;
+  }
+  async create(c: Context, input: unknown) {
+    await this.require(c, "finance.manage");
+    const b = z
+        .object({
+          household: z.string().uuid(),
+          charges: z.array(z.string().uuid()).min(1).max(100),
+          key: z.string().min(8).max(120),
+        })
+        .parse(input),
+      keys = gatewayKeys(c.schoolId);
+    if (!keys.keyId || !keys.secret)
+      throw new AccessError("Razorpay is not configured for this school.", 503);
+    const result = await this.db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        c.schoolId,
+      ]);
+      const old = await tx.query(
+        "SELECT * FROM payment_links WHERE school_id=$1 AND key=$2",
+        [c.schoolId, b.key],
+      );
+      if (old.rows.length) return { existing: old.rows[0] };
+      const balances = await new BillingService(this.db).balances(
+          tx,
+          c,
+          b.household,
+        ),
+        charges = [...new Set(b.charges)],
+        selected = charges.map((id) => balances.find((ch) => ch.id === id));
+      if (selected.some((ch) => !ch || Number(ch.due) <= 0))
+        throw new AccessError(
+          "Select outstanding charges from this household.",
+          400,
+        );
+      const amount = selected.reduce((sum, ch) => sum + Number(ch!.due), 0),
+        id = randomUUID();
+      await tx.query(
+        "INSERT INTO payment_links(school_id,id,household_id,amount,status,charge_ids,key,requested_by) VALUES($1,$2,$3,$4,'creating',$5,$6,$7)",
+        [
+          c.schoolId,
+          id,
+          b.household,
+          amount,
+          charges,
+          b.key,
+          c.session.accountId,
+        ],
+      );
+      return { id, amount };
+    });
+    if (result.existing) return result.existing;
+    try {
+      const r = await fetch("https://api.razorpay.com/v1/payment_links", {
+        method: "POST",
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(keys.keyId + ":" + keys.secret).toString("base64"),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: result.amount,
+          currency: "INR",
+          accept_partial: false,
+          reference_id: result.id,
+          description: "Music school statement",
+          notify: { sms: false, email: false },
+          reminder_enable: false,
+          notes: { school_id: c.schoolId, household_id: b.household },
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) {
+        await this.db.query(
+          "UPDATE payment_links SET status='unknown' WHERE school_id=$1 AND id=$2",
+          [c.schoolId, result.id],
+        );
+        throw new AccessError(
+          "Payment-link creation was not confirmed. Reconcile it before retrying.",
+          409,
+        );
+      }
+      const link = z
+        .object({ id: z.string(), short_url: z.string().url() })
+        .parse(await r.json());
+      if (!link.short_url.startsWith("https://"))
+        throw new AccessError("Invalid provider URL.", 502);
+      await this.db.query(
+        "UPDATE payment_links SET provider_id=$1,url=$2,status='created' WHERE school_id=$3 AND id=$4",
+        [link.id, link.short_url, c.schoolId, result.id],
+      );
+      return { id: result.id, url: link.short_url, status: "created" };
+    } catch (error) {
+      await this.db.query(
+        "UPDATE payment_links SET status='unknown' WHERE school_id=$1 AND id=$2 AND status='creating'",
+        [c.schoolId, result.id],
+      );
+      throw error;
+    }
+  }
+  async reconcile(c: Context, input: unknown) {
+    await this.require(c, "finance.manage");
+    const b = z
+        .object({
+          id: z.string().uuid(),
+          providerId: z.string().regex(/^plink_[a-zA-Z0-9]+$/),
+        })
+        .parse(input),
+      keys = gatewayKeys(c.schoolId);
+    if (!keys.keyId || !keys.secret)
+      throw new AccessError("Payment provider is not configured.", 503);
+    const row = await this.db.query<{ amount: number }>(
+      "SELECT amount FROM payment_links WHERE school_id=$1 AND id=$2",
+      [c.schoolId, b.id],
+    );
+    if (!row.rows.length) throw new AccessError("Payment link not found.", 404);
+    const r = await fetch(
+      "https://api.razorpay.com/v1/payment_links/" + b.providerId,
+      {
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(keys.keyId + ":" + keys.secret).toString("base64"),
+        },
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    if (!r.ok)
+      throw new AccessError("Provider could not verify this link.", 409);
+    const data = (await r.json()) as {
+      reference_id: string;
+      amount: number;
+      short_url: string;
+      status: string;
+    };
+    if (data.reference_id !== b.id || data.amount !== row.rows[0].amount)
+      throw new AccessError(
+        "Provider link does not match this statement.",
+        409,
+      );
+    await this.db.query(
+      "UPDATE payment_links SET provider_id=$1,url=$2,status=CASE WHEN $3='cancelled' THEN 'cancelled' ELSE 'created' END WHERE school_id=$4 AND id=$5 AND status IN ('unknown','creating','created')",
+      [b.providerId, data.short_url, data.status, c.schoolId, b.id],
+    );
+    return { ok: true };
+  }
+  async webhook(
+    raw: Buffer,
+    signature: string | undefined,
+    eventId: string | undefined,
+  ) {
+    let event: unknown;
+    try {
+      event = JSON.parse(raw.toString());
+    } catch {
+      throw new AccessError("Invalid webhook.", 400);
+    }
+    const shape = z
+        .object({
+          event: z.string(),
+          payload: z.object({
+            payment_link: z.object({
+              entity: z.object({
+                id: z.string(),
+                reference_id: z.string().optional(),
+                amount_paid: z.number().optional(),
+              }),
+            }),
+            payment: z
+              .object({
+                entity: z.object({
+                  id: z.string(),
+                  status: z.string(),
+                  amount: z.number().int(),
+                  currency: z.string(),
+                }),
+              })
+              .optional(),
+          }),
+        })
+        .parse(event),
+      link = (
+        await this.db.query<{
+          id: string;
+          school_id: string;
+          household_id: string;
+          amount: number;
+          charge_ids: string[];
+          requested_by: string;
+        }>("SELECT * FROM payment_links WHERE provider_id=$1", [
+          shape.payload.payment_link.entity.id,
+        ])
+      ).rows[0];
+    if (
+      !link ||
+      !validSignature(raw, signature, gatewayKeys(link.school_id).webhookSecret)
+    )
+      throw new AccessError("Invalid webhook signature.", 401);
+    if (shape.event !== "payment_link.paid") return { ignored: true };
+    const payment = shape.payload.payment?.entity;
+    if (
+      !payment ||
+      payment.status !== "captured" ||
+      payment.currency !== "INR" ||
+      payment.amount !== link.amount ||
+      shape.payload.payment_link.entity.reference_id !== link.id ||
+      shape.payload.payment_link.entity.amount_paid !== link.amount
+    )
+      throw new AccessError(
+        "Captured payment does not match the payment link.",
+        409,
+      );
+    return this.db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        link.school_id,
+      ]);
+      const id =
+          link.school_id +
+          ":" +
+          (eventId || createHash("sha256").update(raw).digest("hex")),
+        seen = await tx.query(
+          "INSERT INTO provider_events(provider,id) VALUES('razorpay',$1) ON CONFLICT DO NOTHING RETURNING id",
+          [id],
+        );
+      if (!seen.rows.length) return { duplicate: true };
+      const paymentId = randomUUID(),
+        inserted = await tx.query(
+          "INSERT INTO payments(school_id,id,household_id,amount,method,reference,status,key,receipt,verified_by) VALUES($1,$2,$3,$4,'gateway',$5,'verified',$6,$7,$8) ON CONFLICT(school_id,key) DO NOTHING RETURNING id",
+          [
+            link.school_id,
+            paymentId,
+            link.household_id,
+            payment.amount,
+            payment.id,
+            "razorpay:" + payment.id,
+            "SG-" + paymentId,
+            link.requested_by,
+          ],
+        );
+      if (inserted.rows.length) {
+        const context = {
+            schoolId: link.school_id,
+            session: { accountId: link.requested_by } as Context["session"],
+          },
+          balances = await new BillingService(this.db).balances(
+            tx,
+            context,
+            link.household_id,
+          );
+        let credit = payment.amount;
+        for (const charge of link.charge_ids) {
+          const ch = balances.find((ch) => ch.id === charge);
+          if (!ch) throw new AccessError("Linked charge is unavailable.", 409);
+          const amount = Math.min(credit, Number(ch.due));
+          if (amount > 0) {
+            await tx.query(
+              "INSERT INTO allocations(school_id,id,payment_id,charge_id,amount) VALUES($1,$2,$3,$4,$5)",
+              [link.school_id, randomUUID(), paymentId, charge, amount],
+            );
+            credit -= amount;
+          }
+        }
+        await activity(tx, context, "gateway.payment_captured", {
+          providerPaymentId: payment.id,
+          paymentId,
+          credit,
+          source: "signed-webhook",
+        });
+      }
+      await tx.query(
+        "UPDATE payment_links SET status='paid' WHERE school_id=$1 AND id=$2",
+        [link.school_id, link.id],
+      );
+      return { ok: true };
+    });
+  }
 }

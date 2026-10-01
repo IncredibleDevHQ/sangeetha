@@ -1,2 +1,39 @@
-export function parseCsv(text:string){const rows:string[][]=[],row:string[]=[];let value='',quoted=false;for(let i=0;i<text.length;i++){const char=text[i];if(char==='"'){if(quoted&&text[i+1]==='"'){value+='"';i++;}else quoted=!quoted;}else if(!quoted&&(char===','||char==='\n')){row.push(value.replace(/\r$/,''));value='';if(char==='\n'){if(row.some(Boolean))rows.push([...row]);row.length=0;}}else value+=char;}if(quoted)throw Error('The CSV contains an unfinished quoted field.');row.push(value.replace(/\r$/,''));if(row.some(Boolean))rows.push(row);return rows;}
-export function csvExport(rows:unknown[][]){return rows.map(row=>row.map(value=>{let s=String(value??'');if(/^[=+@-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}).join(',')).join('\r\n');}
+export function parseCsv(text: string) {
+  const rows: string[][] = [],
+    row: string[] = [];
+  let value = "",
+    quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') {
+        value += '"';
+        i++;
+      } else quoted = !quoted;
+    } else if (!quoted && (char === "," || char === "\n")) {
+      row.push(value.replace(/\r$/, ""));
+      value = "";
+      if (char === "\n") {
+        if (row.some(Boolean)) rows.push([...row]);
+        row.length = 0;
+      }
+    } else value += char;
+  }
+  if (quoted) throw Error("The CSV contains an unfinished quoted field.");
+  row.push(value.replace(/\r$/, ""));
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+}
+export function csvExport(rows: unknown[][]) {
+  return rows
+    .map((row) =>
+      row
+        .map((value) => {
+          let s = String(value ?? "");
+          if (/^[\s]*[=+@-]/.test(s)) s = "'" + s;
+          return '"' + s.replaceAll('"', '""') + '"';
+        })
+        .join(","),
+    )
+    .join("\r\n");
+}

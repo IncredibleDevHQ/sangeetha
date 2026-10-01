@@ -1,3 +1,7 @@
+import {
+  parsePhoneNumberFromString,
+  type CountryCode,
+} from "libphonenumber-js/max";
 export class InputError extends Error {}
 
 export type Role = "owner" | "admin" | "member";
@@ -15,14 +19,17 @@ export function isRecentAuth(authTime: number, now = Date.now()) {
   const age = now / 1000 - authTime;
   return Number.isFinite(age) && age >= -30 && age <= 300;
 }
-export function normalizePhone(input: string) {
-  const compact = input.replace(/[\s()-]/g, "");
-  const phone = /^\d{10}$/.test(compact) ? `+91${compact}` : compact;
-  if (!/^\+[1-9]\d{7,14}$/.test(phone))
+export function normalizePhone(
+  input: string,
+  defaultCountry: CountryCode = "IN",
+) {
+  const number = parsePhoneNumberFromString(input.trim(), {
+    defaultCountry,
+    extract: false,
+  });
+  if (!number?.isValid() || number.ext)
     throw new InputError("Enter a valid phone number with its country code.");
-  if (phone.startsWith("+91") && !/^\+91[6-9]\d{9}$/.test(phone))
-    throw new InputError("Enter a valid Indian mobile number.");
-  return phone;
+  return number.number;
 }
 export function normalizeDestination(
   channel: "email" | "phone",

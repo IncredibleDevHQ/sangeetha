@@ -1,14 +1,129 @@
-import {Controller,Get,Post,Req,Res,Inject,type RawBodyRequest} from '@nestjs/common';
-import type {FastifyRequest,FastifyReply} from 'fastify';
-import {randomUUID,createHash} from 'node:crypto';
-import {AccessError} from '../admin-service';
-import {validSignature} from './automation';
-import {PaymentLinkService} from './payments';
-import {SchoolRuntime} from './controller';
-@Controller('api/integrations')
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  Inject,
+  type RawBodyRequest,
+} from "@nestjs/common";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import { randomUUID, createHash } from "node:crypto";
+import { AccessError } from "../admin-service";
+import { validSignature } from "./automation";
+import { PaymentLinkService } from "./payments";
+import { SchoolRuntime } from "./controller";
+@Controller("api/integrations")
 export class IntegrationApi {
- constructor(@Inject(SchoolRuntime)readonly runtime:SchoolRuntime){}
- @Post('razorpay') async razorpay(@Req()req:RawBodyRequest<FastifyRequest>){if(!req.rawBody)throw new AccessError('Raw webhook body required.',400);return this.runtime.paymentLinks.webhook(req.rawBody,String(req.headers['x-razorpay-signature']||''),String(req.headers['x-razorpay-event-id']||''));}
- @Get('whatsapp') verify(@Req()req:FastifyRequest,@Res()reply:FastifyReply){const q=req.query as Record<string,string>;if(!process.env.WHATSAPP_VERIFY_TOKEN||q['hub.mode']!=='subscribe'||q['hub.verify_token']!==process.env.WHATSAPP_VERIFY_TOKEN)throw new AccessError('Webhook verification failed.',403);return reply.type('text/plain').send(q['hub.challenge']);}
- @Post('whatsapp') async whatsapp(@Req()req:RawBodyRequest<FastifyRequest>){if(!req.rawBody||!validSignature(req.rawBody,String(req.headers['x-hub-signature-256']||''),process.env.WHATSAPP_APP_SECRET,'sha256='))throw new AccessError('Invalid webhook signature.',401);const body=req.body as {entry?:{changes?:{value?:{metadata?:{phone_number_id?:string};statuses?:{id:string;status:string}[];messages?:{id:string;from:string;text?:{body:string}}[]}}[]}[]};for(const entry of body.entry||[])for(const change of entry.changes||[]){const value=change.value,phoneId=value?.metadata?.phone_number_id;if(!phoneId)continue;const db=this.runtime.crm.db,school=(await db.query<{school_id:string}>('SELECT school_id FROM school_integrations WHERE whatsapp_phone_id=$1',[phoneId])).rows[0]?.school_id;if(!school)continue;for(const s of value?.statuses||[]){if(!['sent','delivered','read','failed'].includes(s.status))continue;await db.transaction(async tx=>{const eventId=createHash('sha256').update(req.rawBody!).digest('hex')+':'+s.id+':'+s.status,seen=await tx.query("INSERT INTO provider_events(provider,id) VALUES('whatsapp',$1) ON CONFLICT DO NOTHING RETURNING id",[eventId]);if(!seen.rows.length)return;const row=await tx.query<{id:string;status:string}>('SELECT id,status FROM communications WHERE school_id=$1 AND provider_id=$2 FOR UPDATE',[school,s.id]);if(!row.rows.length)return;const status=s.status==='read'?'delivered':s.status;if(row.rows[0].status!=='delivered')await tx.query('UPDATE communications SET status=$1 WHERE school_id=$2 AND id=$3',[status,school,row.rows[0].id]);await tx.query('INSERT INTO delivery_events(school_id,id,communication_id,status,provider_id) VALUES($1,$2,$3,$4,$5)',[school,randomUUID(),row.rows[0].id,status,s.id]);});}for(const message of value?.messages||[]){if(['stop','unsubscribe'].includes(message.text?.body.trim().toLowerCase()||'')){const phone='+'+message.from;await db.transaction(async tx=>{await tx.query('UPDATE people SET contact_opt_out=true,version=version+1 WHERE school_id=$1 AND phone=$2',[school,phone]);await tx.query("UPDATE communications SET status='opted_out' WHERE school_id=$1 AND destination=$2 AND status IN ('queued','manual','failed')",[school,phone]);});}}}return {ok:true};}
+  constructor(@Inject(SchoolRuntime) readonly runtime: SchoolRuntime) {}
+  @Post("razorpay") async razorpay(@Req() req: RawBodyRequest<FastifyRequest>) {
+    if (!req.rawBody) throw new AccessError("Raw webhook body required.", 400);
+    return this.runtime.paymentLinks.webhook(
+      req.rawBody,
+      String(req.headers["x-razorpay-signature"] || ""),
+      String(req.headers["x-razorpay-event-id"] || ""),
+    );
+  }
+  @Get("whatsapp") verify(
+    @Req() req: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const q = req.query as Record<string, string>;
+    if (
+      !process.env.WHATSAPP_VERIFY_TOKEN ||
+      q["hub.mode"] !== "subscribe" ||
+      q["hub.verify_token"] !== process.env.WHATSAPP_VERIFY_TOKEN
+    )
+      throw new AccessError("Webhook verification failed.", 403);
+    return reply.type("text/plain").send(q["hub.challenge"]);
+  }
+  @Post("whatsapp") async whatsapp(@Req() req: RawBodyRequest<FastifyRequest>) {
+    if (
+      !req.rawBody ||
+      !validSignature(
+        req.rawBody,
+        String(req.headers["x-hub-signature-256"] || ""),
+        process.env.WHATSAPP_APP_SECRET,
+        "sha256=",
+      )
+    )
+      throw new AccessError("Invalid webhook signature.", 401);
+    const body = req.body as {
+      entry?: {
+        changes?: {
+          value?: {
+            metadata?: { phone_number_id?: string };
+            statuses?: { id: string; status: string }[];
+            messages?: { id: string; from: string; text?: { body: string } }[];
+          };
+        }[];
+      }[];
+    };
+    for (const entry of body.entry || [])
+      for (const change of entry.changes || []) {
+        const value = change.value,
+          phoneId = value?.metadata?.phone_number_id;
+        if (!phoneId) continue;
+        const db = this.runtime.crm.db,
+          school = (
+            await db.query<{ school_id: string }>(
+              "SELECT school_id FROM school_integrations WHERE whatsapp_phone_id=$1",
+              [phoneId],
+            )
+          ).rows[0]?.school_id;
+        if (!school) continue;
+        for (const s of value?.statuses || []) {
+          if (!["sent", "delivered", "read", "failed"].includes(s.status))
+            continue;
+          await db.transaction(async (tx) => {
+            const eventId =
+                createHash("sha256").update(req.rawBody!).digest("hex") +
+                ":" +
+                s.id +
+                ":" +
+                s.status,
+              seen = await tx.query(
+                "INSERT INTO provider_events(provider,id) VALUES('whatsapp',$1) ON CONFLICT DO NOTHING RETURNING id",
+                [eventId],
+              );
+            if (!seen.rows.length) return;
+            const row = await tx.query<{ id: string; status: string }>(
+              "SELECT id,status FROM communications WHERE school_id=$1 AND provider_id=$2 FOR UPDATE",
+              [school, s.id],
+            );
+            if (!row.rows.length) return;
+            const status = s.status === "read" ? "delivered" : s.status;
+            if (row.rows[0].status !== "delivered")
+              await tx.query(
+                "UPDATE communications SET status=$1 WHERE school_id=$2 AND id=$3",
+                [status, school, row.rows[0].id],
+              );
+            await tx.query(
+              "INSERT INTO delivery_events(school_id,id,communication_id,status,provider_id) VALUES($1,$2,$3,$4,$5)",
+              [school, randomUUID(), row.rows[0].id, status, s.id],
+            );
+          });
+        }
+        for (const message of value?.messages || []) {
+          if (
+            ["stop", "unsubscribe"].includes(
+              message.text?.body.trim().toLowerCase() || "",
+            )
+          ) {
+            const phone = "+" + message.from;
+            await db.transaction(async (tx) => {
+              await tx.query(
+                "UPDATE people SET contact_opt_out=true,version=version+1 WHERE school_id=$1 AND phone=$2",
+                [school, phone],
+              );
+              await tx.query(
+                "UPDATE communications SET status='opted_out' WHERE school_id=$1 AND destination=$2 AND status IN ('queued','manual','failed')",
+                [school, phone],
+              );
+            });
+          }
+        }
+      }
+    return { ok: true };
+  }
 }

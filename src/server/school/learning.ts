@@ -1,32 +1,443 @@
-import {createHash,randomUUID} from 'node:crypto';
-import {mkdir,readFile,writeFile,rename,rm} from 'node:fs/promises';
-import path from 'node:path';
-import {z} from 'zod';
-import {parseBuffer} from 'music-metadata';
-import {S3Client,PutObjectCommand,GetObjectCommand} from '@aws-sdk/client-s3';
-import {SchoolAccess,activity,type Context} from './shared';
-import {AccessError} from '../admin-service';
-export const chunkSize=262144;
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile, rename, rm } from "node:fs/promises";
+import path from "node:path";
+import { z } from "zod";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { SchoolAccess, activity, type Context } from "./shared";
+import { AccessError } from "../admin-service";
+export const chunkSize = 262144;
 export class PrivateStorage {
- root=path.resolve(process.env.MEDIA_PATH||'.data/media');
- private location(key:string){if(!/^[a-zA-Z0-9/-]+$/.test(key))throw Error('Invalid object key');return path.join(this.root,key);}
- async put(key:string,bytes:Buffer,mime:string){if(process.env.MEDIA_S3_BUCKET){await new S3Client({region:process.env.AWS_REGION||'ap-south-1'}).send(new PutObjectCommand({Bucket:process.env.MEDIA_S3_BUCKET,Key:key,Body:bytes,ContentType:mime,ServerSideEncryption:'AES256'}));}else {if(process.env.NODE_ENV==='production'&&process.env.MEDIA_STORAGE!=='filesystem')throw new AccessError('Private media storage has not been configured.',503);const file=this.location(key);await mkdir(path.dirname(file),{recursive:true});await writeFile(file+'.tmp',bytes);await rename(file+'.tmp',file);}}
- async get(key:string){if(process.env.MEDIA_S3_BUCKET){const r=await new S3Client({region:process.env.AWS_REGION||'ap-south-1'}).send(new GetObjectCommand({Bucket:process.env.MEDIA_S3_BUCKET,Key:key}));if(!r.Body)throw Error('Media unavailable');return Buffer.from(await r.Body.transformToByteArray());}return readFile(this.location(key));}
+  root = path.resolve(process.env.MEDIA_PATH || ".data/media");
+  private location(key: string) {
+    if (!/^[a-zA-Z0-9/-]+$/.test(key)) throw Error("Invalid object key");
+    return path.join(this.root, key);
+  }
+  async put(key: string, bytes: Buffer, mime: string) {
+    if (process.env.MEDIA_S3_BUCKET) {
+      await new S3Client({
+        region: process.env.AWS_REGION || "ap-south-1",
+      }).send(
+        new PutObjectCommand({
+          Bucket: process.env.MEDIA_S3_BUCKET,
+          Key: key,
+          Body: bytes,
+          ContentType: mime,
+          ServerSideEncryption: "AES256",
+        }),
+      );
+    } else {
+      if (
+        process.env.NODE_ENV === "production" &&
+        process.env.MEDIA_STORAGE !== "filesystem"
+      )
+        throw new AccessError(
+          "Private media storage has not been configured.",
+          503,
+        );
+      const file = this.location(key);
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file + ".tmp", bytes);
+      await rename(file + ".tmp", file);
+    }
+  }
+  async get(key: string) {
+    if (process.env.MEDIA_S3_BUCKET) {
+      const r = await new S3Client({
+        region: process.env.AWS_REGION || "ap-south-1",
+      }).send(
+        new GetObjectCommand({ Bucket: process.env.MEDIA_S3_BUCKET, Key: key }),
+      );
+      if (!r.Body) throw Error("Media unavailable");
+      return Buffer.from(await r.Body.transformToByteArray());
+    }
+    return readFile(this.location(key));
+  }
 }
 export class LearningService extends SchoolAccess {
- storage=new PrivateStorage();
- async lessonAccess(c:Context,id:string,write=false){const r=await this.db.query<{batch_id:string;published:boolean}>('SELECT batch_id,published FROM curriculum_lessons WHERE school_id=$1 AND id=$2',[c.schoolId,id]);const lesson=r.rows[0];if(!lesson)throw new AccessError('Lesson not found.',404);if(await this.can(c,'curriculum.manage'))return; if(lesson.batch_id && await this.can(c,'classes.teach','batch',lesson.batch_id))return;if(write||!lesson.published)throw new AccessError('Lesson access is required.');const allowed=await this.db.query("SELECT g.id FROM school_grants g JOIN enrollments e ON e.school_id=g.school_id AND e.learner_id=g.resource_id WHERE g.school_id=$1 AND g.account_id=$2 AND g.capability='portal.learn' AND g.resource_type='learner' AND g.revoked_at IS NULL AND e.batch_id=$3 AND e.status='active'",[c.schoolId,c.session.accountId,lesson.batch_id]);if(!allowed.rows.length)throw new AccessError('Lesson access is required.');}
- async createLesson(c:Context,input:unknown){const b=z.object({level:z.string().min(1).max(80),module:z.string().min(1).max(100),title:z.string().min(1).max(150),raga:z.string().max(100).default(''),tala:z.string().max(100).default(''),instructions:z.string().max(5000).default(''),batch:z.string().uuid().optional(),published:z.boolean().default(false)}).parse(input);if(!await this.can(c,'curriculum.manage')){if(!b.batch)throw new AccessError('Select an assigned batch.');await this.require(c,'classes.teach','batch',b.batch);}if(b.batch)await this.exists(this.db,c,'batches',b.batch);const id=randomUUID();await this.db.transaction(async tx=>{await tx.query('INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[c.schoolId,id,b.level,b.module,b.title,b.raga,b.tala,b.instructions,b.batch||null,b.published]);await activity(tx,c,'lesson.created',{lessonId:id});});return {id};}
- async publish(c:Context,id:string,published:boolean){await this.lessonAccess(c,id,true);await this.db.query('UPDATE curriculum_lessons SET published=$1 WHERE school_id=$2 AND id=$3',[published,c.schoolId,id]);}
- async library(c:Context){const lessons=(await this.db.query('SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY level,module,created_at',[c.schoolId])).rows,allowed:Record<string,unknown>[]=[];for(const lesson of lessons){try{await this.lessonAccess(c,String(lesson.id));allowed.push(lesson);}catch(error){if(!(error instanceof AccessError))throw error;}}const assets=(await this.db.query("SELECT id,lesson_id,filename,mime,bytes,duration_ms,status FROM media_assets WHERE school_id=$1 AND lesson_id IS NOT NULL AND status='ready'",[c.schoolId])).rows;return {lessons:allowed,assets:assets.filter(a=>allowed.some(l=>l.id===a.lesson_id))};}
- async learnerAccess(c:Context,id:string){await this.exists(this.db,c,'learners',id);if(!await this.can(c,'assessments.manage'))await this.require(c,'portal.learn','learner',id);}
- async reserve(c:Context,input:unknown){const b=z.object({filename:z.string().min(1).max(200),mime:z.enum(['audio/wav','audio/mpeg','audio/mp4','audio/webm','audio/ogg','audio/flac']),bytes:z.number().int().min(1).max(52428800),lesson:z.string().uuid().optional(),learner:z.string().uuid().optional()}).parse(input);if(!!b.lesson===!!b.learner)throw new AccessError('Choose a lesson or learner for this recording.',400);if(b.lesson)await this.lessonAccess(c,b.lesson,true);if(b.learner)await this.learnerAccess(c,b.learner);return this.db.transaction(async tx=>{await tx.query('SELECT id FROM schools WHERE id=$1 FOR UPDATE',[c.schoolId]);const used=await tx.query<{bytes:number}>("SELECT coalesce(sum(bytes),0)::bigint AS bytes FROM media_assets WHERE school_id=$1 AND status<>'failed'",[c.schoolId]);if(Number(used.rows[0].bytes)+b.bytes>Number(process.env.SCHOOL_MEDIA_QUOTA_BYTES||1073741824))throw new AccessError('This school has reached its media storage allowance.',409);const id=randomUUID(),chunks=Math.ceil(b.bytes/chunkSize);await tx.query('INSERT INTO media_assets(school_id,id,owner_id,learner_id,lesson_id,filename,mime,bytes,chunks) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[c.schoolId,id,c.session.accountId,b.learner||null,b.lesson||null,b.filename,b.mime,b.bytes,chunks]);return {id,chunks,chunkSize};});}
- async own(c:Context,id:string){const r=await this.db.query<{id:string;owner_id:string;lesson_id:string;learner_id:string;bytes:number;chunks:number;status:string;mime:string;sha256:string;storage_key:string;duration_ms:number}>('SELECT * FROM media_assets WHERE school_id=$1 AND id=$2',[c.schoolId,id]);const a=r.rows[0];if(!a||a.owner_id!==c.session.accountId)throw new AccessError('Upload access is required.');if(a.lesson_id)await this.lessonAccess(c,a.lesson_id,true);if(a.learner_id)await this.learnerAccess(c,a.learner_id);return a;}
- async uploadStatus(c:Context,id:string){const asset=await this.own(c,id);return {asset,parts:(await this.db.query('SELECT part FROM media_chunks WHERE school_id=$1 AND asset_id=$2 ORDER BY part',[c.schoolId,id])).rows.map(p=>p.part)};}
- private temp(c:Context,id:string){return path.join(this.storage.root,'uploads',c.schoolId,id);}
- async chunk(c:Context,id:string,input:unknown){const a=await this.own(c,id),b=z.object({part:z.number().int().nonnegative(),data:z.string().max(350000)}).parse(input),bytes=Buffer.from(b.data,'base64');if(b.part>=a.chunks||bytes.length!==Math.min(chunkSize,a.bytes-b.part*chunkSize))throw new AccessError('Upload chunk size is invalid.',400);const hash=createHash('sha256').update(bytes).digest('hex');await this.db.transaction(async tx=>{const current=await tx.query<{status:string}>('SELECT status FROM media_assets WHERE school_id=$1 AND id=$2 FOR UPDATE',[c.schoolId,id]);if(current.rows[0].status!=='uploading')throw new AccessError('This recording can no longer be changed.',409);const old=await tx.query<{sha256:string}>('SELECT sha256 FROM media_chunks WHERE school_id=$1 AND asset_id=$2 AND part=$3',[c.schoolId,id,b.part]);if(old.rows.length){if(old.rows[0].sha256!==hash)throw new AccessError('This part already contains different bytes.',409);return;}const dir=this.temp(c,id);await mkdir(dir,{recursive:true});await writeFile(path.join(dir,String(b.part)),bytes);await tx.query('INSERT INTO media_chunks(school_id,asset_id,part,sha256,bytes) VALUES($1,$2,$3,$4,$5)',[c.schoolId,id,b.part,hash,bytes.length]);});return {ok:true};}
- async finalize(c:Context,id:string){const a=await this.own(c,id);if(a.status==='ready')return {id,durationMs:a.duration_ms};return this.db.transaction(async tx=>{const current=await tx.query<{status:string;duration_ms:number}>('SELECT status,duration_ms FROM media_assets WHERE school_id=$1 AND id=$2 FOR UPDATE',[c.schoolId,id]);if(current.rows[0].status==='ready')return {id,durationMs:current.rows[0].duration_ms};const parts=await tx.query<{part:number;sha256:string}>('SELECT part,sha256 FROM media_chunks WHERE school_id=$1 AND asset_id=$2 ORDER BY part',[c.schoolId,id]);if(parts.rows.length!==a.chunks)throw new AccessError('Upload is incomplete. Resume the missing parts.',409);const data=[];for(const p of parts.rows){const chunk=await readFile(path.join(this.temp(c,id),String(p.part)));if(createHash('sha256').update(chunk).digest('hex')!==p.sha256)throw new AccessError('A recording part failed integrity verification.',409);data.push(chunk);}const bytes=Buffer.concat(data);if(bytes.length!==a.bytes)throw new AccessError('Recording size does not match.',409);let duration:number;try{const metadata=await parseBuffer(bytes,{mimeType:a.mime,size:bytes.length},{duration:true});duration=Math.round((metadata.format.duration||0)*1000);}catch{throw new AccessError('This file is not a supported audio recording.',400);}if(!Number.isFinite(duration)||duration<=0)throw new AccessError('Recording duration could not be verified.',400);const sha=createHash('sha256').update(bytes).digest('hex'),key=c.schoolId+'/'+id+'/'+sha;await this.storage.put(key,bytes,a.mime);await tx.query("UPDATE media_assets SET status='ready',sha256=$1,storage_key=$2,duration_ms=$3 WHERE school_id=$4 AND id=$5",[sha,key,duration,c.schoolId,id]);await activity(tx,c,'recording.finalized',{assetId:id});return {id,durationMs:duration};});}
- async readAsset(c:Context,id:string){const r=await this.db.query<{lesson_id:string;learner_id:string;status:string;storage_key:string;mime:string;filename:string;bytes:number}>('SELECT * FROM media_assets WHERE school_id=$1 AND id=$2',[c.schoolId,id]),a=r.rows[0];if(!a||a.status!=='ready')throw new AccessError('Recording not available.',404);if(a.lesson_id)await this.lessonAccess(c,a.lesson_id);else if(a.learner_id){if(!await this.can(c,'assessments.manage')&&!await this.can(c,'portal.learn','learner',a.learner_id)){const assigned=await this.db.query("SELECT 1 FROM submission_versions v JOIN school_grants g ON g.school_id=v.school_id AND g.resource_id=v.assessment_id WHERE v.school_id=$1 AND $2::uuid=ANY(v.asset_ids) AND g.account_id=$3 AND g.capability='assessments.review' AND g.revoked_at IS NULL",[c.schoolId,id,c.session.accountId]);if(!assigned.rows.length)throw new AccessError('Recording access is required.');}}return {bytes:await this.storage.get(a.storage_key),mime:a.mime,filename:a.filename};}
- async practice(c:Context,input:unknown){const b=z.object({lesson:z.string().uuid(),learner:z.string().uuid(),text:z.string().min(1).max(2000),due:z.iso.date()}).parse(input);await this.lessonAccess(c,b.lesson,true);await this.exists(this.db,c,'learners',b.learner);if(!await this.can(c,'curriculum.manage')){const enrolled=await this.db.query("SELECT 1 FROM enrollments e JOIN curriculum_lessons l ON l.school_id=e.school_id AND l.batch_id=e.batch_id WHERE e.school_id=$1 AND l.id=$2 AND e.learner_id=$3 AND e.status='active'",[c.schoolId,b.lesson,b.learner]);if(!enrolled.rows.length)throw new AccessError('Learner is not in this lesson’s batch.');}await this.db.query('INSERT INTO practice_tasks(school_id,id,learner_id,lesson_id,text,due_on) VALUES($1,$2,$3,$4,$5,$6)',[c.schoolId,randomUUID(),b.learner,b.lesson,b.text,b.due]);}
- async completePractice(c:Context,id:string){const row=await this.db.query<{learner_id:string}>('SELECT learner_id FROM practice_tasks WHERE school_id=$1 AND id=$2',[c.schoolId,id]);if(!row.rows.length)throw new AccessError('Practice task not found.',404);await this.learnerAccess(c,row.rows[0].learner_id);await this.db.query('UPDATE practice_tasks SET completed_at=now() WHERE school_id=$1 AND id=$2',[c.schoolId,id]);}
+  storage = new PrivateStorage();
+  async lessonAccess(c: Context, id: string, write = false) {
+    const r = await this.db.query<{
+      batch_id: string;
+      published: boolean;
+      level: string;
+    }>(
+      "SELECT batch_id,published,level FROM curriculum_lessons WHERE school_id=$1 AND id=$2",
+      [c.schoolId, id],
+    );
+    const lesson = r.rows[0];
+    if (!lesson) throw new AccessError("Lesson not found.", 404);
+    if (await this.can(c, "curriculum.manage")) return;
+    if (
+      lesson.batch_id &&
+      (await this.can(c, "classes.teach", "batch", lesson.batch_id))
+    )
+      return;
+    if (write || !lesson.published)
+      throw new AccessError("Lesson access is required.");
+    const allowed = await this.db.query(
+      "SELECT g.id FROM school_grants g JOIN learners l ON l.school_id=g.school_id AND l.id=g.resource_id WHERE g.school_id=$1 AND g.account_id=$2 AND g.capability='portal.learn' AND g.resource_type='learner' AND g.revoked_at IS NULL AND (($3::uuid IS NULL AND l.level=$4) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=l.school_id AND e.learner_id=l.id AND e.batch_id=$3 AND e.status='active'))",
+      [c.schoolId, c.session.accountId, lesson.batch_id, lesson.level],
+    );
+    if (!allowed.rows.length)
+      throw new AccessError("Lesson access is required.");
+  }
+  async createLesson(c: Context, input: unknown) {
+    const b = z
+      .object({
+        level: z.string().min(1).max(80),
+        module: z.string().min(1).max(100),
+        title: z.string().min(1).max(150),
+        raga: z.string().max(100).default(""),
+        tala: z.string().max(100).default(""),
+        instructions: z.string().max(5000).default(""),
+        batch: z.string().uuid().optional(),
+        published: z.boolean().default(false),
+      })
+      .parse(input);
+    if (!(await this.can(c, "curriculum.manage"))) {
+      if (!b.batch) throw new AccessError("Select an assigned batch.");
+      await this.require(c, "classes.teach", "batch", b.batch);
+    }
+    if (b.batch) await this.exists(this.db, c, "batches", b.batch);
+    const id = randomUUID();
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+        [
+          c.schoolId,
+          id,
+          b.level,
+          b.module,
+          b.title,
+          b.raga,
+          b.tala,
+          b.instructions,
+          b.batch || null,
+          b.published,
+        ],
+      );
+      await activity(tx, c, "lesson.created", { lessonId: id });
+    });
+    return { id };
+  }
+  async publish(c: Context, id: string, published: boolean) {
+    await this.lessonAccess(c, id, true);
+    await this.db.query(
+      "UPDATE curriculum_lessons SET published=$1 WHERE school_id=$2 AND id=$3",
+      [published, c.schoolId, id],
+    );
+  }
+  async library(c: Context) {
+    const lessons = (
+        await this.db.query(
+          "SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY level,module,created_at",
+          [c.schoolId],
+        )
+      ).rows,
+      allowed: Record<string, unknown>[] = [];
+    for (const lesson of lessons) {
+      try {
+        await this.lessonAccess(c, String(lesson.id));
+        allowed.push(lesson);
+      } catch (error) {
+        if (!(error instanceof AccessError)) throw error;
+      }
+    }
+    const assets = (
+      await this.db.query(
+        "SELECT id,lesson_id,filename,mime,bytes,duration_ms,status FROM media_assets WHERE school_id=$1 AND lesson_id IS NOT NULL AND status='ready'",
+        [c.schoolId],
+      )
+    ).rows;
+    return {
+      lessons: allowed,
+      assets: assets.filter((a) => allowed.some((l) => l.id === a.lesson_id)),
+    };
+  }
+  async learnerAccess(c: Context, id: string) {
+    await this.exists(this.db, c, "learners", id);
+    if (!(await this.can(c, "assessments.manage")))
+      await this.require(c, "portal.learn", "learner", id);
+  }
+  async reserve(c: Context, input: unknown) {
+    const b = z
+      .object({
+        filename: z.string().min(1).max(200),
+        mime: z.enum([
+          "audio/wav",
+          "audio/mpeg",
+          "audio/mp4",
+          "audio/webm",
+          "audio/ogg",
+          "audio/flac",
+        ]),
+        bytes: z.number().int().min(1).max(52428800),
+        lesson: z.string().uuid().optional(),
+        learner: z.string().uuid().optional(),
+      })
+      .parse(input);
+    if (!!b.lesson === !!b.learner)
+      throw new AccessError(
+        "Choose a lesson or learner for this recording.",
+        400,
+      );
+    if (b.lesson) await this.lessonAccess(c, b.lesson, true);
+    if (b.learner) await this.learnerAccess(c, b.learner);
+    return this.db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        c.schoolId,
+      ]);
+      const used = await tx.query<{ bytes: number }>(
+        "SELECT coalesce(sum(bytes),0)::bigint AS bytes FROM media_assets WHERE school_id=$1 AND status<>'failed'",
+        [c.schoolId],
+      );
+      if (
+        Number(used.rows[0].bytes) + b.bytes >
+        Number(process.env.SCHOOL_MEDIA_QUOTA_BYTES || 1073741824)
+      )
+        throw new AccessError(
+          "This school has reached its media storage allowance.",
+          409,
+        );
+      const id = randomUUID(),
+        chunks = Math.ceil(b.bytes / chunkSize);
+      await tx.query(
+        "INSERT INTO media_assets(school_id,id,owner_id,learner_id,lesson_id,filename,mime,bytes,chunks) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [
+          c.schoolId,
+          id,
+          c.session.accountId,
+          b.learner || null,
+          b.lesson || null,
+          b.filename,
+          b.mime,
+          b.bytes,
+          chunks,
+        ],
+      );
+      return { id, chunks, chunkSize };
+    });
+  }
+  async own(c: Context, id: string) {
+    const r = await this.db.query<{
+      id: string;
+      owner_id: string;
+      lesson_id: string;
+      learner_id: string;
+      bytes: number;
+      chunks: number;
+      status: string;
+      mime: string;
+      sha256: string;
+      storage_key: string;
+      duration_ms: number;
+    }>("SELECT * FROM media_assets WHERE school_id=$1 AND id=$2", [
+      c.schoolId,
+      id,
+    ]);
+    const a = r.rows[0];
+    if (!a || a.owner_id !== c.session.accountId)
+      throw new AccessError("Upload access is required.");
+    if (a.lesson_id) await this.lessonAccess(c, a.lesson_id, true);
+    if (a.learner_id) await this.learnerAccess(c, a.learner_id);
+    return a;
+  }
+  async uploadStatus(c: Context, id: string) {
+    const asset = await this.own(c, id);
+    return {
+      asset,
+      parts: (
+        await this.db.query(
+          "SELECT part FROM media_chunks WHERE school_id=$1 AND asset_id=$2 ORDER BY part",
+          [c.schoolId, id],
+        )
+      ).rows.map((p) => p.part),
+    };
+  }
+  private temp(c: Context, id: string) {
+    return path.join(this.storage.root, "uploads", c.schoolId, id);
+  }
+  async chunk(c: Context, id: string, input: unknown) {
+    const a = await this.own(c, id),
+      b = z
+        .object({
+          part: z.number().int().nonnegative(),
+          data: z.string().max(350000),
+        })
+        .parse(input),
+      bytes = Buffer.from(b.data, "base64");
+    if (
+      b.part >= a.chunks ||
+      bytes.length !== Math.min(chunkSize, a.bytes - b.part * chunkSize)
+    )
+      throw new AccessError("Upload chunk size is invalid.", 400);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    await this.db.transaction(async (tx) => {
+      const current = await tx.query<{ status: string }>(
+        "SELECT status FROM media_assets WHERE school_id=$1 AND id=$2 FOR UPDATE",
+        [c.schoolId, id],
+      );
+      if (current.rows[0].status !== "uploading")
+        throw new AccessError("This recording can no longer be changed.", 409);
+      const old = await tx.query<{ sha256: string }>(
+        "SELECT sha256 FROM media_chunks WHERE school_id=$1 AND asset_id=$2 AND part=$3",
+        [c.schoolId, id, b.part],
+      );
+      if (old.rows.length) {
+        if (old.rows[0].sha256 !== hash)
+          throw new AccessError(
+            "This part already contains different bytes.",
+            409,
+          );
+        return;
+      }
+      const dir = this.temp(c, id);
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, String(b.part)), bytes);
+      await tx.query(
+        "INSERT INTO media_chunks(school_id,asset_id,part,sha256,bytes) VALUES($1,$2,$3,$4,$5)",
+        [c.schoolId, id, b.part, hash, bytes.length],
+      );
+    });
+    return { ok: true };
+  }
+  async finalize(c: Context, id: string) {
+    const a = await this.own(c, id);
+    if (a.status === "ready") return { id, durationMs: a.duration_ms };
+    return this.db.transaction(async (tx) => {
+      const current = await tx.query<{ status: string; duration_ms: number }>(
+        "SELECT status,duration_ms FROM media_assets WHERE school_id=$1 AND id=$2 FOR UPDATE",
+        [c.schoolId, id],
+      );
+      if (current.rows[0].status === "ready")
+        return { id, durationMs: current.rows[0].duration_ms };
+      const parts = await tx.query<{ part: number; sha256: string }>(
+        "SELECT part,sha256 FROM media_chunks WHERE school_id=$1 AND asset_id=$2 ORDER BY part",
+        [c.schoolId, id],
+      );
+      if (parts.rows.length !== a.chunks)
+        throw new AccessError(
+          "Upload is incomplete. Resume the missing parts.",
+          409,
+        );
+      const data = [];
+      for (const p of parts.rows) {
+        const chunk = await readFile(
+          path.join(this.temp(c, id), String(p.part)),
+        );
+        if (createHash("sha256").update(chunk).digest("hex") !== p.sha256)
+          throw new AccessError(
+            "A recording part failed integrity verification.",
+            409,
+          );
+        data.push(chunk);
+      }
+      const bytes = Buffer.concat(data);
+      if (bytes.length !== a.bytes)
+        throw new AccessError("Recording size does not match.", 409);
+      let duration: number;
+      try {
+        const { parseBuffer } = await import("music-metadata");
+        const metadata = await parseBuffer(
+          bytes,
+          { mimeType: a.mime, size: bytes.length },
+          { duration: true },
+        );
+        duration = Math.round((metadata.format.duration || 0) * 1000);
+      } catch {
+        throw new AccessError(
+          "This file is not a supported audio recording.",
+          400,
+        );
+      }
+      if (!Number.isFinite(duration) || duration <= 0)
+        throw new AccessError("Recording duration could not be verified.", 400);
+      const sha = createHash("sha256").update(bytes).digest("hex"),
+        key = c.schoolId + "/" + id + "/" + sha;
+      await this.storage.put(key, bytes, a.mime);
+      await tx.query(
+        "UPDATE media_assets SET status='ready',sha256=$1,storage_key=$2,duration_ms=$3 WHERE school_id=$4 AND id=$5",
+        [sha, key, duration, c.schoolId, id],
+      );
+      await activity(tx, c, "recording.finalized", { assetId: id });
+      return { id, durationMs: duration };
+    });
+  }
+  async readAsset(c: Context, id: string) {
+    const r = await this.db.query<{
+        lesson_id: string;
+        learner_id: string;
+        status: string;
+        storage_key: string;
+        mime: string;
+        filename: string;
+        bytes: number;
+      }>("SELECT * FROM media_assets WHERE school_id=$1 AND id=$2", [
+        c.schoolId,
+        id,
+      ]),
+      a = r.rows[0];
+    if (!a || a.status !== "ready")
+      throw new AccessError("Recording not available.", 404);
+    if (a.lesson_id) await this.lessonAccess(c, a.lesson_id);
+    else if (a.learner_id) {
+      if (
+        !(await this.can(c, "assessments.manage")) &&
+        !(await this.can(c, "portal.learn", "learner", a.learner_id))
+      ) {
+        const assigned = await this.db.query(
+          "SELECT 1 FROM submission_versions v JOIN school_grants g ON g.school_id=v.school_id AND g.resource_id=v.assessment_id WHERE v.school_id=$1 AND $2::uuid=ANY(v.asset_ids) AND g.account_id=$3 AND g.capability='assessments.review' AND g.revoked_at IS NULL",
+          [c.schoolId, id, c.session.accountId],
+        );
+        if (!assigned.rows.length)
+          throw new AccessError("Recording access is required.");
+      }
+    }
+    return {
+      bytes: await this.storage.get(a.storage_key),
+      mime: a.mime,
+      filename: a.filename,
+    };
+  }
+  async practice(c: Context, input: unknown) {
+    const b = z
+      .object({
+        lesson: z.string().uuid(),
+        learner: z.string().uuid(),
+        text: z.string().min(1).max(2000),
+        due: z.iso.date(),
+      })
+      .parse(input);
+    await this.lessonAccess(c, b.lesson, true);
+    await this.exists(this.db, c, "learners", b.learner);
+    if (!(await this.can(c, "curriculum.manage"))) {
+      const enrolled = await this.db.query(
+        "SELECT 1 FROM enrollments e JOIN curriculum_lessons l ON l.school_id=e.school_id AND l.batch_id=e.batch_id WHERE e.school_id=$1 AND l.id=$2 AND e.learner_id=$3 AND e.status='active'",
+        [c.schoolId, b.lesson, b.learner],
+      );
+      if (!enrolled.rows.length)
+        throw new AccessError("Learner is not in this lesson’s batch.");
+    }
+    await this.db.query(
+      "INSERT INTO practice_tasks(school_id,id,learner_id,lesson_id,text,due_on) VALUES($1,$2,$3,$4,$5,$6)",
+      [c.schoolId, randomUUID(), b.learner, b.lesson, b.text, b.due],
+    );
+  }
+  async completePractice(c: Context, id: string) {
+    const row = await this.db.query<{ learner_id: string }>(
+      "SELECT learner_id FROM practice_tasks WHERE school_id=$1 AND id=$2",
+      [c.schoolId, id],
+    );
+    if (!row.rows.length)
+      throw new AccessError("Practice task not found.", 404);
+    await this.learnerAccess(c, row.rows[0].learner_id);
+    await this.db.query(
+      "UPDATE practice_tasks SET completed_at=now() WHERE school_id=$1 AND id=$2",
+      [c.schoolId, id],
+    );
+  }
 }
