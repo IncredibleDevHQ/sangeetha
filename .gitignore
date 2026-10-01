@@ -1,0 +1,17 @@
+# Upstream repositories are local research checkouts, not application dependencies.
+/.references/
+
+# Local agent guidance and project research notes.
+/AGENTS.md
+/.codex/internal/
+
+/node_modules/
+/.next/
+/.data/
+/coverage/
+/.env*
+!/.env.example
+*.tsbuildinfo
+*-debug.log
+.DS_Store
+/dist/
