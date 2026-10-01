@@ -1,1 +1,16 @@
-{"compilerOptions":{"target":"ES2022","lib":["ES2022","DOM"],"module":"ESNext","moduleResolution":"Bundler","jsx":"react-jsx","strict":true,"esModuleInterop":true,"skipLibCheck":true,"experimentalDecorators":true,"types":["node","vite/client"]},"include":["src","scripts","tests","vite.config.ts","vitest.config.ts"],"exclude":[".references","node_modules","dist"]}
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "scripts", "tests", "vite.config.ts", "vitest.config.ts"],
+  "exclude": [".references", "node_modules", "dist"]
+}
