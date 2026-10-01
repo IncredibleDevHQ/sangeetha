@@ -121,6 +121,14 @@ export class AdminService {
           });
         }
       }
+      if(destinations.length){
+        const grants=await tx.query<{id:string;school_id:string;capability:string;resource_type:string;resource_id:string;invited_by:string}>("SELECT * FROM capability_invitations WHERE channel || ':' || destination=ANY($1::text[]) AND expires_at>now() AND claimed_at IS NULL AND revoked_at IS NULL AND ($2::uuid IS NULL OR school_id=$2) FOR UPDATE",[destinations,tenantId||null]);
+        for(const grant of grants.rows){
+          await tx.query("INSERT INTO school_grants(school_id,id,account_id,capability,resource_type,resource_id,granted_by) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING",[grant.school_id,randomUUID(),id,grant.capability,grant.resource_type,grant.resource_id,grant.invited_by]);
+          await tx.query("UPDATE capability_invitations SET claimed_at=now(),claimed_by=$1 WHERE school_id=$2 AND id=$3",[id,grant.school_id,grant.id]);
+          await audit(tx,id,grant.school_id,"grant.accepted",{invitationId:grant.id});
+        }
+      }
       await tx.query(
         "INSERT INTO sessions(token_hash,account_id,auth_time,expires_at,device_label,school_id) VALUES ($1,$2,$3,now()+interval '5 days',$4,$5)",
         [
@@ -185,17 +193,7 @@ export class AdminService {
       : null;
   }
   async schools(session: Session): Promise<School[]> {
-    const { rows } = await this.db.query<{
-      id: string;
-      name: string;
-      slug: string;
-      timezone: string;
-      role: Role;
-    }>(
-      "SELECT s.id,s.name,s.slug,s.timezone,m.role FROM schools s JOIN memberships m ON m.school_id=s.id WHERE m.account_id=$1 AND m.revoked_at IS NULL ORDER BY s.created_at",
-      [session.accountId],
-    );
-    return rows;
+    return (await this.db.query<School>(`SELECT s.id,s.name,s.slug,s.timezone,m.role FROM schools s JOIN memberships m ON m.school_id=s.id WHERE m.account_id=$1 AND m.revoked_at IS NULL UNION SELECT s.id,s.name,s.slug,s.timezone,'member' AS role FROM schools s WHERE EXISTS(SELECT 1 FROM school_grants g WHERE g.school_id=s.id AND g.account_id=$1 AND g.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM memberships m WHERE m.school_id=s.id AND m.account_id=$1 AND m.revoked_at IS NULL) ORDER BY name`,[session.accountId])).rows;
   }
   async authorize(session: Session, schoolId: string, capability: Capability) {
     const school = (await this.schools(session)).find((s) => s.id === schoolId);

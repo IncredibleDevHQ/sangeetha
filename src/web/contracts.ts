@@ -12,7 +12,7 @@ export type Me = {
   schools: {
     id: string;
     name: string;
-    role: "owner" | "admin";
+    role: "owner" | "admin" | "member";
     timezone: string;
   }[];
 };

@@ -31,6 +31,18 @@ import { AdminService, AccessError, provisionOwner } from "./admin-service";
 import { InputError } from "../core/access";
 import { TenantResolver, type Tenant } from "./tenancy";
 import { IdentityAdapter, localMode } from "./identity";
+import {SchoolApi,SchoolRuntime} from "./school/controller";
+import {CrmService} from "./school/crm";
+import {ScheduleService} from "./school/schedule";
+import {BillingService} from "./school/billing";
+import {GrantService} from "./school/grants";
+import {LearningService} from './school/learning';
+import {AssessmentService} from './school/assessments';
+import {EventService} from './school/events';
+import {PortalService} from './school/portal';
+import {AutomationService} from './school/automation';
+import {PaymentLinkService} from './school/payments';
+import {IntegrationApi} from './school/webhooks';
 declare module "fastify" {
   interface FastifyRequest {
     tenant: Tenant | null;
@@ -312,8 +324,9 @@ export async function createApp() {
     tenants = new TenantResolver(db);
   // Explicit injection tokens keep domain services independent of Nest decorators.
   @Module({
-    controllers: [Api],
+    controllers: [Api,SchoolApi,IntegrationApi],
     providers: [
+      {provide:SchoolRuntime,useValue:new SchoolRuntime(new CrmService(db),new ScheduleService(db),new BillingService(db),new GrantService(db),new LearningService(db),new AssessmentService(db),new EventService(db),new PortalService(db),new AutomationService(db),new PaymentLinkService(db))},
       { provide: AdminService, useValue: service },
       { provide: IdentityAdapter, useValue: identity },
       { provide: TenantResolver, useValue: tenants },
@@ -322,8 +335,8 @@ export async function createApp() {
   class Runtime {}
   const app = await NestFactory.create<NestFastifyApplication>(
     Runtime,
-    new FastifyAdapter({ bodyLimit: 16384, trustProxy: false }),
-    { logger: ["error", "warn"] },
+    new FastifyAdapter({ bodyLimit: 700000, trustProxy: false }),
+    { logger: ["error", "warn"],rawBody:true },
   );
   await app.register(cookie);
   app
@@ -353,7 +366,7 @@ export async function createApp() {
           "Content-Security-Policy",
           "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         );
-      if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && !req.url.startsWith("/api/integrations/")) {
         const origin = req.workspaceOrigin;
         if (req.headers.origin !== origin) {
           reply.status(403).send({ error: "Invalid request origin." });

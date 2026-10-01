@@ -1,3 +1,4 @@
+import SchoolWorkspace from "./features/school/Workspace";
 import type { Me, Team } from "./contracts";
 import { api, ApiError } from "./lib/api";
 import SignIn from "./features/auth/SignIn";
@@ -193,6 +194,7 @@ export default function App() {
         <nav>
           {[
             { id: "overview", label: "Overview", icon: LayoutDashboard },
+              ...(school?[{id:"operations",label:"School operations",icon:BookOpen}]:[]),
             ...(school?.role === "owner"
               ? [{ id: "team", label: "Team & access", icon: Users }]
               : []),
@@ -254,6 +256,7 @@ export default function App() {
         </header>
         <main className="content">
           {alerts}
+          {page === "operations" && school && <SchoolWorkspace key={school.id} school={school}/>}
           {page === "overview" && (
             <>
               <div className="page-heading">

@@ -1,11 +1,12 @@
 export class InputError extends Error {}
 
-export type Role = "owner" | "admin";
+export type Role = "owner" | "admin" | "member";
 export type Capability = "workspace.read" | "team.manage" | "school.update";
 
 const capabilities: Record<Role, readonly Capability[]> = {
   owner: ["workspace.read", "team.manage", "school.update"],
   admin: ["workspace.read"],
+  member: ["workspace.read"],
 };
 export function permits(role: Role, capability: Capability) {
   return capabilities[role].includes(capability);

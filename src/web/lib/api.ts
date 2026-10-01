@@ -16,7 +16,8 @@ export async function api<T>(
     headers: method === "GET" ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = await r.json();
+  const content = await r.text();
+  const data = content ? JSON.parse(content) : {ok:true};
   if (!r.ok) throw new ApiError(data.error || "Please try again.", r.status);
   return data;
 }
