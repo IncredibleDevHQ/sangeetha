@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, RotateCcw, Music2 } from "lucide-react";
-import { activeCue, type NoteCue } from "../../shared/score";
+import { activeCue, groupCues, type NoteCue } from "../../shared/score";
 import { type Row, type SchoolTools, text } from "../features/school/common";
 const stamp = (n: number) =>
   `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
@@ -17,8 +17,7 @@ export function MusicPlayer({
   editable: boolean;
   onSaved: () => void;
 }) {
-  const audio = useRef<HTMLAudioElement>(null),
-    currentNote = useRef<HTMLButtonElement>(null);
+  const audio = useRef<HTMLAudioElement>(null);
   const [time, setTime] = useState(0),
     [duration, setDuration] = useState(Number(asset.duration_ms) / 1000 || 0),
     [playing, setPlaying] = useState(false),
@@ -32,20 +31,6 @@ export function MusicPlayer({
   useEffect(() => {
     setDraft(cues);
   }, [asset.note_cues]);
-  useEffect(() => {
-    const note = currentNote.current;
-    if (note?.parentElement) {
-      const rail = note.parentElement;
-      rail.scrollTo({
-        left:
-          note.offsetLeft -
-          rail.offsetLeft -
-          rail.clientWidth / 2 +
-          note.clientWidth / 2,
-        behavior: "auto",
-      });
-    }
-  }, [active]);
   const seek = (value: number) => {
     if (audio.current) {
       audio.current.currentTime = value;
@@ -122,21 +107,36 @@ export function MusicPlayer({
         loop={loop}
       />
       <div className="music-notes-follow" aria-label="Timed music notes">
-        {cues.map((cue, i) => (
-          <button
-            key={i}
-            ref={i === active ? currentNote : undefined}
-            type="button"
-            aria-current={i === active ? "step" : undefined}
-            aria-label={`${cue.note}, ${cue.start} seconds${cue.beat ? `, beat ${cue.beat}` : ""}`}
-            onClick={() => seek(cue.start)}
+        {groupCues(cues).map((group, bar) => (
+          <div
+            key={bar}
+            className={`music-phrase ${group.some((n) => n.index === active) ? "is-current" : ""}`}
+            role="group"
+            aria-label={`Phrase ${bar + 1}`}
+            data-active={
+              group.some((n) => n.index === active) ? "true" : "false"
+            }
           >
-            <small>{cue.beat ? `Beat ${cue.beat}` : stamp(cue.start)}</small>
-            <strong>{cue.note}</strong>
-            <span>
-              {cue.start.toFixed(1)}–{cue.end.toFixed(1)}s
+            <span className="phrase-number" aria-hidden="true">
+              {bar + 1}
             </span>
-          </button>
+            <div className="phrase-notes">
+              {group.map(({ cue, index }) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-current={index === active ? "step" : undefined}
+                  aria-label={`${cue.note}, ${cue.start} seconds${cue.beat ? `, beat ${cue.beat}` : ""}`}
+                  onClick={() => seek(cue.start)}
+                >
+                  {cue.note}
+                </button>
+              ))}
+            </div>
+            <span className="phrase-bar" aria-hidden="true">
+              |
+            </span>
+          </div>
         ))}
         {!cues.length && (
           <p>
@@ -214,6 +214,29 @@ export function MusicPlayer({
                 interval; gaps have no highlighted note. Add beat labels to
                 follow the thaalam. Timings are teacher-authored.
               </p>
+              <div className="toolbar">
+                <span>Phrase grouping</span>
+                {[3, 4].map((size) => (
+                  <button
+                    type="button"
+                    key={size}
+                    onClick={() =>
+                      setDraft((d) =>
+                        d.map((cue, i) => ({
+                          ...cue,
+                          barStart: i % size === 0,
+                        })),
+                      )
+                    }
+                  >
+                    Group in {size}s
+                  </button>
+                ))}
+              </div>
+              <p>
+                Start a new phrase wherever a bar belongs. Three- and four-note
+                groups can be mixed.
+              </p>
               <div className="score-editor">
                 {draft.map((cue, i) => (
                   <div className="score-editor-row" key={i}>
@@ -253,6 +276,34 @@ export function MusicPlayer({
                         value={cue.beat || ""}
                         onChange={(e) => update(i, "beat", e.target.value)}
                       />
+                    </label>
+                    <label className="phrase-break">
+                      <input
+                        type="checkbox"
+                        aria-label={`Start phrase at note ${i + 1}`}
+                        checked={
+                          i === 0 ||
+                          (draft.some((c) => c.barStart)
+                            ? !!cue.barStart
+                            : i % 4 === 0)
+                        }
+                        disabled={i === 0}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setDraft((d) =>
+                            d.map((c, j) => ({
+                              ...c,
+                              barStart:
+                                j === i
+                                  ? checked
+                                  : d.some((n) => n.barStart)
+                                    ? j === 0 || !!c.barStart
+                                    : j % 4 === 0,
+                            })),
+                          );
+                        }}
+                      />
+                      New phrase
                     </label>
                     <button
                       type="button"

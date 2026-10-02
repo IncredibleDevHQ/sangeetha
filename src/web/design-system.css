@@ -1391,3 +1391,99 @@ details > summary {
     gap: 8px;
   }
 }
+/* Phrase-based notation: bar boundaries stay visible while the sung note advances. */
+.music-notes-follow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 0;
+  overflow: visible;
+  padding: 14px 0 24px;
+  align-items: stretch;
+}
+.music-phrase {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 20px 10px 12px 12px;
+  border-radius: 8px;
+  transition: background 0.12s;
+  max-width: 100%;
+}
+.music-phrase.is-current {
+  background: var(--sg-accent-soft);
+}
+.phrase-number {
+  position: absolute;
+  top: 5px;
+  left: 18px;
+  font-size: 10px;
+  color: var(--sg-muted);
+}
+.phrase-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+}
+.workbench .music-notes-follow .phrase-notes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 46px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 24px;
+  font-weight: 500;
+  box-shadow: none;
+  color: var(--sg-ink);
+}
+.workbench .music-notes-follow .phrase-notes button[aria-current="step"] {
+  background: var(--sg-accent);
+  color: white;
+  box-shadow: none;
+}
+.workbench .music-notes-follow .phrase-notes button:hover {
+  background: var(--sg-inset);
+}
+.workbench .music-notes-follow .phrase-notes button[aria-current="step"]:hover {
+  background: var(--sg-accent);
+}
+.music-notes-follow .phrase-bar {
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--sg-muted);
+  margin: 0 0 0 10px;
+}
+.music-phrase.is-current .phrase-bar {
+  color: var(--sg-accent);
+}
+.score-editor-row {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.4fr auto;
+}
+.score-editor-row .phrase-break {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+}
+.phrase-break input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .score-editor-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .workbench .music-notes-follow .phrase-notes button {
+    min-width: 34px;
+    font-size: 22px;
+  }
+  .music-phrase {
+    padding-inline: 8px;
+  }
+}

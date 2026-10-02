@@ -11,3 +11,21 @@ it("follows exact interval boundaries, gaps and seeks in either direction", () =
   ]);
   expect(activeCue([], 0)).toBe(-1);
 });
+
+it("groups legacy notes in fours and respects mixed teacher-authored bars", async () => {
+  const { groupCues } = await import("../src/shared/score");
+  const cues = Array.from({ length: 10 }, (_, i) => ({
+    note: String(i),
+    start: i,
+    end: i + 1,
+  }));
+  expect(groupCues(cues).map((g) => g.length)).toEqual([4, 4, 2]);
+  const mixed = cues.map((c, i) => ({ ...c, barStart: [0, 3, 7].includes(i) }));
+  expect(groupCues(mixed).map((g) => g.length)).toEqual([3, 4, 3]);
+  expect(
+    groupCues(mixed).findIndex((g) =>
+      g.some((n) => n.index === activeCue(mixed, 3)),
+    ),
+  ).toBe(1);
+  expect(groupCues([])).toEqual([]);
+});

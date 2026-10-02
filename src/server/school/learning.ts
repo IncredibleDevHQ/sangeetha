@@ -95,6 +95,7 @@ export class LearningService extends SchoolAccess {
               end: z.number().finite().positive(),
               note: z.string().trim().min(1).max(120),
               beat: z.string().trim().max(40).optional(),
+              barStart: z.boolean().optional(),
             }),
           )
           .max(2000),

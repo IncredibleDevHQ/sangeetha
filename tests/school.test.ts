@@ -995,7 +995,7 @@ it("persists per-recording note timing with teacher-only access and duration val
     { capability: "portal.learn", resource: h.learners[1] },
   ]);
   const cues = [
-    { note: "S", start: 0, end: 0.5, beat: "1" },
+    { note: "S", start: 0, end: 0.5, beat: "1", barStart: true },
     { note: "R₁", start: 0.5, end: 1, beat: "2" },
   ];
   await expect(learning.saveScore(parent, asset.id, { cues })).rejects.toThrow(
