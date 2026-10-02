@@ -240,6 +240,10 @@ export class SchoolApi {
         return d.billing.correction(c, b);
       case "lesson.create":
         return d.learning.createLesson(c, b);
+      case "lesson.update":
+        return d.learning.updateLesson(c, id(), b);
+      case "lesson.complete":
+        return d.learning.completeLesson(c, b);
       case "lesson.publish":
         return d.learning.publish(c, id(), z.boolean().parse(b.published));
       case "practice.create":

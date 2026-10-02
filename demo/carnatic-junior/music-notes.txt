@@ -1,0 +1,11 @@
+Carnatic Junior — original demo music notes
+
+Raga reference: Mayamalavagowla
+Swara positions: S R1 G3 M1 P D1 N3 S (upper)
+Ascending: S R G M | P D N S (upper)
+Descending: S (upper) N D P | M G R S
+
+Keep one swara per count. Start slowly in a comfortable pitch chosen by your teacher.
+The audio is an equal-tempered synthesized reference, not a vocal or gamaka demonstration.
+The rhythm video is an eight-count visual aid, not a demonstration of tala hand gestures.
+The teacher should review and replace these sample materials before using them for instruction.

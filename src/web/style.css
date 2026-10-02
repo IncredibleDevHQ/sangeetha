@@ -1224,3 +1224,87 @@ textarea {
 .record-card h4 {
   margin-bottom: 12px;
 }
+
+.curriculum-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(0, 2fr);
+  gap: 24px;
+  margin: 24px 0;
+  align-items: start;
+}
+.curriculum-outline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.curriculum-outline button {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 14px;
+}
+.workbench .curriculum-outline button[aria-current="step"] {
+  background: #eaf4ee;
+  color: #193e32;
+  border: 2px solid #47785f;
+}
+.curriculum-outline small {
+  font-weight: normal;
+}
+.lesson-reader {
+  min-width: 0;
+  margin: 0;
+  padding: 24px;
+}
+.lesson-reader h3 {
+  font-size: 1.5rem;
+}
+.lesson-instructions {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+.music-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 20px;
+  background: #f5f2e9;
+  border-radius: 10px;
+  line-height: 1.9;
+  font-size: 1.05rem;
+}
+.music-notes-input {
+  font-family: monospace;
+}
+.lesson-material {
+  margin: 20px 0;
+}
+.lesson-material video,
+.lesson-material img {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 10px;
+  background: #162d26;
+  object-fit: contain;
+}
+.lesson-material audio {
+  width: 100%;
+}
+.lesson-navigation {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+  border-top: 1px solid #ddd;
+  padding-top: 20px;
+}
+@media (max-width: 760px) {
+  .curriculum-layout {
+    grid-template-columns: 1fr;
+  }
+  .lesson-reader {
+    padding: 16px;
+  }
+}

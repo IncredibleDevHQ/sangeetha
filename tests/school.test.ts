@@ -800,3 +800,172 @@ it("rejects idempotency keys reused for different money or import data", async (
     ]),
   ).rejects.toThrow("different rows");
 });
+
+it("orders curricula, protects lesson edits, and tracks each learner independently", async () => {
+  const h = await crm.create(c, family());
+  const learning = new LearningService(db);
+  const later = await learning.createLesson(c, {
+    curriculum: "Carnatic Junior",
+    position: 2,
+    title: "Second",
+    level: "Beginner",
+    module: "Swaras",
+    musicNotes: "S R G M",
+    published: true,
+  });
+  const first = await learning.createLesson(c, {
+    curriculum: "Carnatic Junior",
+    position: 1,
+    title: "First",
+    level: "Beginner",
+    module: "Foundations",
+    published: true,
+  });
+  const draft = await learning.createLesson(c, {
+    curriculum: "Carnatic Junior",
+    position: 3,
+    title: "Draft",
+    level: "Beginner",
+    module: "Foundations",
+  });
+  const parent = await account(
+    "curriculum-family@example.test",
+    h.learners.map((resource) => ({ capability: "portal.learn", resource })),
+  );
+  const library = await learning.library(parent);
+  expect(library.lessons.map((l) => l.id)).toEqual([first.id, later.id]);
+  expect(library.lessons[0].eligible_learners).toEqual([h.learners[1]]);
+  await learning.completeLesson(parent, {
+    lesson: first.id,
+    learner: h.learners[1],
+    completed: true,
+  });
+  await learning.completeLesson(parent, {
+    lesson: first.id,
+    learner: h.learners[1],
+    completed: true,
+  });
+  expect((await learning.library(parent)).progress).toHaveLength(1);
+  await expect(
+    learning.completeLesson(parent, {
+      lesson: first.id,
+      learner: h.learners[0],
+      completed: true,
+    }),
+  ).rejects.toThrow("not available");
+  await expect(
+    learning.completeLesson(parent, {
+      lesson: draft.id,
+      learner: h.learners[1],
+      completed: true,
+    }),
+  ).rejects.toThrow("not available");
+  await expect(
+    learning.updateLesson(parent, first.id, {
+      title: "Changed",
+      curriculum: "Other",
+      position: 1,
+      instructions: "",
+      musicNotes: "",
+    }),
+  ).rejects.toThrow("access");
+  await learning.updateLesson(c, later.id, {
+    title: "Start here",
+    curriculum: "Carnatic Junior",
+    position: 1,
+    instructions: "Listen",
+    musicNotes: "S R1 G3 M1",
+  });
+  expect(
+    (await learning.library(parent)).lessons.find((l) => l.id === later.id),
+  ).toMatchObject({ title: "Start here", music_notes: "S R1 G3 M1" });
+  await learning.completeLesson(parent, {
+    lesson: first.id,
+    learner: h.learners[1],
+    completed: false,
+  });
+  expect((await learning.library(parent)).progress).toHaveLength(0);
+  const outsider = await account("no-curriculum@example.test", []);
+  await expect(
+    learning.completeLesson(outsider, {
+      lesson: first.id,
+      learner: h.learners[1],
+      completed: true,
+    }),
+  ).rejects.toThrow("permission");
+});
+
+it("validates lesson video and notes while retaining private access and audio-only tests", async () => {
+  const learning = new LearningService(db);
+  const h = await crm.create(c, family());
+  const lesson = await learning.createLesson(c, {
+    title: "Materials",
+    level: "Beginner",
+    module: "Demo",
+    published: true,
+  });
+  const parent = await account("materials@example.test", [
+    { capability: "portal.learn", resource: h.learners[1] },
+  ]);
+  const { readFile } = await import("node:fs/promises");
+  for (const [filename, mime] of [
+    ["eight-count-demo.mp4", "video/mp4"],
+    ["music-notes.txt", "text/plain"],
+  ]) {
+    const bytes = await readFile("demo/carnatic-junior/" + filename);
+    const a = await learning.reserve(c, {
+      lesson: lesson.id,
+      filename,
+      mime,
+      bytes: bytes.length,
+    });
+    for (let part = 0; part < a.chunks; part++)
+      await learning.chunk(c, a.id, {
+        part,
+        data: bytes
+          .subarray(part * chunkSize, (part + 1) * chunkSize)
+          .toString("base64"),
+      });
+    await learning.finalize(c, a.id);
+    expect((await learning.readAsset(parent, a.id)).bytes).toEqual(bytes);
+    await learning.publish(c, lesson.id, false);
+    await expect(learning.readAsset(parent, a.id)).rejects.toThrow("access");
+    await learning.publish(c, lesson.id, true);
+  }
+  const invalid = Buffer.from("<html>This is not a PDF</html>");
+  const a = await learning.reserve(c, {
+    lesson: lesson.id,
+    filename: "fake.pdf",
+    mime: "application/pdf",
+    bytes: invalid.length,
+  });
+  await learning.chunk(c, a.id, { part: 0, data: invalid.toString("base64") });
+  await expect(learning.finalize(c, a.id)).rejects.toThrow("do not match");
+  await expect(
+    learning.reserve(parent, {
+      learner: h.learners[1],
+      filename: "test.mp4",
+      mime: "video/mp4",
+      bytes: 100,
+    }),
+  ).rejects.toThrow("audio recordings");
+  await expect(
+    learning.reserve(parent, {
+      lesson: lesson.id,
+      filename: "notes.txt",
+      mime: "text/plain",
+      bytes: 100,
+    }),
+  ).rejects.toThrow("access");
+  const otherSchool = await provisionOwner(
+    db,
+    "Other media school",
+    "email",
+    "other-media@example.test",
+    "other-media",
+  );
+  const other = { ...c, schoolId: otherSchool };
+  await expect(learning.readAsset(other, a.id)).rejects.toThrow(
+    "not available",
+  );
+});

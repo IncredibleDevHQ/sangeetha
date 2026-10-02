@@ -88,6 +88,9 @@ export class LearningService extends SchoolAccess {
   async createLesson(c: Context, input: unknown) {
     const b = z
       .object({
+        curriculum: z.string().trim().min(1).max(120).default("Lesson library"),
+        position: z.number().int().min(1).max(10000).default(1),
+        musicNotes: z.string().max(20000).default(""),
         level: z.string().min(1).max(80),
         module: z.string().min(1).max(100),
         title: z.string().min(1).max(150),
@@ -106,7 +109,7 @@ export class LearningService extends SchoolAccess {
     const id = randomUUID();
     await this.db.transaction(async (tx) => {
       await tx.query(
-        "INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+        "INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published,curriculum,position,music_notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
         [
           c.schoolId,
           id,
@@ -118,11 +121,69 @@ export class LearningService extends SchoolAccess {
           b.instructions,
           b.batch || null,
           b.published,
+          b.curriculum,
+          b.position,
+          b.musicNotes,
         ],
       );
       await activity(tx, c, "lesson.created", { lessonId: id });
     });
     return { id };
+  }
+  async updateLesson(c: Context, id: string, input: unknown) {
+    await this.lessonAccess(c, id, true);
+    const b = z
+      .object({
+        title: z.string().trim().min(1).max(150),
+        curriculum: z.string().trim().min(1).max(120),
+        position: z.number().int().min(1).max(10000),
+        instructions: z.string().max(5000),
+        musicNotes: z.string().max(20000),
+      })
+      .parse(input);
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE curriculum_lessons SET title=$1,curriculum=$2,position=$3,instructions=$4,music_notes=$5 WHERE school_id=$6 AND id=$7",
+        [
+          b.title,
+          b.curriculum,
+          b.position,
+          b.instructions,
+          b.musicNotes,
+          c.schoolId,
+          id,
+        ],
+      );
+      await activity(tx, c, "lesson.updated", { lessonId: id });
+    });
+  }
+  async completeLesson(c: Context, input: unknown) {
+    const b = z
+      .object({
+        lesson: z.string().uuid(),
+        learner: z.string().uuid(),
+        completed: z.boolean(),
+      })
+      .parse(input);
+    await this.require(c, "portal.learn", "learner", b.learner);
+    // Check this particular learner, rather than another learner on the same family account.
+    const eligible = await this.db.query(
+      "SELECT 1 FROM curriculum_lessons l JOIN learners s ON s.school_id=l.school_id AND s.id=$3 WHERE l.school_id=$1 AND l.id=$2 AND l.published=true AND ((l.batch_id IS NULL AND l.level=s.level) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=l.school_id AND e.batch_id=l.batch_id AND e.learner_id=s.id AND e.status='active'))",
+      [c.schoolId, b.lesson, b.learner],
+    );
+    if (!eligible.rows.length)
+      throw new AccessError("This lesson is not available to this learner.");
+    if (b.completed)
+      await this.db.query(
+        "INSERT INTO lesson_progress(school_id,learner_id,lesson_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
+        [c.schoolId, b.learner, b.lesson],
+      );
+    else
+      await this.db.query(
+        "DELETE FROM lesson_progress WHERE school_id=$1 AND learner_id=$2 AND lesson_id=$3",
+        [c.schoolId, b.learner, b.lesson],
+      );
+    return { ok: true };
   }
   async publish(c: Context, id: string, published: boolean) {
     await this.lessonAccess(c, id, true);
@@ -133,12 +194,12 @@ export class LearningService extends SchoolAccess {
   }
   async library(c: Context) {
     const lessons = (
-        await this.db.query(
-          "SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY level,module,created_at",
+        await this.db.query<Record<string, unknown> & { id: string }>(
+          "SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY curriculum,position,created_at,id",
           [c.schoolId],
         )
       ).rows,
-      allowed: Record<string, unknown>[] = [];
+      allowed: (Record<string, unknown> & { id: string })[] = [];
     for (const lesson of lessons) {
       try {
         await this.lessonAccess(c, String(lesson.id));
@@ -153,8 +214,25 @@ export class LearningService extends SchoolAccess {
         [c.schoolId],
       )
     ).rows;
+    const eligibility = (
+      await this.db.query(
+        "SELECT l.id AS lesson_id,s.id AS learner_id FROM curriculum_lessons l JOIN learners s ON s.school_id=l.school_id JOIN school_grants g ON g.school_id=s.school_id AND g.resource_id=s.id AND g.resource_type='learner' AND g.capability='portal.learn' AND g.account_id=$2 AND g.revoked_at IS NULL WHERE l.school_id=$1 AND l.published=true AND ((l.batch_id IS NULL AND l.level=s.level) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=l.school_id AND e.batch_id=l.batch_id AND e.learner_id=s.id AND e.status='active'))",
+        [c.schoolId, c.session.accountId],
+      )
+    ).rows;
     return {
-      lessons: allowed,
+      progress: (
+        await this.db.query(
+          "SELECT p.* FROM lesson_progress p JOIN school_grants g ON g.school_id=p.school_id AND g.resource_id=p.learner_id WHERE p.school_id=$1 AND g.account_id=$2 AND g.capability='portal.learn' AND g.resource_type='learner' AND g.revoked_at IS NULL",
+          [c.schoolId, c.session.accountId],
+        )
+      ).rows.filter((p) => allowed.some((l) => l.id === p.lesson_id)),
+      lessons: allowed.map((l) => ({
+        ...l,
+        eligible_learners: eligibility
+          .filter((e) => e.lesson_id === l.id)
+          .map((e) => e.learner_id),
+      })),
       assets: assets.filter((a) => allowed.some((l) => l.id === a.lesson_id)),
     };
   }
@@ -174,6 +252,12 @@ export class LearningService extends SchoolAccess {
           "audio/webm",
           "audio/ogg",
           "audio/flac",
+          "video/mp4",
+          "video/webm",
+          "application/pdf",
+          "image/png",
+          "image/jpeg",
+          "text/plain",
         ]),
         bytes: z.number().int().min(1).max(52428800),
         lesson: z.string().uuid().optional(),
@@ -186,7 +270,14 @@ export class LearningService extends SchoolAccess {
         400,
       );
     if (b.lesson) await this.lessonAccess(c, b.lesson, true);
-    if (b.learner) await this.learnerAccess(c, b.learner);
+    if (b.learner) {
+      if (!b.mime.startsWith("audio/"))
+        throw new AccessError(
+          "Test submissions must be audio recordings.",
+          400,
+        );
+      await this.learnerAccess(c, b.learner);
+    }
     return this.db.transaction(async (tx) => {
       await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
         c.schoolId,
@@ -339,23 +430,48 @@ export class LearningService extends SchoolAccess {
       const bytes = Buffer.concat(data);
       if (bytes.length !== a.bytes)
         throw new AccessError("Recording size does not match.", 409);
-      let duration: number;
-      try {
-        const { parseBuffer } = await import("music-metadata");
-        const metadata = await parseBuffer(
-          bytes,
-          { mimeType: a.mime, size: bytes.length },
-          { duration: true },
-        );
-        duration = Math.round((metadata.format.duration || 0) * 1000);
-      } catch {
-        throw new AccessError(
-          "This file is not a supported audio recording.",
-          400,
-        );
+      let duration: number | null = null;
+      if (a.mime.startsWith("audio/")) {
+        try {
+          const { parseBuffer } = await import("music-metadata");
+          const metadata = await parseBuffer(
+            bytes,
+            { mimeType: a.mime, size: bytes.length },
+            { duration: true },
+          );
+          duration = Math.round((metadata.format.duration || 0) * 1000);
+        } catch {
+          throw new AccessError(
+            "This file is not a supported audio recording.",
+            400,
+          );
+        }
+        if (!Number.isFinite(duration) || duration <= 0)
+          throw new AccessError(
+            "Recording duration could not be verified.",
+            400,
+          );
+      } else if (a.mime === "text/plain") {
+        try {
+          new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+          if (bytes.includes(0)) throw Error("Binary content");
+        } catch {
+          throw new AccessError("Music notes must be a UTF-8 text file.", 400);
+        }
+      } else {
+        const { fileTypeFromBuffer } = await import("file-type");
+        let detected;
+        try {
+          detected = await fileTypeFromBuffer(bytes);
+        } catch {
+          /* Invalid file */
+        }
+        if (detected?.mime !== a.mime)
+          throw new AccessError(
+            "The file contents do not match the selected media type.",
+            400,
+          );
       }
-      if (!Number.isFinite(duration) || duration <= 0)
-        throw new AccessError("Recording duration could not be verified.", 400);
       const sha = createHash("sha256").update(bytes).digest("hex"),
         key = c.schoolId + "/" + id + "/" + sha;
       await this.storage.put(key, bytes, a.mime);

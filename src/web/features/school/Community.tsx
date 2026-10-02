@@ -274,6 +274,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
         manage={false}
         batches={data.teachingBatches || []}
         learners={data.teachingLearners || []}
+        portalLearners={data.learners || []}
       />
       {(data.submissions || []).map((s) => (
         <Review
