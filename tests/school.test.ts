@@ -1022,3 +1022,66 @@ it("persists per-recording note timing with teacher-only access and duration val
   await learning.saveScore(c, asset.id, { cues: [] });
   expect((await learning.library(parent)).assets[0].note_cues).toEqual([]);
 });
+
+it("lets curriculum creators organize content without CRM, finance or review publication access", async () => {
+  const grants = new GrantService(db);
+  const creator = await account("creator@example.test", [
+    { capability: "curriculum.manage", resource: c.schoolId },
+  ]);
+  const svc = new LearningService(db);
+  const one = await svc.createLesson(creator, {
+    curriculum: "Vocal",
+    category: "Repertoire",
+    categoryPosition: 2,
+    module: "Geethams",
+    blockPosition: 1,
+    position: 1,
+    title: "Song",
+    level: "Beginner",
+  });
+  const two = await svc.createLesson(creator, {
+    curriculum: "Vocal",
+    category: "Technique",
+    categoryPosition: 1,
+    module: "Voice",
+    blockPosition: 2,
+    position: 1,
+    title: "Voice",
+    level: "Beginner",
+  });
+  const three = await svc.createLesson(creator, {
+    curriculum: "Vocal",
+    category: "Technique",
+    categoryPosition: 1,
+    module: "Swaras",
+    blockPosition: 1,
+    position: 1,
+    title: "Swaras",
+    level: "Beginner",
+  });
+  expect((await svc.library(creator)).lessons.map((l) => l.id)).toEqual([
+    three.id,
+    two.id,
+    one.id,
+  ]);
+  await svc.updateLesson(creator, one.id, {
+    title: "Song",
+    curriculum: "Vocal",
+    position: 1,
+    musicNotes: "S R",
+    instructions: "",
+    category: "Technique",
+    categoryPosition: 1,
+    module: "Swaras",
+    blockPosition: 1,
+  });
+  expect(
+    (await svc.library(creator)).lessons.find((l) => l.id === one.id),
+  ).toMatchObject({ category: "Technique", module: "Swaras", can_edit: true });
+  await expect(crm.list(creator)).rejects.toThrow("permission");
+  await expect(billing.overview(creator)).rejects.toThrow("permission");
+  const { SchoolAccess } = await import("../src/server/school/shared");
+  expect(await new SchoolAccess(db).can(creator, "reviews.publish")).toBe(
+    false,
+  );
+});

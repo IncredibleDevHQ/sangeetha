@@ -1,8 +1,16 @@
+import { WorkflowForm } from "../../components/WorkflowForm";
+import { WorkflowDetails } from "../../components/WorkflowDetails";
+import { useRouteValue, navigate, resourceLink } from "../../routes";
 import { MusicPlayer } from "../../components/MusicPlayer";
 import { UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type Row, type SchoolTools, text, num, Select } from "./common";
-type Library = { lessons: Row[]; assets: Row[]; progress: Row[] };
+type Library = {
+  lessons: Row[];
+  assets: Row[];
+  progress: Row[];
+  batches?: Row[];
+};
 export function Upload({
   tools,
   lesson,
@@ -156,13 +164,24 @@ export function LessonMaterial({
   const mime = text(asset, "mime");
   return (
     <div className="lesson-material">
-      <p>{text(asset, "filename")}</p>
+      <div className="toolbar">
+        <p>{text(asset, "filename")}</p>
+        <a
+          href={resourceLink(tools.school.id, {
+            page: "lesson",
+            lesson: lesson.id,
+            asset: asset.id,
+          })}
+        >
+          Asset permalink
+        </a>
+      </div>
       {mime.startsWith("audio/") ? (
         <MusicPlayer
           tools={tools}
           asset={asset}
           lesson={lesson}
-          editable={editable}
+          editable={!!editable}
           onSaved={onSaved}
         />
       ) : mime.startsWith("video/") ? (
@@ -198,28 +217,44 @@ export function LibraryView({
     progress: [],
   });
   const [roster, setRoster] = useState({ batches, learners });
-  const [curriculum, setCurriculum] = useState("");
-  const [selected, setSelected] = useState("");
+  const [curriculum, setCurriculum] = useRouteValue("curriculum");
+  const [selected] = useRouteValue("lesson");
+  const setSelected = (lesson: string) =>
+    navigate({ lesson, asset: "", action: "", form: "" });
+  const [assetId, setAssetId] = useRouteValue("asset");
+  const [ready, setReady] = useState(false);
+  const [category, setCategory] = useRouteValue("category");
+  const [block, setBlock] = useRouteValue("block");
   const reader = useRef<HTMLElement>(null);
   const [batch, setBatch] = useState("");
   const [practiceLesson, setPracticeLesson] = useState("");
   const [learner, setLearner] = useState("");
-  const [viewLearner, setViewLearner] = useState("");
+  const [viewLearner, setViewLearner] = useRouteValue("learner");
   const load = () =>
     tools
       .read<Library>("library")
       .then(setData)
-      .catch((e) => tools.setError(e.message));
+      .catch((e) => tools.setError(e.message))
+      .finally(() => setReady(true));
   useEffect(() => {
     void load();
     if (manage)
       tools
-        .read<typeof roster>("roster")
-        .then(setRoster)
+        .read<{ capabilities: string[] }>("bootstrap")
+        .then((access) => {
+          if (access.capabilities.includes("crm.manage"))
+            return tools.read<typeof roster>("roster").then(setRoster);
+        })
         .catch((e) => tools.setError(e.message));
   }, [tools.read]);
-  const canWrite = manage || batches.length > 0;
-  const activeLearner = viewLearner || portalLearners[0]?.id || "";
+  const canWrite = manage || batches.length > 0 || !!data.batches?.length;
+  const linkedEligible = (data.lessons.find((l) => l.id === selected)
+    ?.eligible_learners || []) as string[];
+  const activeLearner =
+    viewLearner ||
+    portalLearners.find((l) => linkedEligible.includes(l.id))?.id ||
+    portalLearners[0]?.id ||
+    "";
   const visibleLessons =
     !canWrite && activeLearner
       ? data.lessons.filter((l) =>
@@ -229,13 +264,25 @@ export function LibraryView({
   const curricula = [
     ...new Set(visibleLessons.map((l) => text(l, "curriculum"))),
   ];
-  const activeCurriculum = curricula.includes(curriculum)
-    ? curriculum
-    : curricula[0] || "";
+  const linkedLesson = visibleLessons.find((l) => l.id === selected);
+  const activeCurriculum = linkedLesson
+    ? text(linkedLesson, "curriculum")
+    : curricula.includes(curriculum)
+      ? curriculum
+      : curricula[0] || "";
   const lessons = visibleLessons.filter(
-    (l) => l.curriculum === activeCurriculum,
+    (l) =>
+      l.curriculum === activeCurriculum &&
+      (!category || !!linkedLesson || l.category === category) &&
+      (!block || !!linkedLesson || l.module === block),
   );
-  const current = lessons.find((l) => l.id === selected) || lessons[0];
+  useEffect(() => {
+    if (ready && activeCurriculum && !curriculum)
+      navigate({ curriculum: activeCurriculum }, true);
+  }, [ready, activeCurriculum, curriculum]);
+  const current = selected
+    ? lessons.find((l) => l.id === selected)
+    : lessons[0];
   const index = current ? lessons.indexOf(current) : 0;
   useEffect(() => {
     if (selected) reader.current?.scrollIntoView({ block: "start" });
@@ -245,7 +292,10 @@ export function LibraryView({
       (p) => p.lesson_id === id && p.learner_id === activeLearner,
     );
   const editable =
-    current && (manage || batches.some((b) => b.id === current.batch_id));
+    current &&
+    (manage ||
+      !!current.can_edit ||
+      batches.some((b) => b.id === current.batch_id));
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -256,6 +306,9 @@ export function LibraryView({
       position: Number(f.get("position")),
       level: f.get("level"),
       module: f.get("module"),
+      category: f.get("category"),
+      categoryPosition: Number(f.get("categoryPosition")),
+      blockPosition: Number(f.get("blockPosition")),
       raga: f.get("raga"),
       tala: f.get("tala"),
       instructions: f.get("instructions"),
@@ -274,12 +327,13 @@ export function LibraryView({
     <>
       <h2>Curriculum and lessons</h2>
       <p>
-        Learn in order, listen and watch, then practise with the music notes.
+        Explore categories and blocks, then listen, watch and practise each
+        lesson.
       </p>
       {canWrite && (
-        <details className="record-card">
+        <WorkflowDetails className="record-card">
           <summary>Add a lesson or start a curriculum</summary>
-          <form className="form-grid" onSubmit={create}>
+          <WorkflowForm className="form-grid" onSubmit={create}>
             <label>
               Curriculum name
               <input
@@ -308,8 +362,32 @@ export function LibraryView({
               <input name="level" required defaultValue="Beginner" />
             </label>
             <label>
-              Module
+              Block name
               <input name="module" required defaultValue="Foundations" />
+            </label>
+            <label>
+              Category
+              <input name="category" defaultValue="Foundations" required />
+            </label>
+            <label>
+              Category order
+              <input
+                name="categoryPosition"
+                type="number"
+                min="1"
+                defaultValue="1"
+                required
+              />
+            </label>
+            <label>
+              Block order
+              <input
+                name="blockPosition"
+                type="number"
+                min="1"
+                defaultValue="1"
+                required
+              />
             </label>
             <label>
               Raga
@@ -322,7 +400,7 @@ export function LibraryView({
             <Select
               label="Batch"
               optional={manage}
-              rows={manage ? roster.batches : batches}
+              rows={data.batches || batches}
               value={batch}
               onChange={setBatch}
             />
@@ -340,8 +418,8 @@ export function LibraryView({
               />
             </label>
             <button>Create draft lesson</button>
-          </form>
-        </details>
+          </WorkflowForm>
+        </WorkflowDetails>
       )}
       {portalLearners.length > 1 && (
         <Select
@@ -360,8 +438,15 @@ export function LibraryView({
           <select
             value={activeCurriculum}
             onChange={(e) => {
-              setCurriculum(e.target.value);
-              setSelected("");
+              navigate({
+                curriculum: e.target.value,
+                category: "",
+                block: "",
+                lesson: "",
+                asset: "",
+                action: "",
+                form: "",
+              });
             }}
           >
             {curricula.map((name) => (
@@ -370,7 +455,75 @@ export function LibraryView({
           </select>
         </label>
       )}
-      {!current && (
+      {ready && selected && !current && (
+        <p role="alert">
+          This lesson was not found or is not available to your account.
+        </p>
+      )}
+      {curricula.length > 0 && (
+        <label>
+          Category
+          <select
+            value={category}
+            onChange={(e) => {
+              navigate({
+                curriculum: activeCurriculum,
+                category: e.target.value,
+                block: "",
+                lesson: "",
+                asset: "",
+                action: "",
+                form: "",
+              });
+            }}
+          >
+            <option value="">All categories</option>
+            {[
+              ...new Set(
+                visibleLessons
+                  .filter((l) => l.curriculum === activeCurriculum)
+                  .map((l) => text(l, "category") || "General"),
+              ),
+            ].map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {curricula.length > 0 && (
+        <label>
+          Block
+          <select
+            value={block}
+            onChange={(e) =>
+              navigate({
+                curriculum: activeCurriculum,
+                block: e.target.value,
+                lesson: "",
+                asset: "",
+                action: "",
+                form: "",
+              })
+            }
+          >
+            <option value="">All blocks</option>
+            {[
+              ...new Set(
+                visibleLessons
+                  .filter(
+                    (l) =>
+                      l.curriculum === activeCurriculum &&
+                      (!category || l.category === category),
+                  )
+                  .map((l) => text(l, "module")),
+              ),
+            ].map((b) => (
+              <option key={b}>{b}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!selected && !current && (
         <p>
           No lessons are available yet. Published lessons appear here for their
           assigned batch or level.
@@ -386,23 +539,47 @@ export function LibraryView({
                 ? ` · ${lessons.filter((l) => completed(l.id)).length} completed`
                 : ""}
             </p>
-            {lessons.map((l, i) => (
-              <button
-                key={l.id}
-                aria-current={current.id === l.id ? "step" : undefined}
-                onClick={() => setSelected(l.id)}
-              >
-                <span>
-                  {i + 1}. {text(l, "title")}
-                </span>
-                <small>
-                  {completed(l.id)
-                    ? "Completed"
-                    : l.published
-                      ? text(l, "module")
-                      : "Draft"}
-                </small>
-              </button>
+            {[
+              ...new Set(lessons.map((l) => text(l, "category") || "General")),
+            ].map((cat) => (
+              <section className="curriculum-category" key={cat}>
+                <h4>{cat}</h4>
+                {[
+                  ...new Set(
+                    lessons
+                      .filter((l) => (text(l, "category") || "General") === cat)
+                      .map((l) => text(l, "module")),
+                  ),
+                ].map((block) => (
+                  <div className="curriculum-block" key={block}>
+                    <h5>{block}</h5>
+                    {lessons
+                      .filter(
+                        (l) =>
+                          (text(l, "category") || "General") === cat &&
+                          l.module === block,
+                      )
+                      .map((l) => (
+                        <button
+                          key={l.id}
+                          aria-current={
+                            current.id === l.id ? "step" : undefined
+                          }
+                          onClick={() => navigate({ lesson: l.id, asset: "" })}
+                        >
+                          <span>{text(l, "title")}</span>
+                          <small>
+                            {completed(l.id)
+                              ? "Completed"
+                              : l.published
+                                ? "Lesson"
+                                : "Draft"}
+                          </small>
+                        </button>
+                      ))}
+                  </div>
+                ))}
+              </section>
             ))}
           </nav>
           <article
@@ -413,7 +590,21 @@ export function LibraryView({
             <small>
               Lesson {index + 1} of {lessons.length} · {text(current, "level")}
             </small>
-            <h3>{text(current, "title")}</h3>
+            <div className="toolbar">
+              <h3>{text(current, "title")}</h3>
+              <a
+                href={resourceLink(tools.school.id, {
+                  page: "lesson",
+                  lesson: current.id,
+                })}
+              >
+                Lesson permalink
+              </a>
+            </div>
+            <p className="fine">
+              {activeCurriculum} / {text(current, "category")} /{" "}
+              {text(current, "module")}
+            </p>
             <p>
               {[
                 text(current, "module"),
@@ -434,15 +625,32 @@ export function LibraryView({
                 </pre>
               </section>
             )}
+            {assetId && (
+              <>
+                <button onClick={() => setAssetId("")}>
+                  Show all lesson assets
+                </button>
+                {!data.assets.some(
+                  (a) => a.id === assetId && a.lesson_id === current.id,
+                ) && (
+                  <p role="alert">
+                    This asset is not available in this lesson.
+                  </p>
+                )}
+              </>
+            )}
             {data.assets
-              .filter((a) => a.lesson_id === current.id)
+              .filter(
+                (a) =>
+                  a.lesson_id === current.id && (!assetId || a.id === assetId),
+              )
               .map((a) => (
                 <LessonMaterial
                   key={a.id}
                   tools={tools}
                   asset={a}
                   lesson={current}
-                  editable={editable}
+                  editable={!!editable}
                   onSaved={() => void load()}
                 />
               ))}
@@ -458,9 +666,9 @@ export function LibraryView({
                   lesson={current.id}
                   onReady={() => void load()}
                 />
-                <details>
+                <WorkflowDetails context={{ lesson: current.id }}>
                   <summary>Edit lesson and music notes</summary>
-                  <form
+                  <WorkflowForm
                     className="form-grid"
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -473,6 +681,10 @@ export function LibraryView({
                           position: Number(f.get("position")),
                           instructions: f.get("instructions"),
                           musicNotes: f.get("musicNotes"),
+                          category: f.get("category"),
+                          categoryPosition: Number(f.get("categoryPosition")),
+                          module: f.get("module"),
+                          blockPosition: Number(f.get("blockPosition")),
                           raga: f.get("raga"),
                           tala: f.get("tala"),
                         })
@@ -508,6 +720,42 @@ export function LibraryView({
                       />
                     </label>
                     <label>
+                      Category
+                      <input
+                        name="category"
+                        required
+                        defaultValue={text(current, "category")}
+                      />
+                    </label>
+                    <label>
+                      Category order
+                      <input
+                        name="categoryPosition"
+                        type="number"
+                        min="1"
+                        required
+                        defaultValue={num(current, "category_position")}
+                      />
+                    </label>
+                    <label>
+                      Block name
+                      <input
+                        name="module"
+                        required
+                        defaultValue={text(current, "module")}
+                      />
+                    </label>
+                    <label>
+                      Block order
+                      <input
+                        name="blockPosition"
+                        type="number"
+                        min="1"
+                        required
+                        defaultValue={num(current, "block_position")}
+                      />
+                    </label>
+                    <label>
                       Raagam
                       <input name="raga" defaultValue={text(current, "raga")} />
                     </label>
@@ -532,8 +780,8 @@ export function LibraryView({
                       />
                     </label>
                     <button>Save lesson</button>
-                  </form>
-                </details>
+                  </WorkflowForm>
+                </WorkflowDetails>
                 <button
                   onClick={async () => {
                     if (
@@ -588,9 +836,9 @@ export function LibraryView({
         </div>
       )}
       {canWrite && (
-        <details className="record-card">
+        <WorkflowDetails className="record-card">
           <summary>Assign practice</summary>
-          <form
+          <WorkflowForm
             className="form-grid"
             onSubmit={async (e) => {
               e.preventDefault();
@@ -625,8 +873,8 @@ export function LibraryView({
               <textarea name="text" required />
             </label>
             <button>Assign practice</button>
-          </form>
-        </details>
+          </WorkflowForm>
+        </WorkflowDetails>
       )}
     </>
   );
@@ -660,7 +908,18 @@ export function Review({
     void load();
   }, [submission.id]);
   return (
-    <article className="record-card">
+    <article className="record-card" data-route-resource={submission.id}>
+      <a
+        href={resourceLink(tools.school.id, {
+          page: labels.length || canPublish ? "review" : "learning",
+          module: "tests",
+          section: "feedback",
+          test: text(submission, "assessment_id"),
+          review: submission.id,
+        })}
+      >
+        Review permalink
+      </a>
       <h3>
         {text(submission, "learner_name") || "Your submission"} ·{" "}
         {text(submission, "title")} · version {num(submission, "version")}
@@ -704,7 +963,7 @@ export function Review({
           </p>
         ))}
       {labels.length > 0 && !submission.review_published_at && (
-        <form
+        <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -776,7 +1035,7 @@ export function Review({
             <textarea name="exercise" />
           </label>
           <button>Add draft feedback</button>
-        </form>
+        </WorkflowForm>
       )}
       {!!submission.review_published_at && (
         <dl className="review-scores" aria-label="Assessment scores">
@@ -791,7 +1050,7 @@ export function Review({
         </dl>
       )}
       {rubric.length > 0 && !submission.review_published_at && (
-        <form
+        <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -820,7 +1079,7 @@ export function Review({
             </label>
           ))}
           <button>Save draft scores</button>
-        </form>
+        </WorkflowForm>
       )}
       {canPublish && !submission.review_published_at && (
         <button
@@ -858,6 +1117,8 @@ export function TestsView({
   canPublish: boolean;
   canExport: boolean;
 }) {
+  const [testId] = useRouteValue("test");
+  const [reviewId] = useRouteValue("review");
   const [data, setData] = useState<{
       tests: Row[];
       submissions: Row[];
@@ -883,7 +1144,7 @@ export function TestsView({
       <h2>Tests and review queue</h2>
       {manage && (
         <>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
@@ -907,10 +1168,10 @@ export function TestsView({
               />
             </label>
             <button>Create vocabulary version</button>
-          </form>
-          <details>
+          </WorkflowForm>
+          <WorkflowDetails>
             <summary>Create test</summary>
-            <form
+            <WorkflowForm
               className="form-grid"
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -982,76 +1243,100 @@ export function TestsView({
                 ))}
               </div>
               <button>Create and publish test</button>
-            </form>
-          </details>
+            </WorkflowForm>
+          </WorkflowDetails>
         </>
       )}
-      {data.tests.map((t) => (
-        <article key={t.id}>
-          <strong>{text(t, "title")}</strong> · due{" "}
-          {new Date(text(t, "due_at")).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-          })}{" "}
-          IST · {text(t, "instructions")}
-          {manage && (
-            <form
-              className="form-grid"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                await tools.command("test.update", {
-                  id: t.id,
-                  due: new Date(String(f.get("due")) + "+05:30").toISOString(),
-                  published: f.get("published") === "on",
-                });
-                void load();
-              }}
+      {(testId || reviewId) && (
+        <button onClick={() => navigate({ test: "", review: "" })}>
+          Show all tests and reviews
+        </button>
+      )}
+      {data.tests
+        .filter((t) => !testId || t.id === testId)
+        .map((t) => (
+          <article key={t.id}>
+            <a
+              href={resourceLink(tools.school.id, {
+                page: manage ? "operations" : "review",
+                module: "tests",
+                test: t.id,
+              })}
             >
-              <label>
-                Extend deadline (IST)
-                <input
-                  type="datetime-local"
-                  name="due"
-                  required
-                  defaultValue={new Date(text(t, "due_at"))
-                    .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
-                    .replace(" ", "T")
-                    .slice(0, 16)}
-                />
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  name="published"
-                  defaultChecked={!!t.published}
-                />{" "}
-                Published
-              </label>
-              <button>Update availability</button>
-            </form>
-          )}
-        </article>
-      ))}
-      {data.submissions.map((s) => (
-        <Review
-          key={s.id}
-          tools={tools}
-          submission={s}
-          labels={
-            (data.taxonomies.find(
-              (t) =>
-                t.version ===
-                data.tests.find((t) => t.id === s.assessment_id)
-                  ?.taxonomy_version,
-            )?.labels || []) as string[]
-          }
-          canPublish={canPublish}
-          rubric={
-            (data.tests.find((t) => t.id === s.assessment_id)?.rubric ||
-              []) as { name: string; max: number }[]
-          }
-        />
-      ))}
+              {text(t, "title")}
+            </a>{" "}
+            · due{" "}
+            {new Date(text(t, "due_at")).toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+            })}{" "}
+            IST · {text(t, "instructions")}
+            {manage && (
+              <WorkflowForm
+                className="form-grid"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  await tools.command("test.update", {
+                    id: t.id,
+                    due: new Date(
+                      String(f.get("due")) + "+05:30",
+                    ).toISOString(),
+                    published: f.get("published") === "on",
+                  });
+                  void load();
+                }}
+              >
+                <label>
+                  Extend deadline (IST)
+                  <input
+                    type="datetime-local"
+                    name="due"
+                    required
+                    defaultValue={new Date(text(t, "due_at"))
+                      .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+                      .replace(" ", "T")
+                      .slice(0, 16)}
+                  />
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="published"
+                    defaultChecked={!!t.published}
+                  />{" "}
+                  Published
+                </label>
+                <button>Update availability</button>
+              </WorkflowForm>
+            )}
+          </article>
+        ))}
+      {data.submissions
+        .filter(
+          (s) =>
+            (!testId || s.assessment_id === testId) &&
+            (!reviewId || s.id === reviewId),
+        )
+        .map((s) => (
+          <Review
+            key={s.id}
+            tools={tools}
+            submission={s}
+            labels={
+              (data.taxonomies.find(
+                (t) =>
+                  t.version ===
+                  data.tests.find((t) => t.id === s.assessment_id)
+                    ?.taxonomy_version,
+              )?.labels || []) as string[]
+            }
+            canPublish={canPublish}
+            rubric={
+              (data.tests.find((t) => t.id === s.assessment_id)?.rubric ||
+                []) as { name: string; max: number }[]
+            }
+          />
+        ))}
       {canExport && (
         <button
           onClick={async () => {

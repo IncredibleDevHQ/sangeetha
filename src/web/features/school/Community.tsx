@@ -1,3 +1,6 @@
+import { WorkflowForm } from "../../components/WorkflowForm";
+import { useRouteValue } from "../../routes";
+import { WorkflowDetails } from "../../components/WorkflowDetails";
 import { useEffect, useState } from "react";
 import { type Row, type SchoolTools, text, num, money, Select } from "./common";
 import { Badge, EmptyState } from "../../components/ui";
@@ -90,7 +93,7 @@ export function Statement({
         <EmptyState>No payments recorded yet.</EmptyState>
       )}
       <h4>Report a payment</h4>
-      <form
+      <WorkflowForm
         className="form-grid"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -130,7 +133,7 @@ export function Statement({
           Reported payments reduce the balance after school verification and
           allocation.
         </small>
-      </form>
+      </WorkflowForm>
     </article>
   );
 }
@@ -144,7 +147,7 @@ export function TeacherAttendance({
   learners: Row[];
 }) {
   return (
-    <form
+    <WorkflowForm
       onSubmit={async (e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -171,7 +174,7 @@ export function TeacherAttendance({
         </label>
       ))}
       <button>Save learner attendance</button>
-    </form>
+    </WorkflowForm>
   );
 }
 export function FamilyEvents({ tools }: { tools: SchoolTools }) {
@@ -181,8 +184,8 @@ export function FamilyEvents({ tools }: { tools: SchoolTools }) {
       people: Row[];
       registrations: Row[];
     }>({ events: [], households: [], people: [], registrations: [] }),
-    [event, setEvent] = useState(""),
-    [household, setHousehold] = useState(""),
+    [event, setEvent] = useRouteValue("event"),
+    [household, setHousehold] = useRouteValue("household"),
     [people, setPeople] = useState<string[]>([]);
   const load = () =>
     tools
@@ -194,7 +197,7 @@ export function FamilyEvents({ tools }: { tools: SchoolTools }) {
   }, [tools.read]);
   if (!data.households.length) return null;
   return (
-    <form
+    <WorkflowForm
       className="form-grid"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -255,7 +258,7 @@ export function FamilyEvents({ tools }: { tools: SchoolTools }) {
           ))}
       </div>
       <button>Confirm participants and contribution</button>
-    </form>
+    </WorkflowForm>
   );
 }
 export function EventsView({
@@ -270,8 +273,8 @@ export function EventsView({
       registrations: [],
     }),
     [houses, setHouses] = useState<Row[]>([]),
-    [household, setHousehold] = useState(""),
-    [event, setEvent] = useState(""),
+    [household, setHousehold] = useRouteValue("household"),
+    [event, setEvent] = useRouteValue("event"),
     [people, setPeople] = useState<Row[]>([]),
     [selected, setSelected] = useState<string[]>([]),
     [accounts, setAccounts] = useState<{
@@ -311,9 +314,9 @@ export function EventsView({
   return (
     <>
       <h2>Events and contributions</h2>
-      <details>
+      <WorkflowDetails>
         <summary>Create event</summary>
-        <form
+        <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -367,8 +370,8 @@ export function EventsView({
             <textarea name="description" />
           </label>
           <button>Create event</button>
-        </form>
-      </details>
+        </WorkflowForm>
+      </WorkflowDetails>
       <Select
         label="Selected event"
         rows={data.events}
@@ -382,7 +385,7 @@ export function EventsView({
             {text(data.events.find((e) => e.id === event) || {}, "venue")} ·{" "}
             {text(data.events.find((e) => e.id === event) || {}, "description")}
           </p>
-          <form
+          <WorkflowForm
             className="form-grid"
             onSubmit={async (e) => {
               e.preventDefault();
@@ -421,12 +424,12 @@ export function EventsView({
               ))}
             </div>
             <button>Register participants</button>
-          </form>
+          </WorkflowForm>
           <h3>Programme and rehearsals</h3>
           {data.registrations
             .filter((r) => r.event_id === event)
             .map((r) => (
-              <form
+              <WorkflowForm
                 className="form-grid record-card"
                 key={text(r, "person_id")}
                 onSubmit={async (e) => {
@@ -472,7 +475,7 @@ export function EventsView({
                   <input name="rehearsal" defaultValue={text(r, "rehearsal")} />
                 </label>
                 <button>Save programme</button>
-              </form>
+              </WorkflowForm>
             ))}
           {accounts && (
             <>
@@ -492,7 +495,7 @@ export function EventsView({
                     accounts.expenses.reduce((n, c) => n + num(c, "amount"), 0),
                 )}
               </p>
-              <form
+              <WorkflowForm
                 className="form-grid"
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -523,7 +526,7 @@ export function EventsView({
                   />
                 </label>
                 <button>Record expense</button>
-              </form>
+              </WorkflowForm>
               <p>
                 Use Fees to verify and allocate shared payments to event line
                 items.

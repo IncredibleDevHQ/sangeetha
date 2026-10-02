@@ -1,3 +1,4 @@
+import { useRouteValue, navigate } from "../../routes";
 import { useEffect, useState } from "react";
 import {
   BookOpen,
@@ -25,10 +26,10 @@ import { Statement, TeacherAttendance, FamilyEvents } from "./Community";
 export function PortalView({ tools }: { tools: SchoolTools }) {
   const [data, setData] = useState<Record<string, Row[]>>({});
   const [ready, setReady] = useState(false);
-  const [page, setPage] = useState("overview");
-  const [learnerId, setLearnerId] = useState("");
-  const [selectedTest, setSelectedTest] = useState("");
-  const [selectedReview, setSelectedReview] = useState("");
+  const [page, setPage] = useRouteValue("section", "overview");
+  const [learnerId, setLearnerId] = useRouteValue("learner");
+  const [selectedTest, setSelectedTest] = useRouteValue("test");
+  const [selectedReview, setSelectedReview] = useRouteValue("review");
   const [assets, setAssets] = useState<Record<string, string[]>>({});
   const load = () =>
     tools
@@ -88,13 +89,17 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
     { id: "settings", label: "Settings", icon: Settings2, show: !!learner },
   ].filter((n) => n.show);
   const go = (next: string) => {
-    setPage(next);
-    setSelectedTest("");
-    setSelectedReview("");
+    navigate({
+      section: next,
+      test: "",
+      review: "",
+      lesson: "",
+      asset: "",
+      action: "",
+    });
   };
   const openTest = (test: string) => {
-    setPage("assignments");
-    setSelectedTest(test);
+    navigate({ section: "assignments", test, review: "" });
   };
   const classRow = (c: Row, attendance = false) => (
     <article key={c.id} className="learning-class-row">
@@ -347,8 +352,11 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                 </div>
                 <Action
                   onClick={() => {
-                    setPage("feedback");
-                    setSelectedReview(published[0].id);
+                    navigate({
+                      section: "feedback",
+                      review: published[0].id,
+                      test: "",
+                    });
                   }}
                 >
                   Read feedback

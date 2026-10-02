@@ -48,6 +48,7 @@ export class GrantService extends SchoolAccess {
           "portal.learn",
           "household.billing",
           "finance.manage",
+          "curriculum.manage",
         ]),
         resource: z.string().uuid(),
       })
@@ -58,6 +59,7 @@ export class GrantService extends SchoolAccess {
       "portal.learn": ["learner", "learners"],
       "household.billing": ["household", "households"],
       "finance.manage": ["school", "schools"],
+      "curriculum.manage": ["school", "schools"],
     };
     const [type, table] = types[b.capability];
     if (table !== "schools") await this.exists(this.db, c, table, b.resource);

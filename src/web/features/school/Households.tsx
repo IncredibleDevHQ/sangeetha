@@ -1,3 +1,6 @@
+import { WorkflowForm } from "../../components/WorkflowForm";
+import { useRouteValue } from "../../routes";
+import { WorkflowDetails } from "../../components/WorkflowDetails";
 import PhoneInput from "../auth/PhoneInput";
 import { useEffect, useState } from "react";
 import { parseCsv, csvExport } from "../../../core/csv";
@@ -30,7 +33,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
   const [rows, setRows] = useState<Row[]>([]),
     [query, setQuery] = useState(""),
     [detail, setDetail] = useState<Detail | null>(null),
-    [create, setCreate] = useState(false),
+    [createAction, setCreateAction] = useRouteValue("action"),
     [name, setName] = useState(""),
     [people, setPeople] = useState<Person[]>([blank()]),
     [primary, setPrimary] = useState(0),
@@ -49,6 +52,9 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
     [selected, setSelected] = useState<number[]>([]),
     [views, setViews] = useState<Row[]>([]),
     [importKey, setImportKey] = useState(crypto.randomUUID());
+  const create = createAction === "new-household";
+  const setCreate = (value: boolean) =>
+    setCreateAction(value ? "new-household" : "");
   async function load() {
     setRows(
       await t.read<Row[]>("households", "?q=" + encodeURIComponent(query)),
@@ -58,7 +64,16 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
   useEffect(() => {
     load().catch((e) => t.setError(e.message));
   }, [t.read, query]);
+  const [householdId, setHouseholdId] = useRouteValue("household");
+  useEffect(() => {
+    if (householdId)
+      t.read<Detail>("household", "?id=" + encodeURIComponent(householdId))
+        .then(setDetail)
+        .catch((e) => t.setError(e.message));
+    else setDetail(null);
+  }, [householdId, t.read]);
   async function open(id: string) {
+    setHouseholdId(id);
     setDetail(await t.read<Detail>("household", "?id=" + id));
   }
   async function refreshDetail() {
@@ -211,7 +226,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
       {create && (
         <section className="panel">
           <h3>Create household</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const result = await t.command<{ id: string }>(
@@ -318,7 +333,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 Create household
               </button>
             </div>
-          </form>
+          </WorkflowForm>
         </section>
       )}
       {!!preview.length && (
@@ -409,11 +424,11 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
         <section className="panel">
           <div className="section-heading">
             <h2>{text(detail.household, "name")}</h2>
-            <button className="text-button" onClick={() => setDetail(null)}>
+            <button className="text-button" onClick={() => setHouseholdId("")}>
               Close
             </button>
           </div>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
@@ -489,15 +504,15 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                   : "Archive household"}
               </button>
             </div>
-          </form>
+          </WorkflowForm>
           <h3 className="pending-title">Family members</h3>
           {detail.people.map((p) => (
-            <details className="member-detail" key={p.id}>
+            <WorkflowDetails className="member-detail" key={p.id}>
               <summary>
                 {text(p, "name")} ·{" "}
                 {p.learner_id ? text(p, "level") : "Contact only"}
               </summary>
-              <form
+              <WorkflowForm
                 className="form-grid"
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -550,8 +565,8 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 <button className="button secondary" disabled={t.busy}>
                   Save person
                 </button>
-              </form>
-            </details>
+              </WorkflowForm>
+            </WorkflowDetails>
           ))}
           <div className="form-grid">
             <div>
@@ -585,7 +600,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                   </button>
                 </p>
               ))}
-              <form
+              <WorkflowForm
                 className="form-grid"
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -618,14 +633,14 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                   </select>
                 </label>
                 <button>Save relationship</button>
-              </form>
+              </WorkflowForm>
               <h3 className="pending-title">Internal notes</h3>
               {detail.notes.map((n) => (
                 <p key={n.id} className="note">
                   {text(n, "text")}
                 </p>
               ))}
-              <form
+              <WorkflowForm
                 onSubmit={async (e) => {
                   e.preventDefault();
                   await t.command("household.note", {
@@ -647,7 +662,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 <button className="button secondary" disabled={t.busy}>
                   Add note
                 </button>
-              </form>
+              </WorkflowForm>
             </div>
             <div>
               <h3 className="pending-title">Follow-ups</h3>
@@ -671,7 +686,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                   )}
                 </div>
               ))}
-              <form
+              <WorkflowForm
                 onSubmit={async (e) => {
                   e.preventDefault();
                   await t.command("household.task", {
@@ -703,7 +718,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 <button className="button secondary" disabled={t.busy}>
                   Add follow-up
                 </button>
-              </form>
+              </WorkflowForm>
             </div>
           </div>
           <h3 className="pending-title">Activity</h3>

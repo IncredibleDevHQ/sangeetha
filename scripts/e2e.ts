@@ -298,6 +298,53 @@ async function main() {
     await invite("parent@example.test", "household.billing", h.id);
     await invite("tutor@example.test", "classes.teach", batch.id);
     await invite("finance@example.test", "finance.manage", school);
+    await invite("creator@example.test", "curriculum.manage", school);
+    const { actor: creator } = await login(
+      "Curriculum Creator",
+      "creator@example.test",
+    );
+    verify(
+      "Creator receives explicit curriculum capability",
+      (await view(creator, "bootstrap")).capabilities.includes(
+        "curriculum.manage",
+      ),
+    );
+    await view(creator, "households", "", 403);
+    await view(creator, "billing", "", 403);
+    verify(
+      "Creator sees no assigned reviews",
+      (await view(creator, "tests")).submissions.length === 0,
+    );
+    const structured = await cmd(creator, "lesson.create", {
+      title: "E2E creator lesson",
+      curriculum: "Vocal exploration",
+      category: "Repertoire",
+      categoryPosition: 2,
+      module: "Geethams",
+      blockPosition: 1,
+      position: 1,
+      level: "Advanced",
+      published: false,
+    });
+    await cmd(creator, "lesson.update", {
+      id: structured.id,
+      title: "E2E creator lesson",
+      curriculum: "Vocal exploration",
+      category: "Technique",
+      categoryPosition: 1,
+      module: "Breath",
+      blockPosition: 2,
+      position: 1,
+      musicNotes: "S",
+      instructions: "Listen first",
+    });
+    verify(
+      "Creator can move a lesson between categories and blocks",
+      (await view(creator, "library")).lessons.find(
+        (l: any) => l.id === structured.id,
+      ).module === "Breath",
+    );
+
     await request(owner, "POST", `/api/schools/${school}/invitations`, {
       channel: "email",
       destination: "admin@example.test",

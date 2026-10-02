@@ -1,3 +1,4 @@
+import { useRouteValue, navigate } from "../../routes";
 import { useEffect, useState } from "react";
 import Households from "./Households";
 import { RosterView, ScheduleView, BillingView } from "./Operations";
@@ -21,7 +22,7 @@ export default function SchoolWorkspace({
   const tools = useSchool(school),
     [caps, setCaps] = useState<string[]>([]),
     [scopes, setScopes] = useState<string[]>([]),
-    [page, setPage] = useState(""),
+    [page, setPage] = useRouteValue("module"),
     [loaded, setLoaded] = useState(false);
   useEffect(() => {
     tools
@@ -82,6 +83,10 @@ export default function SchoolWorkspace({
           : t.id !== "portal"),
   );
   const active = tabs.some((t) => t.id === page) ? page : tabs[0]?.id;
+  useEffect(() => {
+    if (loaded && active && !page && experience !== "learning")
+      navigate({ module: active }, true);
+  }, [loaded, active, page, experience]);
   if (!loaded) return <p>Opening school operations…</p>;
   return (
     <>

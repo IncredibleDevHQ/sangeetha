@@ -1,3 +1,5 @@
+import { WorkflowForm } from "../../components/WorkflowForm";
+import { WorkflowDetails } from "../../components/WorkflowDetails";
 import PhoneInput from "../auth/PhoneInput";
 import { useEffect, useState } from "react";
 import { type Row, type SchoolTools, text, num, money, Select } from "./common";
@@ -29,9 +31,9 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
         One routed notice per household. Preview before sharing; a WhatsApp link
         does not confirm delivery.
       </p>
-      <details>
+      <WorkflowDetails>
         <summary>Send a household announcement or event invitation</summary>
-        <form
+        <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -73,8 +75,8 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
               ))}
           </div>
           <button>Queue one notice per selected household</button>
-        </form>
-      </details>
+        </WorkflowForm>
+      </WorkflowDetails>
       <button
         onClick={async () => {
           await tools.command("messages.refresh", {});
@@ -133,7 +135,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
             </button>
           )}
           {m.status === "unknown" && (
-            <form
+            <WorkflowForm
               className="form-grid"
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -163,7 +165,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
                 <input name="reason" required minLength={3} />
               </label>
               <button>Reconcile outcome</button>
-            </form>
+            </WorkflowForm>
           )}
         </article>
       ))}
@@ -326,7 +328,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
         Invitations match a verified login identity and expire in seven days.
         Grant household billing separately from learner access.
       </p>
-      <form
+      <WorkflowForm
         className="form-grid"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -362,7 +364,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
           </label>
         )}
         <label>
-          Permission
+          Role
           <select
             value={cap}
             onChange={(e) => {
@@ -371,10 +373,15 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
             }}
           >
             <option value="classes.teach">Teach assigned batch</option>
-            <option value="assessments.review">Review assigned test</option>
+            <option value="assessments.review">
+              Test Reviewer · assigned test
+            </option>
             <option value="portal.learn">Learner / guardian portal</option>
             <option value="household.billing">
               Household statement and payments
+            </option>
+            <option value="curriculum.manage">
+              Curriculum Creator · school curriculum
             </option>
             <option value="finance.manage">School finance operator</option>
           </select>
@@ -387,11 +394,16 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
           onChange={setResource}
         />
         <button>Create access invitation</button>
-      </form>
+      </WorkflowForm>
       {data.invitations.map((i) => (
         <p key={i.id}>
-          {text(i, "destination")} · {text(i, "capability")} ·{" "}
-          {text(i, "resource_id")} · expires {text(i, "expires_at")}{" "}
+          {text(i, "destination")} ·{" "}
+          {i.capability === "curriculum.manage"
+            ? "Curriculum Creator"
+            : i.capability === "assessments.review"
+              ? "Test Reviewer"
+              : text(i, "capability")}{" "}
+          · {text(i, "resource_id")} · expires {text(i, "expires_at")}{" "}
           <button
             onClick={async () => {
               await tools.command("grant.revoke", {
@@ -407,8 +419,13 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
       ))}
       {data.grants.map((g) => (
         <p key={g.id}>
-          {text(g, "display_name")} · {text(g, "capability")} ·{" "}
-          {text(g, "resource_id")}{" "}
+          {text(g, "display_name")} ·{" "}
+          {g.capability === "curriculum.manage"
+            ? "Curriculum Creator"
+            : g.capability === "assessments.review"
+              ? "Test Reviewer"
+              : text(g, "capability")}{" "}
+          · {text(g, "resource_id")}{" "}
           <button
             onClick={async () => {
               await tools.command("grant.revoke", { id: g.id });
@@ -475,7 +492,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
         Configure secrets on the server. Automatic delivery also requires an
         approved WhatsApp template and a running worker.
       </p>
-      <form
+      <WorkflowForm
         key={JSON.stringify(data.settings)}
         className="form-grid"
         onSubmit={async (e) => {
@@ -531,9 +548,9 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
           />
         </label>
         <button>Save automation settings</button>
-      </form>
+      </WorkflowForm>
       <h3>Payment links</h3>
-      <form
+      <WorkflowForm
         className="form-grid"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -576,7 +593,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
         <button disabled={!data.paymentsConfigured || !selected.length}>
           Create Razorpay payment link
         </button>
-      </form>
+      </WorkflowForm>
       {links.map((l) => (
         <article className="record-card" key={l.id}>
           <p>
@@ -588,7 +605,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
             )}
           </p>
           {["unknown", "creating"].includes(text(l, "status")) && (
-            <form
+            <WorkflowForm
               onSubmit={async (e) => {
                 e.preventDefault();
                 await tools.command("payment-link.reconcile", {
@@ -603,7 +620,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                 <input name="provider" required placeholder="plink_…" />
               </label>
               <button>Reconcile with provider</button>
-            </form>
+            </WorkflowForm>
           )}
         </article>
       ))}

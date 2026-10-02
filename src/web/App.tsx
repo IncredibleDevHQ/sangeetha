@@ -1,3 +1,5 @@
+import { useRouteValue, navigate } from "./routes";
+import { DirectLesson } from "./components/DirectLesson";
 import PhoneInput from "./features/auth/PhoneInput";
 import SchoolWorkspace from "./features/school/Workspace";
 import type { Me, Team } from "./contracts";
@@ -41,8 +43,8 @@ export default function App() {
     [authReady, setAuthReady] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [page, setPage] = useState("overview"),
-    [schoolId, setSchoolId] = useState(""),
+    [page, setPage] = useRouteValue("page", "overview"),
+    [schoolId, setSchoolId] = useRouteValue("school"),
     [team, setTeam] = useState<Team | null>(null),
     [busy, setBusy] = useState(false),
     [link, setLink] = useState(false),
@@ -53,7 +55,9 @@ export default function App() {
     capabilities: string[];
     scopes: { capability: string }[];
   }>({ capabilities: [], scopes: [] });
-  const school = me?.schools.find((s) => s.id === schoolId) || me?.schools[0];
+  const school = schoolId
+    ? me?.schools.find((s) => s.id === schoolId)
+    : me?.schools[0];
   useEffect(() => {
     setWorkspaceAccess({ capabilities: [], scopes: [] });
     if (school)
@@ -62,7 +66,12 @@ export default function App() {
         .catch((e) => setError(e.message));
   }, [school?.id, me?.account]);
   const adminExperience = workspaceAccess.capabilities.some((c) =>
-    ["crm.manage", "schedule.manage", "finance.manage"].includes(c),
+    [
+      "crm.manage",
+      "schedule.manage",
+      "finance.manage",
+      "curriculum.manage",
+    ].includes(c),
   );
   const learningExperience = workspaceAccess.scopes.some((s) =>
     ["portal.learn", "classes.teach", "household.billing"].includes(
@@ -72,6 +81,9 @@ export default function App() {
   const reviewerExperience = workspaceAccess.scopes.some(
     (s) => s.capability === "assessments.review",
   );
+  useEffect(() => {
+    if (school && !schoolId) navigate({ school: school.id }, true);
+  }, [school?.id, schoolId]);
   async function refresh() {
     try {
       const next = await api<Me>("/me");
@@ -281,8 +293,14 @@ export default function App() {
               {school?.role === "owner"
                 ? "School owner"
                 : adminExperience
-                  ? "School staff"
-                  : "Learning community"}
+                  ? workspaceAccess.capabilities.includes(
+                      "curriculum.manage",
+                    ) && !workspaceAccess.capabilities.includes("crm.manage")
+                    ? "Curriculum Creator"
+                    : "School staff"
+                  : reviewerExperience
+                    ? "Test Reviewer"
+                    : "Learning community"}
             </small>
           </div>
           <button aria-label="Sign out" disabled={busy} onClick={signOut}>
@@ -296,15 +314,17 @@ export default function App() {
             Workspace /{" "}
             {page === "overview"
               ? "Overview"
-              : page === "operations"
-                ? "School administration"
-                : page === "learning"
-                  ? "Learning portal"
-                  : page === "review"
-                    ? "Assigned reviews"
-                    : page === "team"
-                      ? "Team & access"
-                      : "My account"}
+              : page === "lesson"
+                ? "Lesson"
+                : page === "operations"
+                  ? "School administration"
+                  : page === "learning"
+                    ? "Learning portal"
+                    : page === "review"
+                      ? "Assigned reviews"
+                      : page === "team"
+                        ? "Team & access"
+                        : "My account"}
           </span>
           <div className="header-actions">
             <button
@@ -323,6 +343,17 @@ export default function App() {
         </header>
         <main className="content">
           {alerts}
+          {schoolId && !school && (
+            <p role="alert">This school is not available to your account.</p>
+          )}
+          {page === "lesson" && school && (
+            <DirectLesson
+              school={school}
+              manage={workspaceAccess.capabilities.includes(
+                "curriculum.manage",
+              )}
+            />
+          )}
           {page === "operations" && school && adminExperience && (
             <SchoolWorkspace key={school.id} school={school} />
           )}
@@ -333,13 +364,16 @@ export default function App() {
               experience="learning"
             />
           )}
-          {page === "review" && school && reviewerExperience && (
-            <SchoolWorkspace
-              key={school.id + "review"}
-              school={school}
-              experience="review"
-            />
-          )}
+          {page === "review" &&
+            school &&
+            (reviewerExperience ||
+              workspaceAccess.capabilities.includes("assessments.manage")) && (
+              <SchoolWorkspace
+                key={school.id + "review"}
+                school={school}
+                experience="review"
+              />
+            )}
           {page === "overview" && (
             <>
               <div className="page-heading">

@@ -1,3 +1,4 @@
+import { rememberAuthDestination } from "../../routes";
 import PhoneInput from "./PhoneInput";
 import { useEffect, useState, type FormEvent } from "react";
 import { ShieldCheck, ArrowRight, Phone } from "lucide-react";
@@ -64,6 +65,7 @@ export default function SignIn({
       <div className="sign-options">
         <a
           className="button google"
+          onClick={rememberAuthDestination}
           href={"/api/auth/start/google" + (link ? "?link=1" : "")}
         >
           <span className="google-g">G</span>Continue with Google
@@ -72,6 +74,7 @@ export default function SignIn({
         <div className="divider">or</div>
         <a
           className="button secondary"
+          onClick={rememberAuthDestination}
           href={"/api/auth/start/phone" + (link ? "?link=1" : "")}
         >
           <Phone size={18} />

@@ -1,3 +1,6 @@
+import { WorkflowForm } from "../../components/WorkflowForm";
+import { useRouteValue } from "../../routes";
+import { WorkflowDetails } from "../../components/WorkflowDetails";
 import { useEffect, useState } from "react";
 import {
   text,
@@ -21,9 +24,9 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
       enrollments: [],
       staff: [],
     }),
-    [batch, setBatch] = useState(""),
+    [batch, setBatch] = useRouteValue("batch"),
     [learner, setLearner] = useState(""),
-    [household, setHousehold] = useState(""),
+    [household, setHousehold] = useRouteValue("household"),
     [households, setHouseholds] = useState<Row[]>([]);
   async function load() {
     setData(await t.read<Roster>("roster"));
@@ -38,7 +41,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
       <div className="form-grid">
         <section className="panel">
           <h3>Create a batch</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const form = e.currentTarget,
@@ -74,11 +77,11 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
             <button className="button primary" disabled={t.busy}>
               Create batch
             </button>
-          </form>
+          </WorkflowForm>
         </section>
         <section className="panel">
           <h3>Enroll a learner</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
@@ -129,7 +132,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
             <button className="button primary" disabled={t.busy}>
               Enroll learner
             </button>
-          </form>
+          </WorkflowForm>
         </section>
       </div>
       <section className="panel">
@@ -228,7 +231,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
     }),
     [selected, setSelected] = useState<Row | null>(null),
     [att, setAtt] = useState<Record<string, string>>({}),
-    [batch, setBatch] = useState(""),
+    [batch, setBatch] = useRouteValue("batch"),
     [teacher, setTeacher] = useState(""),
     [todayOnly, setTodayOnly] = useState(false);
   async function load() {
@@ -238,7 +241,22 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
   useEffect(() => {
     load().catch((e) => t.setError(e.message));
   }, [t.read]);
+  const [classId, setClassId] = useRouteValue("class");
+  useEffect(() => {
+    const row = data.classes.find((c) => c.id === classId);
+    if (row) {
+      setSelected(row);
+      setAtt(
+        Object.fromEntries(
+          data.attendance
+            .filter((a) => a.occurrence_id === row.id)
+            .map((a) => [text(a, "learner_id"), text(a, "status")]),
+        ),
+      );
+    } else setSelected(null);
+  }, [classId, data]);
   function open(o: Row) {
+    setClassId(o.id);
     setSelected(o);
     setAtt(
       Object.fromEntries(
@@ -261,7 +279,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
       <h2>Classes & attendance</h2>
       <section className="panel">
         <h3>Schedule classes · India time</h3>
-        <form
+        <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -329,7 +347,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
           <button className="button primary" disabled={t.busy}>
             Schedule
           </button>
-        </form>
+        </WorkflowForm>
       </section>
       <div className="toolbar">
         <button
@@ -371,11 +389,11 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
         <section className="panel">
           <div className="section-heading">
             <h3>{text(selected, "batch_name")}</h3>
-            <button className="text-button" onClick={() => setSelected(null)}>
+            <button className="text-button" onClick={() => setClassId("")}>
               Close
             </button>
           </div>
-          <form
+          <WorkflowForm
             className="form-grid"
             key={String(selected.version) + selected.id}
             onSubmit={async (e) => {
@@ -445,13 +463,13 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
             <button className="button secondary" disabled={t.busy}>
               Update this occurrence
             </button>
-          </form>
+          </WorkflowForm>
           <p className="fine">
             Only this class occurrence changes. Old queued reminders are
             cancelled.
           </p>
           <h3>Attendance</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
@@ -495,7 +513,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
             <button className="button primary" disabled={t.busy}>
               Save attendance
             </button>
-          </form>
+          </WorkflowForm>
         </section>
       )}
     </>
@@ -514,14 +532,14 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
       enrollments: [],
       staff: [],
     }),
-    [household, setHousehold] = useState(""),
+    [household, setHousehold] = useRouteValue("household"),
     [statement, setStatement] = useState<{
       charges: Row[];
       payments: Row[];
       allocations: Row[];
       entries: Row[];
     } | null>(null),
-    [payment, setPayment] = useState(""),
+    [payment, setPayment] = useRouteValue("payment"),
     [amounts, setAmounts] = useState<Record<string, string>>({}),
     [chargeKey, setChargeKey] = useState(crypto.randomUUID()),
     [paymentKey, setPaymentKey] = useState(crypto.randomUUID()),
@@ -557,7 +575,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
       <div className="form-grid">
         <section className="panel">
           <h3>Create learner charge</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget),
@@ -620,11 +638,11 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
             <button className="button primary" disabled={t.busy}>
               Create charge
             </button>
-          </form>
+          </WorkflowForm>
         </section>
         <section className="panel">
           <h3>Recurring fee plan</h3>
-          <form
+          <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
@@ -689,8 +707,8 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
             <button className="button primary" disabled={t.busy}>
               Save fee plan
             </button>
-          </form>
-          <form
+          </WorkflowForm>
+          <WorkflowForm
             className="toolbar"
             onSubmit={async (e) => {
               e.preventDefault();
@@ -711,7 +729,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
             <button className="button secondary" disabled={t.busy}>
               Generate charges
             </button>
-          </form>
+          </WorkflowForm>
         </section>
       </div>
       <section className="panel">
@@ -758,7 +776,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               A payment claim is not settled money. Verify it against your bank,
               UPI or cash records before allocation.
             </p>
-            <form
+            <WorkflowForm
               className="form-grid"
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -799,7 +817,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               <button className="button primary" disabled={t.busy}>
                 Record payment claim
               </button>
-            </form>
+            </WorkflowForm>
             {statement.payments.map((p) => (
               <div className="list-row" key={p.id}>
                 <div className="row-detail">
@@ -854,7 +872,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               </div>
             ))}
             {payment && (
-              <form
+              <WorkflowForm
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const lines = Object.entries(amounts)
@@ -897,11 +915,11 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                 <button className="button primary" disabled={t.busy}>
                   Allocate payment
                 </button>
-              </form>
+              </WorkflowForm>
             )}
-            <details>
+            <WorkflowDetails>
               <summary>Corrections, refunds & reversals</summary>
-              <form
+              <WorkflowForm
                 className="form-grid"
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -965,8 +983,8 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                 <button className="button secondary" disabled={t.busy}>
                   Record correction
                 </button>
-              </form>
-            </details>
+              </WorkflowForm>
+            </WorkflowDetails>
           </>
         )}
       </section>

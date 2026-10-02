@@ -151,6 +151,9 @@ export class LearningService extends SchoolAccess {
         curriculum: z.string().trim().min(1).max(120).default("Lesson library"),
         position: z.number().int().min(1).max(10000).default(1),
         musicNotes: z.string().max(20000).default(""),
+        category: z.string().trim().min(1).max(120).default("General"),
+        categoryPosition: z.number().int().min(1).max(10000).default(1),
+        blockPosition: z.number().int().min(1).max(10000).default(1),
         level: z.string().min(1).max(80),
         module: z.string().min(1).max(100),
         title: z.string().min(1).max(150),
@@ -169,7 +172,7 @@ export class LearningService extends SchoolAccess {
     const id = randomUUID();
     await this.db.transaction(async (tx) => {
       await tx.query(
-        "INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published,curriculum,position,music_notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
+        "INSERT INTO curriculum_lessons(school_id,id,level,module,title,raga,tala,instructions,batch_id,published,curriculum,position,music_notes,category,category_position,block_position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
         [
           c.schoolId,
           id,
@@ -184,6 +187,9 @@ export class LearningService extends SchoolAccess {
           b.curriculum,
           b.position,
           b.musicNotes,
+          b.category,
+          b.categoryPosition,
+          b.blockPosition,
         ],
       );
       await activity(tx, c, "lesson.created", { lessonId: id });
@@ -199,13 +205,17 @@ export class LearningService extends SchoolAccess {
         position: z.number().int().min(1).max(10000),
         instructions: z.string().max(5000),
         musicNotes: z.string().max(20000),
+        category: z.string().trim().min(1).max(120).optional(),
+        categoryPosition: z.number().int().min(1).max(10000).optional(),
+        module: z.string().trim().min(1).max(100).optional(),
+        blockPosition: z.number().int().min(1).max(10000).optional(),
         raga: z.string().max(100).optional(),
         tala: z.string().max(100).optional(),
       })
       .parse(input);
     await this.db.transaction(async (tx) => {
       await tx.query(
-        "UPDATE curriculum_lessons SET title=$1,curriculum=$2,position=$3,instructions=$4,music_notes=$5,raga=COALESCE($8,raga),tala=COALESCE($9,tala) WHERE school_id=$6 AND id=$7",
+        "UPDATE curriculum_lessons SET title=$1,curriculum=$2,position=$3,instructions=$4,music_notes=$5,raga=COALESCE($8,raga),tala=COALESCE($9,tala),category=COALESCE($10,category),category_position=COALESCE($11,category_position),module=COALESCE($12,module),block_position=COALESCE($13,block_position) WHERE school_id=$6 AND id=$7",
         [
           b.title,
           b.curriculum,
@@ -216,6 +226,10 @@ export class LearningService extends SchoolAccess {
           id,
           b.raga ?? null,
           b.tala ?? null,
+          b.category ?? null,
+          b.categoryPosition ?? null,
+          b.module ?? null,
+          b.blockPosition ?? null,
         ],
       );
       await activity(tx, c, "lesson.updated", { lessonId: id });
@@ -259,7 +273,7 @@ export class LearningService extends SchoolAccess {
   async library(c: Context) {
     const lessons = (
         await this.db.query<Record<string, unknown> & { id: string }>(
-          "SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY curriculum,position,created_at,id",
+          "SELECT * FROM curriculum_lessons WHERE school_id=$1 ORDER BY curriculum,category_position,category,block_position,module,position,created_at,id",
           [c.schoolId],
         )
       ).rows,
@@ -267,6 +281,15 @@ export class LearningService extends SchoolAccess {
     for (const lesson of lessons) {
       try {
         await this.lessonAccess(c, String(lesson.id));
+        lesson.can_edit =
+          (await this.can(c, "curriculum.manage")) ||
+          (!!lesson.batch_id &&
+            (await this.can(
+              c,
+              "classes.teach",
+              "batch",
+              String(lesson.batch_id),
+            )));
         allowed.push(lesson);
       } catch (error) {
         if (!(error instanceof AccessError)) throw error;
@@ -298,6 +321,16 @@ export class LearningService extends SchoolAccess {
           .map((e) => e.learner_id),
       })),
       assets: assets.filter((a) => allowed.some((l) => l.id === a.lesson_id)),
+      batches: (
+        await this.db.query(
+          "SELECT id,name FROM batches WHERE school_id=$1 AND archived_at IS NULL AND ($3 OR EXISTS(SELECT 1 FROM school_grants g WHERE g.school_id=batches.school_id AND g.account_id=$2 AND g.capability='classes.teach' AND g.resource_id=batches.id AND g.revoked_at IS NULL))",
+          [
+            c.schoolId,
+            c.session.accountId,
+            await this.can(c, "curriculum.manage"),
+          ],
+        )
+      ).rows,
     };
   }
   async learnerAccess(c: Context, id: string) {

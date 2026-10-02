@@ -99,6 +99,9 @@ async function main() {
         existing ||
         (await learning.createLesson(c, {
           curriculum: "Carnatic Junior",
+          category: index === 2 ? "Rhythm" : "Voice & melody",
+          categoryPosition: index === 2 ? 2 : 1,
+          blockPosition: index + 1,
           position: index + 1,
           title: lesson.title,
           module: lesson.module,

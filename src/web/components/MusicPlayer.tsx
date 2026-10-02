@@ -1,3 +1,4 @@
+import { WorkflowDetails } from "./WorkflowDetails";
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, RotateCcw, Music2 } from "lucide-react";
 import { activeCue, groupCues, type NoteCue } from "../../shared/score";
@@ -205,7 +206,10 @@ export function MusicPlayer({
       />
       {error && <p role="alert">{error}</p>}
       {editable && (
-        <details onToggle={(e) => setEditing(e.currentTarget.open)}>
+        <WorkflowDetails
+          context={{ lesson: lesson.id, asset: asset.id }}
+          onToggle={(e) => setEditing(e.currentTarget.open)}
+        >
           <summary>Align notes to this recording</summary>
           {editing && (
             <>
@@ -354,7 +358,7 @@ export function MusicPlayer({
               </div>
             </>
           )}
-        </details>
+        </WorkflowDetails>
       )}
     </section>
   );
