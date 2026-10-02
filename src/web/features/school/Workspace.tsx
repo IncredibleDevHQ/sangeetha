@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import Households from "./Households";
 import { RosterView, ScheduleView, BillingView } from "./Operations";
 import { LibraryView, TestsView } from "./Learning";
-import { EventsView, PortalView } from "./Community";
+import { EventsView } from "./Community";
+import { PortalView } from "./StudentPortal";
 import {
   MessagesView,
   ReportsView,
@@ -84,36 +85,42 @@ export default function SchoolWorkspace({
   if (!loaded) return <p>Opening school operations…</p>;
   return (
     <>
-      <div className="page-heading">
-        <span className="eyebrow">
-          {experience === "admin"
-            ? "SCHOOL ADMINISTRATION"
-            : experience === "review"
-              ? "ASSIGNED REVIEW WORK"
-              : "LEARNING PORTAL"}
-        </span>
-        <h1>
-          {experience === "admin"
-            ? "Your school, together."
-            : experience === "review"
-              ? "Your review queue."
-              : "Your music journey."}
-        </h1>
-        <p>
-          Households, learning and money, with access scoped to your school.
-        </p>
-      </div>
-      <div className="module-tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            className={active === t.id ? "selected" : ""}
-            onClick={() => setPage(t.id)}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
+      {experience !== "learning" && (
+        <div className="page-heading">
+          <span className="eyebrow">
+            {experience === "admin"
+              ? "SCHOOL ADMINISTRATION"
+              : experience === "review"
+                ? "ASSIGNED REVIEW WORK"
+                : "LEARNING PORTAL"}
+          </span>
+          <h1>
+            {experience === "admin"
+              ? "Your school, together."
+              : experience === "review"
+                ? "Your review queue."
+                : "Your music journey."}
+          </h1>
+          <p>
+            {experience === "review"
+              ? "Listen to assigned recordings and prepare feedback."
+              : "Households, learning and money, with access scoped to your school."}
+          </p>
+        </div>
+      )}
+      {experience !== "learning" && (
+        <div className="module-tabs">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              className={active === t.id ? "selected" : ""}
+              onClick={() => setPage(t.id)}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
       <Alerts tools={tools} />
       <fieldset className="workbench" disabled={tools.busy}>
         {active === "households" && <Households tools={tools} />}{" "}

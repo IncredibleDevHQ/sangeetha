@@ -16,7 +16,7 @@ export class PortalService extends SchoolAccess {
     return {
       recordings: (
         await this.db.query(
-          "SELECT id,learner_id,filename,duration_ms FROM media_assets WHERE school_id=$1 AND learner_id=ANY($2::uuid[]) AND owner_id=$3 AND status='ready'",
+          "SELECT id,learner_id,filename,duration_ms,created_at FROM media_assets WHERE school_id=$1 AND learner_id=ANY($2::uuid[]) AND owner_id=$3 AND status='ready'",
           [c.schoolId, ids, c.session.accountId],
         )
       ).rows,
@@ -34,7 +34,7 @@ export class PortalService extends SchoolAccess {
       ).rows,
       classes: (
         await this.db.query(
-          "SELECT DISTINCT o.id,o.batch_id,o.teacher_id,o.starts_at,o.ends_at,o.status,b.name AS batch_name FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id WHERE o.school_id=$1 AND (o.batch_id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active')) ORDER BY starts_at",
+          "SELECT DISTINCT o.id,o.batch_id,o.teacher_id,o.starts_at,o.ends_at,o.status,o.location,ARRAY(SELECT e.learner_id FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active') AS learner_ids,b.name AS batch_name FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id WHERE o.school_id=$1 AND (o.batch_id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active')) ORDER BY starts_at",
           [c.schoolId, ids, batchIds],
         )
       ).rows,

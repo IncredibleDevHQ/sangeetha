@@ -1,3 +1,4 @@
+import { UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type Row, type SchoolTools, text, num, Select } from "./common";
 type Library = { lessons: Row[]; assets: Row[]; progress: Row[] };
@@ -98,8 +99,11 @@ export function Upload({
     }
   }
   return (
-    <label>
-      {lesson ? "Upload lesson material" : "Audio recording"}
+    <label className="upload-zone">
+      <UploadCloud size={24} aria-hidden="true" />
+      <strong>
+        {lesson ? "Upload lesson material" : "Choose an audio recording"}
+      </strong>
       <input
         type="file"
         accept={
@@ -745,7 +749,16 @@ export function Review({
         </form>
       )}
       {!!submission.review_published_at && (
-        <p>Scores: {JSON.stringify(submission.scores || {})}</p>
+        <dl className="review-scores" aria-label="Assessment scores">
+          {Object.entries(
+            (submission.scores || {}) as Record<string, number>,
+          ).map(([name, score]) => (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd>{score}</dd>
+            </div>
+          ))}
+        </dl>
       )}
       {rubric.length > 0 && !submission.review_published_at && (
         <form

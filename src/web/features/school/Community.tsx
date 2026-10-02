@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type Row, type SchoolTools, text, num, money, Select } from "./common";
-import { Upload, Review, LibraryView } from "./Learning";
+import { Badge, EmptyState } from "../../components/ui";
 export function Statement({
   tools,
   household,
@@ -24,16 +24,53 @@ export function Statement({
   return (
     <article className="record-card">
       <h3>{text(household, "name")} statement</h3>
-      {data.charges.map((c) => (
-        <p key={c.id}>
-          {text(c, "learner_name")} · {text(c, "description")} ·{" "}
-          {money(num(c, "amount"))} · outstanding {money(num(c, "due"))}
-        </p>
-      ))}
+      <div className="statement-total">
+        <span>Outstanding balance</span>
+        <strong>
+          {money(data.charges.reduce((sum, c) => sum + num(c, "due"), 0))}
+        </strong>
+      </div>
+      <div className="table-scroll">
+        <table className="statement-table">
+          <thead>
+            <tr>
+              <th>Charge</th>
+              <th>Amount</th>
+              <th>Outstanding</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.charges.map((c) => (
+              <tr key={c.id}>
+                <td>
+                  <strong>{text(c, "description")}</strong>
+                  <small>
+                    {text(c, "learner_name") || "Household contribution"}
+                  </small>
+                </td>
+                <td>{money(num(c, "amount"))}</td>
+                <td>{money(num(c, "due"))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!data.charges.length && (
+        <EmptyState>No charges on this statement.</EmptyState>
+      )}
+      <h4>Payments</h4>
       {data.payments.map((p) => (
-        <p key={p.id}>
-          Payment {money(num(p, "amount"))} · {text(p, "status")} ·{" "}
-          {text(p, "receipt")}
+        <div className="learning-row" key={p.id}>
+          <div className="row-main">
+            <strong>{money(num(p, "amount"))}</strong>
+            <p>
+              {text(p, "method").toUpperCase()} ·{" "}
+              {text(p, "reference") || "No reference"}
+            </p>
+          </div>
+          <Badge tone={p.status === "verified" ? "success" : "attention"}>
+            {p.status === "claim" ? "Awaiting verification" : text(p, "status")}
+          </Badge>
           {!!p.receipt && (
             <button
               onClick={() =>
@@ -47,8 +84,12 @@ export function Statement({
               Download receipt
             </button>
           )}
-        </p>
+        </div>
       ))}
+      {!data.payments.length && (
+        <EmptyState>No payments recorded yet.</EmptyState>
+      )}
+      <h4>Report a payment</h4>
       <form
         className="form-grid"
         onSubmit={async (e) => {
@@ -93,206 +134,7 @@ export function Statement({
     </article>
   );
 }
-export function PortalView({ tools }: { tools: SchoolTools }) {
-  const [data, setData] = useState<Record<string, Row[]>>({}),
-    [assets, setAssets] = useState<Record<string, string[]>>({});
-  const load = () =>
-    tools
-      .read<typeof data>("portal")
-      .then(setData)
-      .catch((e) => tools.setError(e.message));
-  useEffect(() => {
-    void load();
-  }, [tools.read]);
-  return (
-    <>
-      <h2>My learning and teaching</h2>
-      <p>
-        Your access is assigned separately for each learner, household and
-        teaching batch.
-      </p>
-      {(data.learners || []).map((l) => (
-        <article className="record-card" key={l.id}>
-          <h3>
-            {text(l, "name")} · {text(l, "level")}
-          </h3>
-          {(data.practice || [])
-            .filter((p) => p.learner_id === l.id)
-            .map((p) => (
-              <p key={p.id}>
-                {text(p, "text")} · due {text(p, "due_on").slice(0, 10)}{" "}
-                {p.completed_at ? (
-                  "Completed"
-                ) : (
-                  <button
-                    onClick={async () => {
-                      await tools.command("practice.complete", { id: p.id });
-                      void load();
-                    }}
-                  >
-                    Mark practiced
-                  </button>
-                )}
-              </p>
-            ))}
-          <p>
-            Attendance:{" "}
-            {
-              (data.attendance || []).filter(
-                (a) => a.learner_id === l.id && a.status === "present",
-              ).length
-            }{" "}
-            present of{" "}
-            {
-              (data.attendance || []).filter((a) => a.learner_id === l.id)
-                .length
-            }{" "}
-            marked classes.
-          </p>
-          {["recording-reuse", "label-export"].map((purpose) => (
-            <label key={purpose}>
-              <input
-                type="checkbox"
-                checked={(data.consents || []).some(
-                  (d) =>
-                    d.learner_id === l.id &&
-                    d.purpose === purpose &&
-                    d.allowed === true,
-                )}
-                onChange={async (e) => {
-                  await tools.command("dataset.consent", {
-                    learner: l.id,
-                    purpose,
-                    allowed: e.target.checked,
-                  });
-                  void load();
-                }}
-              />{" "}
-              Allow{" "}
-              {purpose === "recording-reuse"
-                ? "recordings to be reused for dataset work"
-                : "verified feedback labels to be exported"}
-            </label>
-          ))}
-          {(data.tests || [])
-            .filter((t) => t.learner_id === l.id)
-            .map((t) => (
-              <div key={t.id}>
-                <h4>{text(t, "title")}</h4>
-                <p>
-                  {text(t, "instructions")} · due{" "}
-                  {new Date(text(t, "due_at")).toLocaleString("en-IN", {
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                  })}{" "}
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </p>
-                <Upload
-                  tools={tools}
-                  learner={l.id}
-                  onReady={(id) => {
-                    void load();
-                    setAssets((a) => ({
-                      ...a,
-                      [t.id + ":" + l.id]: [
-                        ...(a[t.id + ":" + l.id] || []),
-                        id,
-                      ],
-                    }));
-                  }}
-                />
-                <div className="member-picker">
-                  {(data.recordings || [])
-                    .filter((a) => a.learner_id === l.id)
-                    .map((a) => (
-                      <label key={a.id}>
-                        <input
-                          type="checkbox"
-                          checked={(assets[t.id + ":" + l.id] || []).includes(
-                            a.id,
-                          )}
-                          onChange={(e) =>
-                            setAssets((v) => ({
-                              ...v,
-                              [t.id + ":" + l.id]: e.target.checked
-                                ? [...(v[t.id + ":" + l.id] || []), a.id]
-                                : (v[t.id + ":" + l.id] || []).filter(
-                                    (id) => id !== a.id,
-                                  ),
-                            }))
-                          }
-                        />
-                        {text(a, "filename")} · {num(a, "duration_ms") / 1000}s
-                      </label>
-                    ))}
-                </div>
-                <p>
-                  {(assets[t.id + ":" + l.id] || []).length} recording(s) ready
-                </p>
-                <button
-                  disabled={!(assets[t.id + ":" + l.id] || []).length}
-                  onClick={async () => {
-                    if (
-                      await tools.command("test.submit", {
-                        test: t.id,
-                        learner: l.id,
-                        assets: assets[t.id + ":" + l.id],
-                      })
-                    ) {
-                      setAssets((a) => ({ ...a, [t.id + ":" + l.id]: [] }));
-                      void load();
-                    }
-                  }}
-                >
-                  Submit new version
-                </button>
-              </div>
-            ))}
-        </article>
-      ))}
-      <h3>Classes</h3>
-      {(data.classes || []).map((o) => (
-        <article key={o.id} className="record-card">
-          <strong>{text(o, "batch_name")}</strong> ·{" "}
-          {new Date(text(o, "starts_at")).toLocaleString("en-IN", {
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          })}{" "}
-          {Intl.DateTimeFormat().resolvedOptions().timeZone} ·{" "}
-          {text(o, "status")}
-          {(data.teachingBatches || []).some((b) => b.id === o.batch_id) && (
-            <TeacherAttendance
-              tools={tools}
-              occurrence={o}
-              learners={(data.teachingLearners || []).filter(
-                (l) => l.batch_id === o.batch_id,
-              )}
-            />
-          )}
-        </article>
-      ))}
-      <LibraryView
-        tools={tools}
-        manage={false}
-        batches={data.teachingBatches || []}
-        learners={data.teachingLearners || []}
-        portalLearners={data.learners || []}
-      />
-      {(data.submissions || []).map((s) => (
-        <Review
-          key={s.id}
-          tools={tools}
-          submission={s}
-          labels={[]}
-          canPublish={false}
-        />
-      ))}
-      {(data.households || []).map((h) => (
-        <Statement tools={tools} household={h} key={h.id} />
-      ))}
-      <FamilyEvents tools={tools} />
-    </>
-  );
-}
-function TeacherAttendance({
+export function TeacherAttendance({
   tools,
   occurrence,
   learners,
@@ -332,7 +174,7 @@ function TeacherAttendance({
     </form>
   );
 }
-function FamilyEvents({ tools }: { tools: SchoolTools }) {
+export function FamilyEvents({ tools }: { tools: SchoolTools }) {
   const [data, setData] = useState<{
       events: Row[];
       households: Row[];

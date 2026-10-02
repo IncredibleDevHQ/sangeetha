@@ -193,7 +193,7 @@ export default function App() {
             <p className="subtitle">
               {tenantName
                 ? "Sign in to " + tenantName + "."
-                : "Sign in to your teacher workspace."}
+                : "Sign in to your school workspace."}
             </p>
             {alerts}
             <SignIn local={local} onDone={refresh} onError={setError} />
@@ -343,7 +343,7 @@ export default function App() {
           {page === "overview" && (
             <>
               <div className="page-heading">
-                <span className="eyebrow">YOUR TEACHING PRACTICE</span>
+                <span className="eyebrow">YOUR MUSIC SCHOOL</span>
                 <h1>
                   Welcome,{" "}
                   {me.account.displayName === "School administrator"
