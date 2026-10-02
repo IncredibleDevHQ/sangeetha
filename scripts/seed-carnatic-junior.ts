@@ -28,6 +28,29 @@ async function main() {
       "demo/carnatic-junior/music-notes.txt",
       "utf8",
     );
+    const demoCues = [
+      "S",
+      "R₁",
+      "G₃",
+      "M₁",
+      "P",
+      "D₁",
+      "N₃",
+      "Ṡ",
+      "Ṡ",
+      "N₃",
+      "D₁",
+      "P",
+      "M₁",
+      "G₃",
+      "R₁",
+      "S",
+    ].map((note, i) => ({
+      note,
+      start: i * 0.5,
+      end: (i + 1) * 0.5,
+      beat: String((i % 8) + 1),
+    }));
     const lessons = [
       {
         title: "Welcome: listen, sing, practise",
@@ -93,7 +116,13 @@ async function main() {
             [c.schoolId, id, filename],
           )
         ).rows;
-        if (found.length) continue;
+        if (found.length) {
+          if (filename.endsWith(".wav"))
+            await learning.saveScore(c, String(found[0].id), {
+              cues: demoCues,
+            });
+          continue;
+        }
         const bytes = await readFile("demo/carnatic-junior/" + filename);
         const mime = filename.endsWith(".wav")
           ? "audio/wav"
@@ -114,6 +143,8 @@ async function main() {
               .toString("base64"),
           });
         await learning.finalize(c, asset.id);
+        if (filename.endsWith(".wav"))
+          await learning.saveScore(c, asset.id, { cues: demoCues });
       }
       if (!existing) await learning.publish(c, id, true);
     }

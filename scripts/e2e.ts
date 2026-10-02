@@ -373,6 +373,8 @@ async function main() {
     );
     const lesson = await cmd(tutor, "lesson.create", {
       title: "E2E Swara foundations",
+      raga: "Mayamalavagowla",
+      tala: "Adi",
       curriculum: "Carnatic Junior",
       position: 1,
       level: "Beginner",
@@ -409,12 +411,58 @@ async function main() {
     await cmd(tutor, "lesson.update", {
       id: lesson.id,
       title: "E2E Swara foundations",
+      raga: "Mayamalavagowla",
+      tala: "Adi",
       curriculum: "Carnatic Junior",
       position: 1,
       instructions: "Listen and watch, read the notes, then practise.",
       musicNotes: "S R1 G3 M1 | P D1 N3 S (upper)",
     });
     await cmd(student, "lesson.update", { id: lesson.id }, 403);
+    const cues = [
+      "S",
+      "R₁",
+      "G₃",
+      "M₁",
+      "P",
+      "D₁",
+      "N₃",
+      "Ṡ",
+      "Ṡ",
+      "N₃",
+      "D₁",
+      "P",
+      "M₁",
+      "G₃",
+      "R₁",
+      "S",
+    ].map((note, i) => ({
+      note,
+      start: i / 2,
+      end: (i + 1) / 2,
+      beat: String((i % 8) + 1),
+    }));
+    await cmd(tutor, "media.score", { id: audio, cues });
+    await cmd(student, "media.score", { id: audio, cues }, 403);
+    await cmd(
+      tutor,
+      "media.score",
+      { id: audio, cues: [{ note: "S", start: 0, end: 9 }] },
+      400,
+    );
+    await cmd(tutor, "media.score", { id: video, cues }, 400);
+    const scoredLibrary = await view(student, "library");
+    verify(
+      "Student receives synchronized notes",
+      scoredLibrary.assets.find((a: any) => a.id === audio).note_cues.length ===
+        16,
+    );
+    verify(
+      "Player receives raagam and thaalam",
+      scoredLibrary.lessons[0].raga === "Mayamalavagowla" &&
+        scoredLibrary.lessons[0].tala === "Adi",
+    );
+
     await request(
       student,
       "GET",

@@ -85,6 +85,65 @@ export class LearningService extends SchoolAccess {
     if (!allowed.rows.length)
       throw new AccessError("Lesson access is required.");
   }
+  async saveScore(c: Context, id: string, input: unknown) {
+    const b = z
+      .object({
+        cues: z
+          .array(
+            z.object({
+              start: z.number().finite().min(0),
+              end: z.number().finite().positive(),
+              note: z.string().trim().min(1).max(120),
+              beat: z.string().trim().max(40).optional(),
+            }),
+          )
+          .max(2000),
+      })
+      .parse(input);
+    const asset = (
+      await this.db.query<{
+        lesson_id: string;
+        mime: string;
+        status: string;
+        duration_ms: number;
+      }>(
+        "SELECT lesson_id,mime,status,duration_ms FROM media_assets WHERE school_id=$1 AND id=$2",
+        [c.schoolId, id],
+      )
+    ).rows[0];
+    if (!asset?.lesson_id)
+      throw new AccessError("Lesson recording not found.", 404);
+    await this.lessonAccess(c, asset.lesson_id, true);
+    if (
+      asset.status !== "ready" ||
+      !asset.mime.startsWith("audio/") ||
+      !asset.duration_ms
+    )
+      throw new AccessError("Choose a ready audio recording.", 400);
+    let previousEnd = 0;
+    for (const cue of b.cues) {
+      if (
+        cue.start < previousEnd ||
+        cue.end <= cue.start ||
+        cue.end > Number(asset.duration_ms) / 1000
+      )
+        throw new AccessError(
+          "Notes must be ordered, non-overlapping and within the recording duration.",
+          400,
+        );
+      previousEnd = cue.end;
+    }
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE media_assets SET note_cues=$1::jsonb WHERE school_id=$2 AND id=$3",
+        [JSON.stringify(b.cues), c.schoolId, id],
+      );
+      await activity(tx, c, "lesson.score.updated", {
+        assetId: id,
+        notes: b.cues.length,
+      });
+    });
+  }
   async createLesson(c: Context, input: unknown) {
     const b = z
       .object({
@@ -139,11 +198,13 @@ export class LearningService extends SchoolAccess {
         position: z.number().int().min(1).max(10000),
         instructions: z.string().max(5000),
         musicNotes: z.string().max(20000),
+        raga: z.string().max(100).optional(),
+        tala: z.string().max(100).optional(),
       })
       .parse(input);
     await this.db.transaction(async (tx) => {
       await tx.query(
-        "UPDATE curriculum_lessons SET title=$1,curriculum=$2,position=$3,instructions=$4,music_notes=$5 WHERE school_id=$6 AND id=$7",
+        "UPDATE curriculum_lessons SET title=$1,curriculum=$2,position=$3,instructions=$4,music_notes=$5,raga=COALESCE($8,raga),tala=COALESCE($9,tala) WHERE school_id=$6 AND id=$7",
         [
           b.title,
           b.curriculum,
@@ -152,6 +213,8 @@ export class LearningService extends SchoolAccess {
           b.musicNotes,
           c.schoolId,
           id,
+          b.raga ?? null,
+          b.tala ?? null,
         ],
       );
       await activity(tx, c, "lesson.updated", { lessonId: id });
@@ -210,7 +273,7 @@ export class LearningService extends SchoolAccess {
     }
     const assets = (
       await this.db.query(
-        "SELECT id,lesson_id,filename,mime,bytes,duration_ms,status FROM media_assets WHERE school_id=$1 AND lesson_id IS NOT NULL AND status='ready'",
+        "SELECT id,lesson_id,filename,mime,bytes,duration_ms,status,note_cues FROM media_assets WHERE school_id=$1 AND lesson_id IS NOT NULL AND status='ready'",
         [c.schoolId],
       )
     ).rows;

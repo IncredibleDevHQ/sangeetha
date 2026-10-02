@@ -969,3 +969,56 @@ it("validates lesson video and notes while retaining private access and audio-on
     "not available",
   );
 });
+
+it("persists per-recording note timing with teacher-only access and duration validation", async () => {
+  const learning = new LearningService(db),
+    h = await crm.create(c, family());
+  const lesson = await learning.createLesson(c, {
+    title: "Timed swaras",
+    module: "Swaras",
+    level: "Beginner",
+    published: true,
+  });
+  const bytes = wav(1),
+    asset = await learning.reserve(c, {
+      lesson: lesson.id,
+      filename: "scale.wav",
+      mime: "audio/wav",
+      bytes: bytes.length,
+    });
+  await learning.chunk(c, asset.id, {
+    part: 0,
+    data: bytes.toString("base64"),
+  });
+  await learning.finalize(c, asset.id);
+  const parent = await account("score-parent@example.test", [
+    { capability: "portal.learn", resource: h.learners[1] },
+  ]);
+  const cues = [
+    { note: "S", start: 0, end: 0.5, beat: "1" },
+    { note: "R₁", start: 0.5, end: 1, beat: "2" },
+  ];
+  await expect(learning.saveScore(parent, asset.id, { cues })).rejects.toThrow(
+    "access",
+  );
+  await learning.saveScore(c, asset.id, { cues });
+  expect((await learning.library(parent)).assets[0].note_cues).toEqual(cues);
+  await expect(
+    learning.saveScore(c, asset.id, {
+      cues: [{ note: "S", start: 0, end: 2 }],
+    }),
+  ).rejects.toThrow("duration");
+  await expect(
+    learning.saveScore(c, asset.id, { cues: [cues[1], cues[0]] }),
+  ).rejects.toThrow("ordered");
+  await expect(
+    learning.saveScore(c, asset.id, { cues: [{ note: "", start: 0, end: 1 }] }),
+  ).rejects.toThrow();
+  await expect(
+    learning.saveScore({ ...c, schoolId: crypto.randomUUID() }, asset.id, {
+      cues,
+    }),
+  ).rejects.toThrow("not found");
+  await learning.saveScore(c, asset.id, { cues: [] });
+  expect((await learning.library(parent)).assets[0].note_cues).toEqual([]);
+});

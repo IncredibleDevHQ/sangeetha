@@ -1,3 +1,4 @@
+import { MusicPlayer } from "../../components/MusicPlayer";
 import { UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type Row, type SchoolTools, text, num, Select } from "./common";
@@ -141,9 +142,15 @@ export function Audio({ tools, asset }: { tools: SchoolTools; asset: string }) {
 export function LessonMaterial({
   tools,
   asset,
+  lesson,
+  editable,
+  onSaved,
 }: {
   tools: SchoolTools;
   asset: Row;
+  lesson: Row;
+  editable: boolean;
+  onSaved: () => void;
 }) {
   const src = `/api/schools/${tools.school.id}/media/${asset.id}`;
   const mime = text(asset, "mime");
@@ -151,7 +158,13 @@ export function LessonMaterial({
     <div className="lesson-material">
       <p>{text(asset, "filename")}</p>
       {mime.startsWith("audio/") ? (
-        <Audio tools={tools} asset={asset.id} />
+        <MusicPlayer
+          tools={tools}
+          asset={asset}
+          lesson={lesson}
+          editable={editable}
+          onSaved={onSaved}
+        />
       ) : mime.startsWith("video/") ? (
         <video controls playsInline preload="metadata" src={src} />
       ) : mime.startsWith("image/") ? (
@@ -424,7 +437,14 @@ export function LibraryView({
             {data.assets
               .filter((a) => a.lesson_id === current.id)
               .map((a) => (
-                <LessonMaterial key={a.id} tools={tools} asset={a} />
+                <LessonMaterial
+                  key={a.id}
+                  tools={tools}
+                  asset={a}
+                  lesson={current}
+                  editable={editable}
+                  onSaved={() => void load()}
+                />
               ))}
             {editable && (
               <>
@@ -453,6 +473,8 @@ export function LibraryView({
                           position: Number(f.get("position")),
                           instructions: f.get("instructions"),
                           musicNotes: f.get("musicNotes"),
+                          raga: f.get("raga"),
+                          tala: f.get("tala"),
                         })
                       )
                         await load();
@@ -484,6 +506,14 @@ export function LibraryView({
                         required
                         defaultValue={num(current, "position")}
                       />
+                    </label>
+                    <label>
+                      Raagam
+                      <input name="raga" defaultValue={text(current, "raga")} />
+                    </label>
+                    <label>
+                      Thaalam
+                      <input name="tala" defaultValue={text(current, "tala")} />
                     </label>
                     <label className="wide">
                       Lesson instructions
