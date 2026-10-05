@@ -384,13 +384,13 @@ aside {
   font-weight: 400;
   margin-top: 4px;
 }
-nav {
+.app-layout > aside nav {
   display: flex;
   flex-direction: column;
   gap: 7px;
   margin-top: 32px;
 }
-nav button {
+.app-layout > aside nav button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -402,12 +402,12 @@ nav button {
   font-size: 12px;
   text-align: left;
 }
-nav button.active {
+.app-layout > aside nav button.active {
   background: #e4ddcf;
   color: #544b3f;
   font-weight: 700;
 }
-nav svg {
+.app-layout > aside nav svg {
   color: #898074;
 }
 .sidebar-bottom {
@@ -453,7 +453,7 @@ nav svg {
   flex-direction: column;
   min-width: 0;
 }
-header {
+.workspace > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -774,7 +774,7 @@ footer {
   .banner-music {
     width: 75px;
   }
-  header,
+  .workspace > header,
   footer {
     padding-left: 26px;
     padding-right: 26px;
@@ -837,17 +837,17 @@ footer {
   aside .brand {
     font-size: 21px;
   }
-  nav {
+  .app-layout > aside nav {
     margin-top: 16px;
     flex-direction: row;
     gap: 4px;
   }
-  nav button {
+  .app-layout > aside nav button {
     padding: 9px;
     font-size: 10px;
     gap: 6px;
   }
-  nav svg {
+  .app-layout > aside nav svg {
     width: 15px;
   }
   .content {
@@ -874,7 +874,7 @@ footer {
   .section-heading > span {
     font-size: 8px;
   }
-  header {
+  .workspace > header {
     height: 55px;
     padding: 0 20px;
     font-size: 9px;
@@ -1120,10 +1120,10 @@ textarea {
   .toolbar {
     gap: 10px;
   }
-  nav {
+  .app-layout > aside nav {
     overflow-x: auto;
   }
-  nav button {
+  .app-layout > aside nav button {
     white-space: nowrap;
   }
 }

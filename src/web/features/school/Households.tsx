@@ -1,8 +1,10 @@
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { useRouteValue } from "../../routes";
+import { ArrowLeft, ArrowUpRight, Users, Search, Plus } from "lucide-react";
+import { Badge } from "../../components/ui";
+import { useRouteValue, navigate } from "../../routes";
 import { WorkflowDetails } from "../../components/WorkflowDetails";
 import PhoneInput from "../auth/PhoneInput";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseCsv, csvExport } from "../../../core/csv";
 import { text, num, today, Select, type Row, type SchoolTools } from "./common";
 type Person = {
@@ -31,7 +33,7 @@ type Detail = {
 };
 export default function Households({ tools: t }: { tools: SchoolTools }) {
   const [rows, setRows] = useState<Row[]>([]),
-    [query, setQuery] = useState(""),
+    [query] = useRouteValue("q"),
     [detail, setDetail] = useState<Detail | null>(null),
     [createAction, setCreateAction] = useRouteValue("action"),
     [name, setName] = useState(""),
@@ -52,33 +54,97 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
     [selected, setSelected] = useState<number[]>([]),
     [views, setViews] = useState<Row[]>([]),
     [importKey, setImportKey] = useState(crypto.randomUUID());
+  const [section] = useRouteValue("section", "summary");
+  const [form] = useRouteValue("form");
+  const [householdId] = useRouteValue("household");
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState("");
+  const [detailError, setDetailError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const searchRequest = useRef(0);
+  const recordHeading = useRef<HTMLHeadingElement>(null);
   const create = createAction === "new-household";
+  const setQuery = (value: string) => navigate({ q: value }, true);
   const setCreate = (value: boolean) =>
-    setCreateAction(value ? "new-household" : "");
+    navigate({
+      action: value ? "new-household" : "",
+      household: "",
+      section: "",
+      form: "",
+    });
+  const back = () =>
+    navigate({ household: "", action: "", section: "", form: "" });
+  const memberAction = detail?.people.some(
+    (p) =>
+      `${text(p, "name")} · ${p.learner_id ? text(p, "level") : "Contact only"}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") === createAction,
+  );
+  const recordSection =
+    memberAction ||
+    form.startsWith("save-person") ||
+    form.startsWith("save-relationship")
+      ? "members"
+      : form.startsWith("add-note") || form.startsWith("add-follow-up")
+        ? "work"
+        : ["summary", "members", "work", "activity"].includes(section)
+          ? section
+          : "summary";
   async function load() {
-    setRows(
-      await t.read<Row[]>("households", "?q=" + encodeURIComponent(query)),
-    );
-    setViews(await t.read<Row[]>("saved-views"));
+    const request = ++searchRequest.current;
+    setListLoading(true);
+    setListError("");
+    try {
+      const [nextRows, nextViews] = await Promise.all([
+        t.read<Row[]>("households", "?q=" + encodeURIComponent(query)),
+        t.read<Row[]>("saved-views"),
+      ]);
+      if (request === searchRequest.current) {
+        setRows(nextRows);
+        setViews(nextViews);
+      }
+    } catch (e) {
+      if (request === searchRequest.current) setListError((e as Error).message);
+    } finally {
+      if (request === searchRequest.current) setListLoading(false);
+    }
   }
   useEffect(() => {
-    load().catch((e) => t.setError(e.message));
+    setListLoading(true);
+    const timeout = setTimeout(() => void load(), 200);
+    return () => {
+      clearTimeout(timeout);
+      searchRequest.current++;
+    };
   }, [t.read, query]);
-  const [householdId, setHouseholdId] = useRouteValue("household");
   useEffect(() => {
+    let active = true;
+    setDetail((previous) =>
+      previous?.household.id === householdId ? previous : null,
+    );
+    setDetailError("");
     if (householdId)
       t.read<Detail>("household", "?id=" + encodeURIComponent(householdId))
-        .then(setDetail)
-        .catch((e) => t.setError(e.message));
-    else setDetail(null);
-  }, [householdId, t.read]);
+        .then((value) => {
+          if (active) setDetail(value);
+        })
+        .catch((e) => {
+          if (active) setDetailError(e.message);
+        });
+    return () => {
+      active = false;
+    };
+  }, [householdId, t.read, revision]);
+  useEffect(() => {
+    recordHeading.current?.focus();
+  }, [detail?.household.id, create]);
   async function open(id: string) {
-    setHouseholdId(id);
-    setDetail(await t.read<Detail>("household", "?id=" + id));
+    navigate({ household: id, action: "", form: "", section: "summary" });
   }
   async function refreshDetail() {
     await load();
-    if (detail) await open(detail.household.id);
+    setRevision((value) => value + 1);
   }
   function change(i: number, key: keyof Person, value: string | boolean) {
     setPeople((p) =>
@@ -162,70 +228,92 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
   }
   return (
     <>
-      <div className="section-heading">
-        <h2>Households & students</h2>
-        <button
-          className="button primary"
-          onClick={() => {
-            setCreate(!create);
-            setDetail(null);
-          }}
-        >
-          New household
-        </button>
-      </div>
-      <p className="fine">
-        One family contact, separate learners. Shared phone numbers never merge
-        students.
-      </p>
-      <div className="toolbar">
-        <input
-          aria-label="Search households"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search family or learner name"
-        />
-        <button
-          className="text-button"
-          onClick={() =>
-            t
-              .command("view.save", { name: query || "All households", query })
-              .then(load)
-          }
-        >
-          Save this view
-        </button>
-        <button className="text-button" onClick={exportRoster}>
-          Export roster
-        </button>
-        <label className="file-button">
-          Import CSV
-          <input
-            type="file"
-            accept=".csv"
-            onChange={(e) =>
-              e.target.files?.[0] && importFile(e.target.files[0])
-            }
-          />
-        </label>
-      </div>
-      {!!views.length && (
-        <div className="filter-chips">
-          {views.map((v) => (
+      {!create && !householdId && (
+        <>
+          <div className="section-heading">
+            <h2>Households & students</h2>
             <button
-              key={v.id}
+              className="button primary"
+              onClick={() => {
+                setCreate(true);
+              }}
+            >
+              <Plus size={16} /> New household
+            </button>
+          </div>
+          <p className="fine">
+            One family contact, separate learners. Shared phone numbers never
+            merge students.
+          </p>
+          <div className="toolbar household-search">
+            <label className="search-field">
+              <Search size={18} aria-hidden="true" />
+              <input
+                aria-label="Search households"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search family or learner name"
+              />
+            </label>
+            <button
+              className="text-button"
               onClick={() =>
-                setQuery(String((v.filters as { query: string }).query))
+                t
+                  .command("view.save", {
+                    name: query || "All households",
+                    query,
+                  })
+                  .then(load)
               }
             >
-              {text(v, "name")}
+              Save this view
             </button>
-          ))}
-        </div>
+            <button className="text-button" onClick={exportRoster}>
+              Export roster
+            </button>
+            <label className="file-button">
+              Import CSV
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) =>
+                  e.target.files?.[0] && importFile(e.target.files[0])
+                }
+              />
+            </label>
+          </div>
+          {!!views.length && (
+            <div className="filter-chips">
+              {views.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() =>
+                    setQuery(String((v.filters as { query: string }).query))
+                  }
+                >
+                  {text(v, "name")}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
       {create && (
-        <section className="panel">
-          <h3>Create household</h3>
+        <section className="panel household-create">
+          <button
+            type="button"
+            className="text-button record-back"
+            onClick={back}
+          >
+            <ArrowLeft size={16} /> All households
+          </button>
+          <h2 ref={recordHeading} tabIndex={-1}>
+            New household
+          </h2>
+          <p className="fine">
+            Add everyone learning with your school. Choose one person for school
+            updates and one for billing.
+          </p>
           <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
@@ -237,6 +325,8 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 setCreate(false);
                 setName("");
                 setPeople([blank()]);
+                setPrimary(0);
+                setBilling(0);
                 await load();
                 await open(result.id);
               }
@@ -327,7 +417,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 className="text-button"
                 onClick={() => setPeople((p) => [...p, blank()])}
               >
-                + Add family member
+                <Plus size={16} /> Add family member
               </button>
               <button className="button primary" disabled={t.busy}>
                 Create household
@@ -384,192 +474,349 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
           </button>
         </section>
       )}
-      <section className="panel">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Household</th>
-                <th>Primary contact</th>
-                <th>Learners</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((h) => (
-                <tr key={h.id}>
-                  <td>
-                    <button className="text-button" onClick={() => open(h.id)}>
-                      {text(h, "name")}
-                    </button>
-                  </td>
-                  <td>
-                    {text(h, "contact_name")}
-                    <small>{text(h, "phone") || text(h, "email")}</small>
-                  </td>
-                  <td>{num(h, "learner_count")}</td>
-                  <td>{h.archived_at ? "Archived" : "Active"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!rows.length && (
-            <p className="empty">
-              Create your first household to start the roster.
-            </p>
-          )}
-        </div>
-      </section>
-      {detail && (
-        <section className="panel">
-          <div className="section-heading">
-            <h2>{text(detail.household, "name")}</h2>
-            <button className="text-button" onClick={() => setHouseholdId("")}>
-              Close
-            </button>
+      {!create && !householdId && (
+        <section
+          className="household-directory"
+          aria-label="Household directory"
+          aria-busy={listLoading}
+        >
+          <div className="directory-caption">
+            <strong>
+              {listLoading
+                ? "Finding households…"
+                : `${rows.length} household${rows.length === 1 ? "" : "s"}`}
+            </strong>
+            <span>{query ? "Search results" : "Your school community"}</span>
           </div>
-          <WorkflowForm
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const form = new FormData(e.currentTarget);
-              await t.command("household.update", {
-                id: detail.household.id,
-                name: form.get("name"),
-                primary: form.get("primary"),
-                billing: form.get("billing"),
-                version: detail.household.version,
-                archive: !!detail.household.archived_at,
-              });
-              await refreshDetail();
-            }}
-          >
-            <div className="form-grid">
-              <label>
-                Household name
-                <input
-                  name="name"
-                  required
-                  defaultValue={text(detail.household, "name")}
-                  key={detail.household.version as number}
-                />
-              </label>
-              <label>
-                Primary contact
-                <select
-                  name="primary"
-                  defaultValue={text(detail.household, "primary_person_id")}
-                >
-                  {detail.people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {text(p, "name")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Billing contact
-                <select
-                  name="billing"
-                  defaultValue={text(detail.household, "billing_person_id")}
-                >
-                  {detail.people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {text(p, "name")}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          {listError ? (
+            <div className="directory-empty" role="alert">
+              <h3>We couldn’t load the families</h3>
+              <p>{listError}</p>
+              <button onClick={() => void load()}>Try again</button>
             </div>
-            <div className="toolbar">
-              <button className="button primary" disabled={t.busy}>
-                Save household
+          ) : (
+            <>
+              <div className="directory-columns" aria-hidden="true">
+                <span>Household</span>
+                <span>Primary contact</span>
+                <span>Learners</span>
+                <span>Status</span>
+              </div>
+              {!listLoading &&
+                rows.map((h) => (
+                  <button
+                    type="button"
+                    className="household-row"
+                    key={h.id}
+                    onClick={() => void open(h.id)}
+                    aria-label={`Open ${text(h, "name")}`}
+                  >
+                    <span className="family-identity">
+                      <span className="family-avatar">
+                        <Users size={20} />
+                      </span>
+                      <strong>{text(h, "name")}</strong>
+                    </span>
+                    <span className="family-contact">
+                      <span>
+                        {text(h, "contact_name") || "No primary contact"}
+                      </span>
+                      <small>
+                        {text(h, "phone") ||
+                          text(h, "email") ||
+                          "Contact details not provided"}
+                      </small>
+                    </span>
+                    <span className="family-count">
+                      {num(h, "learner_count")} <span>learners</span>
+                    </span>
+                    <span className="family-status">
+                      <Badge tone={h.archived_at ? "neutral" : "success"}>
+                        {h.archived_at ? "Archived" : "Active"}
+                      </Badge>
+                      <ArrowUpRight size={16} />
+                    </span>
+                  </button>
+                ))}
+              {!listLoading && !rows.length && (
+                <div className="directory-empty">
+                  <Users size={28} />
+                  <h3>
+                    {query
+                      ? "No families match your search"
+                      : "Welcome your first family"}
+                  </h3>
+                  <p>
+                    {query
+                      ? "Try a different family or learner name."
+                      : "Create a household to keep contacts and each learner’s progress together."}
+                  </p>
+                  <button
+                    className="button primary"
+                    onClick={() => (query ? setQuery("") : setCreate(true))}
+                  >
+                    {query ? "Clear search" : "New household"}
+                  </button>
+                </div>
+              )}
+              {listLoading && (
+                <p className="directory-loading" role="status">
+                  Loading school records…
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      )}
+      {!create && householdId && !detail && (
+        <section className="panel">
+          <button className="text-button record-back" onClick={back}>
+            <ArrowLeft size={16} /> All households
+          </button>
+          {detailError ? (
+            <div role="alert">
+              <p>{detailError}</p>
+              <button onClick={() => setRevision((v) => v + 1)}>
+                Try again
               </button>
+            </div>
+          ) : (
+            <p role="status">Opening household…</p>
+          )}
+        </section>
+      )}
+      {!create && detail && householdId && (
+        <section
+          className="household-record"
+          data-route-resource={detail.household.id}
+        >
+          <button className="text-button record-back" onClick={back}>
+            <ArrowLeft size={16} /> All households
+          </button>
+          <header className="family-header">
+            <span className="family-avatar">
+              <Users size={26} />
+            </span>
+            <div>
+              <span className="eyebrow">Household</span>
+              <h2 ref={recordHeading} tabIndex={-1}>
+                {text(detail.household, "name")}
+              </h2>
+              <p>
+                {detail.people.filter((p) => p.learner_id).length} learners ·{" "}
+                {detail.people.length} family members
+              </p>
+            </div>
+            <Badge tone={detail.household.archived_at ? "neutral" : "success"}>
+              {detail.household.archived_at ? "Archived" : "Active"}
+            </Badge>
+          </header>
+          <nav className="record-nav" aria-label="Household sections">
+            {[
+              ["summary", "Overview"],
+              ["members", "Family members"],
+              ["work", "Notes & follow-ups"],
+              ["activity", "Activity"],
+            ].map(([id, label]) => (
               <button
                 type="button"
-                className="text-button danger"
-                onClick={async () => {
-                  await t.command("household.update", {
-                    id: detail.household.id,
-                    name: detail.household.name,
-                    primary: detail.household.primary_person_id,
-                    billing: detail.household.billing_person_id,
-                    version: detail.household.version,
-                    archive: !detail.household.archived_at,
-                  });
-                  await refreshDetail();
-                }}
+                key={id}
+                aria-current={recordSection === id ? "page" : undefined}
+                onClick={() => navigate({ section: id, action: "", form: "" })}
               >
-                {detail.household.archived_at
-                  ? "Restore household"
-                  : "Archive household"}
+                {label}
               </button>
+            ))}
+          </nav>
+          <div hidden={recordSection !== "summary"}>
+            <div className="contact-summary">
+              {[
+                ["Primary contact", "primary_person_id"],
+                ["Billing contact", "billing_person_id"],
+              ].map(([label, key]) => {
+                const person = detail.people.find(
+                  (p) => p.id === detail.household[key],
+                );
+                return (
+                  <article key={key}>
+                    <span className="eyebrow">{label}</span>
+                    <h3>{person ? text(person, "name") : "Not assigned"}</h3>
+                    <p>
+                      {person
+                        ? text(person, "phone") ||
+                          text(person, "email") ||
+                          "No contact details"
+                        : "Choose a family member below."}
+                    </p>
+                    {person && !!person.contact_opt_out && (
+                      <Badge>Messages opted out</Badge>
+                    )}
+                  </article>
+                );
+              })}
             </div>
-          </WorkflowForm>
-          <h3 className="pending-title">Family members</h3>
-          {detail.people.map((p) => (
-            <WorkflowDetails className="member-detail" key={p.id}>
-              <summary>
-                {text(p, "name")} ·{" "}
-                {p.learner_id ? text(p, "level") : "Contact only"}
-              </summary>
+            <WorkflowDetails className="task-disclosure">
+              <summary>Edit household details</summary>
               <WorkflowForm
-                className="form-grid"
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  const f = new FormData(e.currentTarget);
-                  await t.command("person.update", {
-                    id: p.id,
-                    name: f.get("name"),
-                    phone: f.get("phone"),
-                    email: f.get("email"),
-                    relationship: p.relationship,
-                    learner: !!p.learner_id,
-                    level: f.get("level"),
-                    optOut: f.get("optOut") === "on",
+                  const form = new FormData(e.currentTarget);
+                  await t.command("household.update", {
+                    id: detail.household.id,
+                    name: form.get("name"),
+                    primary: form.get("primary"),
+                    billing: form.get("billing"),
+                    version: detail.household.version,
+                    archive: !!detail.household.archived_at,
                   });
                   await refreshDetail();
                 }}
               >
-                <label>
-                  Name
-                  <input name="name" required defaultValue={text(p, "name")} />
-                </label>
-                <PhoneInput
-                  label="Phone"
-                  name="phone"
-                  defaultValue={text(p, "phone")}
-                />
-                <label>
-                  Email
-                  <input
-                    name="email"
-                    type="email"
-                    defaultValue={text(p, "email")}
-                  />
-                </label>
-                <label>
-                  Level
-                  <input
-                    name="level"
-                    defaultValue={text(p, "level") || "Beginner"}
-                  />
-                </label>
-                <label className="check-label">
-                  <input
-                    name="optOut"
-                    type="checkbox"
-                    defaultChecked={!!p.contact_opt_out}
-                  />
-                  Opt out of messages
-                </label>
-                <button className="button secondary" disabled={t.busy}>
-                  Save person
-                </button>
+                <div className="form-grid">
+                  <label>
+                    Household name
+                    <input
+                      name="name"
+                      required
+                      defaultValue={text(detail.household, "name")}
+                      key={detail.household.version as number}
+                    />
+                  </label>
+                  <label>
+                    Primary contact
+                    <select
+                      name="primary"
+                      defaultValue={text(detail.household, "primary_person_id")}
+                    >
+                      {detail.people.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {text(p, "name")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Billing contact
+                    <select
+                      name="billing"
+                      defaultValue={text(detail.household, "billing_person_id")}
+                    >
+                      {detail.people.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {text(p, "name")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="toolbar">
+                  <button className="button primary" disabled={t.busy}>
+                    Save household
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button danger"
+                    onClick={async () => {
+                      await t.command("household.update", {
+                        id: detail.household.id,
+                        name: detail.household.name,
+                        primary: detail.household.primary_person_id,
+                        billing: detail.household.billing_person_id,
+                        version: detail.household.version,
+                        archive: !detail.household.archived_at,
+                      });
+                      await refreshDetail();
+                    }}
+                  >
+                    {detail.household.archived_at
+                      ? "Restore household"
+                      : "Archive household"}
+                  </button>
+                </div>
               </WorkflowForm>
             </WorkflowDetails>
-          ))}
-          <div className="form-grid">
-            <div>
+            <p className="record-help">
+              One contact can receive updates for the family. Each learner keeps
+              their own lessons, attendance and feedback.
+            </p>
+          </div>
+          <div hidden={recordSection !== "members"}>
+            <h3 className="pending-title">Family members</h3>
+            <p className="fine">
+              Open a member to update their contact details and learning level.
+            </p>
+            {detail.people.map((p) => (
+              <WorkflowDetails
+                className="member-detail"
+                context={{ section: "members" }}
+                key={p.id}
+                data-route-resource={p.id}
+              >
+                <summary>
+                  {text(p, "name")} ·{" "}
+                  {p.learner_id ? text(p, "level") : "Contact only"}
+                </summary>
+                <WorkflowForm
+                  className="form-grid"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const f = new FormData(e.currentTarget);
+                    await t.command("person.update", {
+                      id: p.id,
+                      name: f.get("name"),
+                      phone: f.get("phone"),
+                      email: f.get("email"),
+                      relationship: p.relationship,
+                      learner: !!p.learner_id,
+                      level: f.get("level"),
+                      optOut: f.get("optOut") === "on",
+                    });
+                    await refreshDetail();
+                  }}
+                >
+                  <label>
+                    Name
+                    <input
+                      name="name"
+                      required
+                      defaultValue={text(p, "name")}
+                    />
+                  </label>
+                  <PhoneInput
+                    label="Phone"
+                    name="phone"
+                    defaultValue={text(p, "phone")}
+                  />
+                  <label>
+                    Email
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={text(p, "email")}
+                    />
+                  </label>
+                  <label>
+                    Level
+                    <input
+                      name="level"
+                      defaultValue={text(p, "level") || "Beginner"}
+                    />
+                  </label>
+                  <label className="check-label">
+                    <input
+                      name="optOut"
+                      type="checkbox"
+                      defaultChecked={!!p.contact_opt_out}
+                    />
+                    Opt out of messages
+                  </label>
+                  <button className="button secondary" disabled={t.busy}>
+                    Save person
+                  </button>
+                </WorkflowForm>
+              </WorkflowDetails>
+            ))}
+            <div className="relationship-panel">
               <h3>Guardian relationships</h3>
               <p>
                 Relationships describe the household. Learning access is granted
@@ -634,100 +881,112 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 </label>
                 <button>Save relationship</button>
               </WorkflowForm>
-              <h3 className="pending-title">Internal notes</h3>
-              {detail.notes.map((n) => (
-                <p key={n.id} className="note">
-                  {text(n, "text")}
-                </p>
-              ))}
-              <WorkflowForm
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await t.command("household.note", {
-                    id: detail.household.id,
-                    text: note,
-                  });
-                  setNote("");
-                  await refreshDetail();
-                }}
-              >
-                <label>
-                  Add note
-                  <textarea
-                    required
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
-                </label>
-                <button className="button secondary" disabled={t.busy}>
-                  Add note
-                </button>
-              </WorkflowForm>
-            </div>
-            <div>
-              <h3 className="pending-title">Follow-ups</h3>
-              {detail.tasks.map((task) => (
-                <div className="list-row" key={task.id}>
-                  <span>
-                    {text(task, "title")} · {text(task, "due_on")}
-                  </span>
-                  {task.done_at ? (
-                    <span>Done</span>
-                  ) : (
-                    <button
-                      className="text-button"
-                      onClick={async () => {
-                        await t.command("task.complete", { id: task.id });
-                        await refreshDetail();
-                      }}
-                    >
-                      Mark done
-                    </button>
-                  )}
-                </div>
-              ))}
-              <WorkflowForm
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await t.command("household.task", {
-                    id: detail.household.id,
-                    title: task,
-                    due,
-                  });
-                  setTask("");
-                  await refreshDetail();
-                }}
-              >
-                <label>
-                  Follow-up
-                  <input
-                    required
-                    value={task}
-                    onChange={(e) => setTask(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Due date
-                  <input
-                    required
-                    type="date"
-                    value={due}
-                    onChange={(e) => setDue(e.target.value)}
-                  />
-                </label>
-                <button className="button secondary" disabled={t.busy}>
-                  Add follow-up
-                </button>
-              </WorkflowForm>
             </div>
           </div>
-          <h3 className="pending-title">Activity</h3>
-          {detail.activity.map((a, i) => (
-            <p className="fine" key={i}>
-              {text(a, "action")} ·{" "}
-              {new Date(text(a, "created_at")).toLocaleString("en-IN")}
-            </p>
-          ))}
+          <div hidden={recordSection !== "work"}>
+            <div className="record-work-grid">
+              <section className="record-work-panel">
+                <h3>Internal notes</h3>
+                <p className="fine">Visible to authorised school staff.</p>
+                {detail.notes.map((n) => (
+                  <p key={n.id} className="note">
+                    {text(n, "text")}
+                  </p>
+                ))}
+                <WorkflowForm
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const saved = await t.command("household.note", {
+                      id: detail.household.id,
+                      text: note,
+                    });
+                    if (saved !== undefined) setNote("");
+                    await refreshDetail();
+                  }}
+                >
+                  <label>
+                    Add note
+                    <textarea
+                      required
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                    />
+                  </label>
+                  <button className="button secondary" disabled={t.busy}>
+                    Add note
+                  </button>
+                </WorkflowForm>
+              </section>
+              <section className="record-work-panel">
+                <h3>Follow-ups</h3>
+                {detail.tasks.map((task) => (
+                  <div className="list-row" key={task.id}>
+                    <span>
+                      {text(task, "title")} · {text(task, "due_on")}
+                    </span>
+                    {task.done_at ? (
+                      <span>Done</span>
+                    ) : (
+                      <button
+                        className="text-button"
+                        onClick={async () => {
+                          await t.command("task.complete", { id: task.id });
+                          await refreshDetail();
+                        }}
+                      >
+                        Mark done
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <WorkflowForm
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const saved = await t.command("household.task", {
+                      id: detail.household.id,
+                      title: task,
+                      due,
+                    });
+                    if (saved !== undefined) setTask("");
+                    await refreshDetail();
+                  }}
+                >
+                  <label>
+                    Follow-up
+                    <input
+                      required
+                      value={task}
+                      onChange={(e) => setTask(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Due date
+                    <input
+                      required
+                      type="date"
+                      value={due}
+                      onChange={(e) => setDue(e.target.value)}
+                    />
+                  </label>
+                  <button className="button secondary" disabled={t.busy}>
+                    Add follow-up
+                  </button>
+                </WorkflowForm>
+              </section>
+            </div>
+          </div>
+          <div
+            hidden={recordSection !== "activity"}
+            className="record-activity"
+          >
+            <h3>Activity</h3>
+            {detail.activity.map((a, i) => (
+              <p className="fine" key={i}>
+                {text(a, "action")} ·{" "}
+                {new Date(text(a, "created_at")).toLocaleString("en-IN")}
+              </p>
+            ))}
+          </div>
         </section>
       )}
     </>

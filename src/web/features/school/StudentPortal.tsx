@@ -26,6 +26,12 @@ import { Statement, TeacherAttendance, FamilyEvents } from "./Community";
 export function PortalView({ tools }: { tools: SchoolTools }) {
   const [data, setData] = useState<Record<string, Row[]>>({});
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [assignmentFilter, setAssignmentFilter] = useRouteValue(
+    "assignmentFilter",
+    "all",
+  );
+  const [submitted, setSubmitted] = useState("");
   const [page, setPage] = useRouteValue("section", "overview");
   const [learnerId, setLearnerId] = useRouteValue("learner");
   const [selectedTest, setSelectedTest] = useRouteValue("test");
@@ -34,8 +40,11 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   const load = () =>
     tools
       .read<typeof data>("portal")
-      .then(setData)
-      .catch((e) => tools.setError(e.message))
+      .then((result) => {
+        setData(result);
+        setLoadError("");
+      })
+      .catch((e) => setLoadError(e.message))
       .finally(() => setReady(true));
   useEffect(() => {
     void load();
@@ -63,6 +72,19 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   );
   const selected = tests.find((t) => t.id === selectedTest);
   const review = published.find((s) => s.id === selectedReview);
+  const assignmentVersions = submissions.filter(
+    (s) => s.assessment_id === selectedTest,
+  );
+  const hasSubmission = (test: Row) =>
+    submissions.some((s) => s.assessment_id === test.id);
+  const visibleTests = tests.filter((test) =>
+    assignmentFilter === "todo"
+      ? !hasSubmission(test)
+      : assignmentFilter === "submitted"
+        ? hasSubmission(test)
+        : true,
+  );
+  const selectedAssets = assets[selectedTest + ":" + id] || [];
   const pendingPractice = practice.filter((p) => !p.completed_at);
   const nav = [
     { id: "overview", label: "Overview", icon: BookOpen, show: true },
@@ -144,6 +166,8 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   );
   const assignmentRow = (t: Row) => {
     const versions = submissions.filter((s) => s.assessment_id === t.id);
+    const overdue =
+      !versions.length && new Date(text(t, "due_at")).getTime() < Date.now();
     return (
       <div className="learning-row" key={t.id}>
         <span className="row-icon">
@@ -159,7 +183,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
           </p>
         </div>
         <Badge tone={versions.length ? "success" : "attention"}>
-          {versions.length ? "Submitted" : "To do"}
+          {versions.length ? "Submitted" : overdue ? "Past due" : "To do"}
         </Badge>
         <Action
           onClick={() => openTest(t.id)}
@@ -170,7 +194,15 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       </div>
     );
   };
-  if (!ready) return <p>Loading your learning space…</p>;
+  if (!ready) return <p role="status">Loading your learning space…</p>;
+  if (loadError)
+    return (
+      <section className="learning-panel">
+        <SectionTitle title="Your learning space couldn’t load" />
+        <p role="alert">{loadError}</p>
+        <Action onClick={() => void load()}>Try again</Action>
+      </section>
+    );
   return (
     <div className="learning-space">
       <div className="learning-page-title">
@@ -197,9 +229,16 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   aria-label="Learning as"
                   value={id}
                   onChange={(e) => {
-                    setLearnerId(e.target.value);
-                    setSelectedTest("");
-                    setSelectedReview("");
+                    navigate({
+                      learner: e.target.value,
+                      test: "",
+                      review: "",
+                      lesson: "",
+                      asset: "",
+                      action: "",
+                      form: "",
+                    });
+                    setSubmitted("");
                   }}
                 >
                   {learners.map((l) => (
@@ -384,10 +423,52 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
             detail="Each submission keeps its own recording and feedback."
           />
           {!selected ? (
-            <section className="learning-panel">
-              {tests.map(assignmentRow)}
-              {!tests.length && <EmptyState>No assignments yet.</EmptyState>}
-            </section>
+            <>
+              {selectedTest && (
+                <p role="status" className="notice">
+                  This assignment isn’t available for the selected learner.
+                  Choose one below.
+                </p>
+              )}
+              <div
+                className="assignment-filters"
+                aria-label="Filter assignments"
+              >
+                {[
+                  ["all", "All", tests.length],
+                  [
+                    "todo",
+                    "To do",
+                    tests.filter((t) => !hasSubmission(t)).length,
+                  ],
+                  [
+                    "submitted",
+                    "Submitted",
+                    tests.filter(hasSubmission).length,
+                  ],
+                ].map(([value, label, count]) => (
+                  <Action
+                    key={value}
+                    variant="quiet"
+                    aria-pressed={assignmentFilter === value}
+                    onClick={() => setAssignmentFilter(String(value))}
+                  >
+                    {label}
+                    <span>{count}</span>
+                  </Action>
+                ))}
+              </div>
+              <section className="learning-panel">
+                {visibleTests.map(assignmentRow)}
+                {!visibleTests.length && (
+                  <EmptyState>
+                    {tests.length
+                      ? "No assignments in this view."
+                      : "Your teacher hasn’t assigned a test yet. When one is ready, the instructions and due date will appear here."}
+                  </EmptyState>
+                )}
+              </section>
+            </>
           ) : (
             <article className="assessment-detail">
               <Action variant="quiet" onClick={() => setSelectedTest("")}>
@@ -405,7 +486,41 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   </p>
                 </div>
               </div>
-              <p>{text(selected, "instructions")}</p>
+              <div className="submission-steps" aria-label="Submission steps">
+                <span>
+                  <Check size={15} /> Read instructions
+                </span>
+                <span className={!selectedAssets.length ? "current" : ""}>
+                  <FileAudio size={15} /> Choose recordings
+                </span>
+                <span className={selectedAssets.length ? "current" : ""}>
+                  <ClipboardList size={15} /> Submit for review
+                </span>
+              </div>
+              <section className="assignment-instructions">
+                <h3>What to prepare</h3>
+                <p>
+                  {text(selected, "instructions") ||
+                    "Ask your teacher which exercise to record."}
+                </p>
+              </section>
+              {submitted === selected.id + ":" + id && (
+                <div className="submission-receipt" role="status">
+                  <Check size={20} />
+                  <div>
+                    <strong>Your recording is submitted</strong>
+                    <p>
+                      {text(learner!, "name")} · {text(selected, "title")}. Your
+                      teacher can now review this version.
+                    </p>
+                  </div>
+                </div>
+              )}
+              <h3 className="submission-heading">Your recordings</h3>
+              <p className="fine">
+                Upload a recording or select a previous file below. Only
+                selected files are submitted.
+              </p>
               <Upload
                 tools={tools}
                 learner={id}
@@ -460,7 +575,16 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
               )}
               <div className="assessment-submit">
                 <span>
-                  {(assets[selected.id + ":" + id] || []).length} selected
+                  <strong>
+                    {selectedAssets.length} recording
+                    {selectedAssets.length === 1 ? "" : "s"} selected
+                  </strong>
+                  <small>
+                    Submitting for {text(learner!, "name")}
+                    {assignmentVersions.length
+                      ? " · creates a new version"
+                      : ""}
+                  </small>
                 </span>
                 <Action
                   variant="primary"
@@ -477,11 +601,14 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                         ...a,
                         [selected.id + ":" + id]: [],
                       }));
+                      setSubmitted(selected.id + ":" + id);
                       await load();
                     }
                   }}
                 >
-                  Submit recording
+                  {assignmentVersions.length
+                    ? "Submit new version"
+                    : "Submit recording"}
                 </Action>
               </div>
               <h3>Submission history</h3>

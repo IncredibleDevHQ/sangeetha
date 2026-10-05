@@ -436,14 +436,17 @@ export default function App() {
           {page === "operations" && school && adminExperience && (
             <SchoolWorkspace key={school.id} school={school} />
           )}
-          {page === "learning" && school && learningExperience && (
-            <SchoolWorkspace
-              key={school.id + "learning"}
-              school={school}
-              experience="learning"
-            />
-          )}
-          {page === "review" &&
+          {(page === "learning" || (page === "overview" && !adminExperience)) &&
+            school &&
+            learningExperience && (
+              <SchoolWorkspace
+                key={school.id + "learning"}
+                school={school}
+                experience="learning"
+              />
+            )}
+          {(page === "review" ||
+            (page === "overview" && !adminExperience && !learningExperience)) &&
             school &&
             (reviewerExperience ||
               workspaceAccess.capabilities.includes("assessments.manage")) && (
@@ -461,137 +464,143 @@ export default function App() {
               name={me.account.displayName}
             />
           )}
-          {page === "overview" && !(school && adminExperience) && (
-            <>
-              <div className="page-heading">
-                <span className="eyebrow">YOUR MUSIC SCHOOL</span>
-                <h1>
-                  Welcome,{" "}
-                  {me.account.displayName === "School administrator"
-                    ? "teacher"
-                    : me.account.displayName.split(" ")[0]}
-                  .
-                </h1>
-                <p>
-                  {school
-                    ? "Your school administration and learning spaces are ready."
-                    : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
-                </p>
-              </div>
-              {school ? (
-                <>
-                  <section className="welcome-banner">
-                    <div>
-                      <span className="tag">YOUR MUSIC SCHOOL</span>
-                      <h2>A place for your whole school.</h2>
-                      <p>
-                        Manage your school and learning through the workspace
-                        assigned to you.
-                      </p>
-                      <button
-                        className="button cream"
-                        onClick={() =>
-                          setPage(
-                            adminExperience
-                              ? "operations"
-                              : learningExperience
-                                ? "learning"
-                                : reviewerExperience
-                                  ? "review"
-                                  : "account",
-                          )
-                        }
-                      >
-                        {adminExperience
-                          ? "Open school administration"
-                          : learningExperience
-                            ? "Open learning portal"
-                            : reviewerExperience
-                              ? "Open assigned reviews"
-                              : "Manage your account"}
-                        <ArrowRight size={16} />
-                      </button>
+          {page === "overview" &&
+            !(
+              school &&
+              (adminExperience || learningExperience || reviewerExperience)
+            ) && (
+              <>
+                <div className="page-heading">
+                  <span className="eyebrow">YOUR MUSIC SCHOOL</span>
+                  <h1>
+                    Welcome,{" "}
+                    {me.account.displayName === "School administrator"
+                      ? "teacher"
+                      : me.account.displayName.split(" ")[0]}
+                    .
+                  </h1>
+                  <p>
+                    {school
+                      ? "Your school administration and learning spaces are ready."
+                      : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
+                  </p>
+                </div>
+                {school ? (
+                  <>
+                    <section className="welcome-banner">
+                      <div>
+                        <span className="tag">YOUR MUSIC SCHOOL</span>
+                        <h2>A place for your whole school.</h2>
+                        <p>
+                          Manage your school and learning through the workspace
+                          assigned to you.
+                        </p>
+                        <button
+                          className="button cream"
+                          onClick={() =>
+                            setPage(
+                              adminExperience
+                                ? "operations"
+                                : learningExperience
+                                  ? "learning"
+                                  : reviewerExperience
+                                    ? "review"
+                                    : "account",
+                            )
+                          }
+                        >
+                          {adminExperience
+                            ? "Open school administration"
+                            : learningExperience
+                              ? "Open learning portal"
+                              : reviewerExperience
+                                ? "Open assigned reviews"
+                                : "Manage your account"}
+                          <ArrowRight size={16} />
+                        </button>
+                      </div>
+                      <Music2 className="banner-music" size={115} />
+                    </section>
+                    <div className="section-heading">
+                      <h2>Set up your workspace</h2>
+                      <span>Available now</span>
                     </div>
-                    <Music2 className="banner-music" size={115} />
-                  </section>
-                  <div className="section-heading">
-                    <h2>Set up your workspace</h2>
-                    <span>Available now</span>
-                  </div>
-                  <div className="setup-grid">
-                    <button
-                      className="setup-card"
-                      onClick={() => setPage("account")}
-                    >
-                      <ShieldCheck />
-                      <h3>Your account</h3>
-                      <p>Manage sign-in methods and active sessions.</p>
-                      <span>
-                        Open account <ArrowRight size={15} />
-                      </span>
-                    </button>
-                    {school.role === "owner" && (
+                    <div className="setup-grid">
                       <button
                         className="setup-card"
-                        onClick={() => setPage("team")}
+                        onClick={() => setPage("account")}
                       >
-                        <Users />
-                        <h3>Your admin team</h3>
-                        <p>Invite trusted people to help manage your school.</p>
+                        <ShieldCheck />
+                        <h3>Your account</h3>
+                        <p>Manage sign-in methods and active sessions.</p>
                         <span>
-                          Manage access <ArrowRight size={15} />
+                          Open account <ArrowRight size={15} />
                         </span>
                       </button>
-                    )}
-                  </div>
-                  <div className="section-heading">
-                    <h2>School workflows</h2>
-                    <span>Available through assigned access</span>
-                  </div>
-                  <div className="future-grid">
-                    {[
-                      {
-                        icon: Users,
-                        title: "Households & students",
-                        text: "One family contact. Every learner’s own journey.",
-                      },
-                      {
-                        icon: CalendarDays,
-                        title: "Classes & attendance",
-                        text: "A reliable schedule for every batch.",
-                      },
-                      {
-                        icon: Wallet,
-                        title: "Fees & collections",
-                        text: "Clear dues, payments and household statements.",
-                      },
-                      {
-                        icon: BookOpen,
-                        title: "Learning & assessments",
-                        text: "Recordings, tests and thoughtful feedback.",
-                      },
-                    ].map((x) => (
-                      <div className="future-card" key={x.title}>
-                        <x.icon size={20} />
-                        <h3>{x.title}</h3>
-                        <p>{x.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <section className="panel">
-                  <ShieldCheck />
-                  <h2>Waiting for an invitation</h2>
-                  <p>
-                    Ask the owner to invite your verified email or phone number,
-                    then sign in again. Signing in does not create a school or
-                    grant access.
-                  </p>
-                </section>
-              )}
-            </>
-          )}
+                      {school.role === "owner" && (
+                        <button
+                          className="setup-card"
+                          onClick={() => setPage("team")}
+                        >
+                          <Users />
+                          <h3>Your admin team</h3>
+                          <p>
+                            Invite trusted people to help manage your school.
+                          </p>
+                          <span>
+                            Manage access <ArrowRight size={15} />
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="section-heading">
+                      <h2>School workflows</h2>
+                      <span>Available through assigned access</span>
+                    </div>
+                    <div className="future-grid">
+                      {[
+                        {
+                          icon: Users,
+                          title: "Households & students",
+                          text: "One family contact. Every learner’s own journey.",
+                        },
+                        {
+                          icon: CalendarDays,
+                          title: "Classes & attendance",
+                          text: "A reliable schedule for every batch.",
+                        },
+                        {
+                          icon: Wallet,
+                          title: "Fees & collections",
+                          text: "Clear dues, payments and household statements.",
+                        },
+                        {
+                          icon: BookOpen,
+                          title: "Learning & assessments",
+                          text: "Recordings, tests and thoughtful feedback.",
+                        },
+                      ].map((x) => (
+                        <div className="future-card" key={x.title}>
+                          <x.icon size={20} />
+                          <h3>{x.title}</h3>
+                          <p>{x.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <section className="panel">
+                    <ShieldCheck />
+                    <h2>Waiting for an invitation</h2>
+                    <p>
+                      Ask the owner to invite your verified email or phone
+                      number, then sign in again. Signing in does not create a
+                      school or grant access.
+                    </p>
+                  </section>
+                )}
+              </>
+            )}
           {page === "team" && school?.role === "owner" && (
             <>
               <div className="page-heading">
