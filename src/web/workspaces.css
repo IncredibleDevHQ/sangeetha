@@ -1,16 +1,4 @@
 /* Task-first workspace. Original Sangeetha components and visual treatment. */
-:root {
-  --sg-page: #fff;
-  --sg-panel: #f7f8fb;
-  --sg-inset: #eef0f6;
-  --sg-ink: #242735;
-  --sg-muted: #62697a;
-  --sg-edge: #e6e8f0;
-  --sg-accent: #5850c8;
-  --sg-accent-soft: #eeedfb;
-  --sg-radius: 14px;
-  --sg-control: 40px;
-}
 body {
   background: #f7f8fb;
 }
@@ -534,7 +522,6 @@ label {
   .workspace > header {
     position: sticky;
     top: 0;
-    z-index: 20;
     height: 58px;
     padding: 0 18px;
     gap: 12px;
@@ -676,8 +663,7 @@ label {
   .workspace > header {
     z-index: 40;
   }
-}
-/* Family directory and focused household workspace. */
+} /* Family directory and focused household workspace. */
 .household-search .search-field {
   position: relative;
   display: flex;
@@ -1242,9 +1228,7 @@ label {
 }
 .household-record .family-header h2 {
   color: var(--sg-ink);
-}
-
-/* School operations: start with records; reveal changes in context. */
+} /* School operations: start with records; reveal changes in context. */
 .agenda-toolbar,
 .attendance-heading,
 .class-record-header {
@@ -1888,9 +1872,7 @@ label {
   .class-record-header > svg {
     display: none;
   }
-}
-
-/* Curriculum authoring and focused assessment review. */
+} /* Curriculum authoring and focused assessment review. */
 .library-heading {
   display: flex;
   align-items: center;
@@ -2764,9 +2746,7 @@ label {
 }
 .workbench .review-queue .review-queue-row:last-child {
   border-bottom: 0;
-}
-
-/* Batch directory and focused enrolment work. */
+} /* Batch directory and focused enrolment work. */
 .batch-page-heading {
   display: flex;
   align-items: center;
@@ -3078,9 +3058,7 @@ label {
   .batch-capacity {
     flex-wrap: wrap;
   }
-}
-
-/* Event planning: occasion, people, programme and funds. */
+} /* Event planning: occasion, people, programme and funds. */
 .event-heading {
   display: flex;
   justify-content: space-between;
@@ -3576,9 +3554,7 @@ label {
   .event-fund-summary {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* Communication queue and deliberate announcement composition. */
+} /* Communication queue and deliberate announcement composition. */
 .message-heading {
   display: flex;
   justify-content: space-between;
@@ -3909,9 +3885,7 @@ label {
   .message-recovery .form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* Shared filter/view controls keep the selected state visible. */
+} /* Shared filter/view controls keep the selected state visible. */
 .workbench .segmented {
   display: flex;
   flex-wrap: wrap;
@@ -3943,9 +3917,7 @@ label {
 }
 .programme-entry h4:focus {
   outline: none;
-}
-
-/* Reports begin with questions, then open one readable set of records. */
+} /* Reports begin with questions, then open one readable set of records. */
 .reports-workspace {
   display: grid;
   gap: 20px;
@@ -4223,7 +4195,6 @@ label {
     content: none;
   }
 }
-
 .reports-workspace .sr-only {
   position: absolute;
   width: 1px;
@@ -4235,7 +4206,6 @@ label {
   white-space: nowrap;
   border: 0;
 }
-
 .access-workspace {
   display: grid;
   gap: 24px;
@@ -4483,7 +4453,6 @@ label {
   font-size: 13px;
   color: var(--sg-muted);
 }
-
 .teacher-attendance {
   border: 1px solid var(--sg-edge);
   border-radius: 14px;
@@ -4558,7 +4527,6 @@ label {
   color: var(--sg-muted);
   font-size: 12px;
 }
-
 .family-view-nav {
   display: flex;
   flex-wrap: wrap;
@@ -4724,7 +4692,6 @@ label {
   flex-wrap: wrap;
   gap: 10px;
 }
-
 .family-event-workspace {
   display: grid;
   gap: 22px;
@@ -4918,5 +4885,42 @@ label {
 @media (max-width: 700px) {
   .workbench .segmented > button {
     padding: 8px 10px;
+  }
+}
+
+/* Permission checks, pending membership and unavailable workspace destinations. */
+.workspace-access-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 600px;
+  margin: 48px auto;
+}
+.workspace-access-state h1 {
+  margin: 0;
+  font-size: clamp(25px, 3vw, 32px);
+}
+.workspace-access-state p {
+  margin: 0;
+  color: var(--sg-muted);
+  overflow-wrap: anywhere;
+}
+.workspace-access-icon {
+  display: inline-flex;
+  padding: 14px;
+  border-radius: 14px;
+  color: var(--sg-accent);
+  background: var(--sg-accent-soft);
+}
+.workspace-access-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+@media (max-width: 760px) {
+  .workspace-access-state {
+    margin: 24px auto;
   }
 }

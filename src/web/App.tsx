@@ -14,11 +14,8 @@ import {
   Users,
   ShieldCheck,
   LogOut,
-  ArrowRight,
   Check,
   Settings,
-  CalendarDays,
-  Wallet,
   BookOpen,
   X,
 } from "lucide-react";
@@ -32,6 +29,11 @@ const DirectLesson = lazy(() =>
     default: m.DirectLesson,
   })),
 );
+
+type WorkspaceAccess = {
+  capabilities: string[];
+  scopes: { capability: string }[];
+};
 
 function Brand() {
   return (
@@ -58,20 +60,79 @@ export default function App() {
     [page, setPage] = useRouteValue("page", "overview"),
     [schoolId, setSchoolId] = useRouteValue("school"),
     [busy, setBusy] = useState(false);
-  const [workspaceAccess, setWorkspaceAccess] = useState<{
-    capabilities: string[];
-    scopes: { capability: string }[];
-  }>({ capabilities: [], scopes: [] });
+  const [accessAttempt, setAccessAttempt] = useState(0);
+  const [accessResult, setAccessResult] = useState<
+    WorkspaceAccess & {
+      schoolId: string;
+      status: "loading" | "ready" | "error";
+      error: string;
+    }
+  >({
+    schoolId: "",
+    status: "loading",
+    capabilities: [],
+    scopes: [],
+    error: "",
+  });
   const school = schoolId
     ? me?.schools.find((s) => s.id === schoolId)
     : me?.schools[0];
+  const accessReady = Boolean(
+    school &&
+      accessResult.schoolId === school.id &&
+      accessResult.status === "ready",
+  );
+  const accessFailed = Boolean(
+    school &&
+      accessResult.schoolId === school.id &&
+      accessResult.status === "error",
+  );
+  const workspaceAccess: WorkspaceAccess = accessReady
+    ? accessResult
+    : { capabilities: [], scopes: [] };
+  const needsWorkspaceAccess = Boolean(
+    school &&
+      ["overview", "operations", "learning", "review", "lesson"].includes(page),
+  );
   useEffect(() => {
-    setWorkspaceAccess({ capabilities: [], scopes: [] });
-    if (school)
-      api<typeof workspaceAccess>("/schools/" + school.id + "/views/bootstrap")
-        .then(setWorkspaceAccess)
-        .catch((e) => setError(e.message));
-  }, [school?.id, me?.account]);
+    if (!school) return;
+    let active = true;
+    const id = school.id;
+    setAccessResult({
+      schoolId: id,
+      status: "loading",
+      capabilities: [],
+      scopes: [],
+      error: "",
+    });
+    api<WorkspaceAccess>("/schools/" + id + "/views/bootstrap")
+      .then((result) => {
+        if (active)
+          setAccessResult({
+            ...result,
+            schoolId: id,
+            status: "ready",
+            error: "",
+          });
+      })
+      .catch((e: Error) => {
+        if (active && e instanceof ApiError && e.status === 401) {
+          setMe(null);
+          return;
+        }
+        if (active)
+          setAccessResult({
+            schoolId: id,
+            status: "error",
+            capabilities: [],
+            scopes: [],
+            error: e.message,
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [school?.id, me?.account, accessAttempt]);
   const modules = availableModules(workspaceAccess.capabilities);
   const adminExperience = modules.length > 0;
   const learningExperience = workspaceAccess.scopes.some((s) =>
@@ -182,13 +243,12 @@ export default function App() {
           <div className="story-content">
             <span className="eyebrow">MORE MUSIC. LESS ADMIN.</span>
             <h1>
-              A calmer rhythm
-              <br />
+              A calmer rhythm <br />
               for your school.
             </h1>
             <p>
-              One home for your music school.
-              <br />A little more time for what you love teaching.
+              One home for your music school. <br />A little more time for what
+              you love teaching.
             </p>
             <div className="staff-lines">
               <span />
@@ -416,211 +476,171 @@ export default function App() {
             {schoolId && !school && (
               <p role="alert">This school is not available to your account.</p>
             )}
-            {page === "lesson" && school && (
-              <DirectLesson
-                school={school}
-                manage={workspaceAccess.capabilities.includes(
-                  "curriculum.manage",
+            {needsWorkspaceAccess && !accessReady ? (
+              <section
+                className="workspace-access-state"
+                role={accessFailed ? "alert" : "status"}
+              >
+                <span className="workspace-access-icon">
+                  <ShieldCheck size={24} />
+                </span>
+                <h1>
+                  {accessFailed
+                    ? "We couldn’t open your workspace"
+                    : "Opening your school workspace…"}
+                </h1>
+                <p>
+                  {accessFailed
+                    ? accessResult.error
+                    : "Checking your assigned roles and learning spaces."}
+                </p>
+                {accessFailed && (
+                  <button
+                    className="button primary"
+                    onClick={() => setAccessAttempt((n) => n + 1)}
+                  >
+                    Retry workspace
+                  </button>
                 )}
-              />
-            )}
-            {page === "operations" && school && adminExperience && (
-              <SchoolWorkspace key={school.id} school={school} />
-            )}
-            {(page === "learning" ||
-              (page === "overview" && !adminExperience)) &&
-              school &&
-              learningExperience && (
-                <SchoolWorkspace
-                  key={school.id + "learning"}
-                  school={school}
-                  experience="learning"
-                />
-              )}
-            {(page === "review" ||
-              (page === "overview" &&
-                !adminExperience &&
-                !learningExperience)) &&
-              school &&
-              (reviewerExperience ||
-                workspaceAccess.capabilities.includes(
-                  "assessments.manage",
-                )) && (
-                <SchoolWorkspace
-                  key={school.id + "review"}
-                  school={school}
-                  experience="review"
-                />
-              )}
-            {page === "overview" && school && adminExperience && (
-              <SchoolHome
-                key={school.id}
-                school={school}
-                capabilities={workspaceAccess.capabilities}
-                name={me.account.displayName}
-              />
-            )}
-            {page === "overview" &&
-              !(
-                school &&
-                (adminExperience || learningExperience || reviewerExperience)
-              ) && (
-                <>
-                  <div className="page-heading">
-                    <span className="eyebrow">YOUR MUSIC SCHOOL</span>
-                    <h1>
-                      Welcome,{" "}
-                      {me.account.displayName === "School administrator"
-                        ? "teacher"
-                        : me.account.displayName.split(" ")[0]}
-                      .
-                    </h1>
-                    <p>
-                      {school
-                        ? "Your school administration and learning spaces are ready."
-                        : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
-                    </p>
-                  </div>
-                  {school ? (
-                    <>
-                      <section className="welcome-banner">
-                        <div>
-                          <span className="tag">YOUR MUSIC SCHOOL</span>
-                          <h2>A place for your whole school.</h2>
-                          <p>
-                            Manage your school and learning through the
-                            workspace assigned to you.
-                          </p>
-                          <button
-                            className="button cream"
-                            onClick={() =>
-                              setPage(
-                                adminExperience
-                                  ? "operations"
-                                  : learningExperience
-                                    ? "learning"
-                                    : reviewerExperience
-                                      ? "review"
-                                      : "account",
-                              )
-                            }
-                          >
-                            {adminExperience
-                              ? "Open school administration"
-                              : learningExperience
-                                ? "Open learning portal"
-                                : reviewerExperience
-                                  ? "Open assigned reviews"
-                                  : "Manage your account"}
-                            <ArrowRight size={16} />
-                          </button>
-                        </div>
-                        <Music2 className="banner-music" size={115} />
-                      </section>
-                      <div className="section-heading">
-                        <h2>Set up your workspace</h2>
-                        <span>Available now</span>
-                      </div>
-                      <div className="setup-grid">
-                        <button
-                          className="setup-card"
-                          onClick={() => setPage("account")}
-                        >
-                          <ShieldCheck />
-                          <h3>Your account</h3>
-                          <p>Manage sign-in methods and active sessions.</p>
-                          <span>
-                            Open account <ArrowRight size={15} />
-                          </span>
-                        </button>
-                        {school.role === "owner" && (
-                          <button
-                            className="setup-card"
-                            onClick={() => setPage("team")}
-                          >
-                            <Users />
-                            <h3>Your admin team</h3>
-                            <p>
-                              Invite trusted people to help manage your school.
-                            </p>
-                            <span>
-                              Manage access <ArrowRight size={15} />
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                      <div className="section-heading">
-                        <h2>School workflows</h2>
-                        <span>Available through assigned access</span>
-                      </div>
-                      <div className="future-grid">
-                        {[
-                          {
-                            icon: Users,
-                            title: "Households & students",
-                            text: "One family contact. Every learner’s own journey.",
-                          },
-                          {
-                            icon: CalendarDays,
-                            title: "Classes & attendance",
-                            text: "A reliable schedule for every batch.",
-                          },
-                          {
-                            icon: Wallet,
-                            title: "Fees & collections",
-                            text: "Clear dues, payments and household statements.",
-                          },
-                          {
-                            icon: BookOpen,
-                            title: "Learning & assessments",
-                            text: "Recordings, tests and thoughtful feedback.",
-                          },
-                        ].map((x) => (
-                          <div className="future-card" key={x.title}>
-                            <x.icon size={20} />
-                            <h3>{x.title}</h3>
-                            <p>{x.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <section className="panel">
-                      <ShieldCheck />
-                      <h2>Waiting for an invitation</h2>
+              </section>
+            ) : (
+              <>
+                {school &&
+                  accessReady &&
+                  ((page === "operations" && !adminExperience) ||
+                    (page === "learning" && !learningExperience) ||
+                    (page === "review" &&
+                      !reviewerExperience &&
+                      !workspaceAccess.capabilities.includes(
+                        "assessments.manage",
+                      ))) && (
+                    <section className="workspace-access-state" role="status">
+                      <span className="workspace-access-icon">
+                        <ShieldCheck size={24} />
+                      </span>
+                      <h1>This workspace isn’t assigned to you</h1>
                       <p>
-                        Ask the owner to invite your verified email or phone
-                        number, then sign in again. Signing in does not create a
-                        school or grant access.
+                        Open your home to see the learning, teaching or office
+                        spaces available to your account.
                       </p>
+                      <button
+                        className="button primary"
+                        onClick={() => setPage("overview")}
+                      >
+                        Open my workspace
+                      </button>
                     </section>
                   )}
-                </>
-              )}
-            {page === "team" && school?.role === "owner" && (
-              <TeamSettings key={school.id} school={school} />
-            )}
-            {page === "team" && school?.role !== "owner" && (
-              <section className="ui-empty" role="status">
-                <ShieldCheck size={28} />
-                <h1>Administrator access is managed by the owner</h1>
-                <p>
-                  Return to your workspace to use the roles assigned to you.
-                </p>
-                <button
-                  className="button secondary"
-                  onClick={() => setPage("overview")}
-                >
-                  Open my workspace
-                </button>
-              </section>
-            )}
-            {page === "account" && (
-              <AccountSettings
-                account={me.account}
-                local={local}
-                onChanged={refresh}
-              />
+                {page === "lesson" && school && (
+                  <DirectLesson
+                    school={school}
+                    manage={workspaceAccess.capabilities.includes(
+                      "curriculum.manage",
+                    )}
+                  />
+                )}
+                {page === "operations" && school && adminExperience && (
+                  <SchoolWorkspace key={school.id} school={school} />
+                )}
+                {(page === "learning" ||
+                  (page === "overview" && !adminExperience)) &&
+                  school &&
+                  learningExperience && (
+                    <SchoolWorkspace
+                      key={school.id + "learning"}
+                      school={school}
+                      experience="learning"
+                    />
+                  )}
+                {(page === "review" ||
+                  (page === "overview" &&
+                    !adminExperience &&
+                    !learningExperience)) &&
+                  school &&
+                  (reviewerExperience ||
+                    workspaceAccess.capabilities.includes(
+                      "assessments.manage",
+                    )) && (
+                    <SchoolWorkspace
+                      key={school.id + "review"}
+                      school={school}
+                      experience="review"
+                    />
+                  )}
+                {page === "overview" && school && adminExperience && (
+                  <SchoolHome
+                    key={school.id}
+                    school={school}
+                    capabilities={workspaceAccess.capabilities}
+                    name={me.account.displayName}
+                  />
+                )}
+                {page === "overview" &&
+                  !(
+                    school &&
+                    (adminExperience ||
+                      learningExperience ||
+                      reviewerExperience)
+                  ) && (
+                    <section className="workspace-access-state" role="status">
+                      <span className="workspace-access-icon">
+                        <ShieldCheck size={24} />
+                      </span>
+                      <span className="eyebrow">
+                        {school ? school.name : "WELCOME TO SANGEETHA"}
+                      </span>
+                      <h1>
+                        {school
+                          ? "Your workspace is awaiting access"
+                          : "You’re signed in. Let’s connect your school."}
+                      </h1>
+                      <p>
+                        {school
+                          ? "You’re a member of this school, but no teaching, learning or office workspace is assigned yet. Ask the school owner to assign the role you need."
+                          : "Ask the school owner to invite the verified Google email or phone number you use to sign in. Your account is ready; school access starts with an invitation."}
+                      </p>
+                      <div className="workspace-access-actions">
+                        <button
+                          className="button primary"
+                          onClick={() => window.location.reload()}
+                        >
+                          Check access again
+                        </button>
+                        <button
+                          className="button secondary"
+                          onClick={() => setPage("account")}
+                        >
+                          Manage my account
+                        </button>
+                      </div>
+                    </section>
+                  )}
+                {page === "team" && school?.role === "owner" && (
+                  <TeamSettings key={school.id} school={school} />
+                )}
+                {page === "team" && school?.role !== "owner" && (
+                  <section className="ui-empty" role="status">
+                    <ShieldCheck size={28} />
+                    <h1>Administrator access is managed by the owner</h1>
+                    <p>
+                      Return to your workspace to use the roles assigned to you.
+                    </p>
+                    <button
+                      className="button secondary"
+                      onClick={() => setPage("overview")}
+                    >
+                      Open my workspace
+                    </button>
+                  </section>
+                )}
+                {page === "account" && (
+                  <AccountSettings
+                    account={me.account}
+                    local={local}
+                    onChanged={refresh}
+                  />
+                )}
+              </>
             )}
           </FeatureBoundary>
         </main>
