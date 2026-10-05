@@ -2,13 +2,13 @@ import { useRouteValue, navigate } from "./routes";
 import { SchoolHome } from "./features/school/SchoolHome";
 import { availableModules } from "./features/school/navigation";
 import { Menu } from "lucide-react";
-import { DirectLesson } from "./components/DirectLesson";
+import { FeatureBoundary } from "./components/FeatureBoundary";
 import PhoneInput from "./features/auth/PhoneInput";
-import SchoolWorkspace from "./features/school/Workspace";
+
 import type { Me, Team } from "./contracts";
 import { api, ApiError } from "./lib/api";
 import SignIn from "./features/auth/SignIn";
-import { useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import {
   Music2,
   LayoutDashboard,
@@ -26,6 +26,13 @@ import {
   Plus,
   X,
 } from "lucide-react";
+const SchoolWorkspace = lazy(() => import("./features/school/Workspace"));
+const DirectLesson = lazy(() =>
+  import("./components/DirectLesson").then((m) => ({
+    default: m.DirectLesson,
+  })),
+);
+
 function Brand() {
   return (
     <div className="brand">
@@ -421,265 +428,316 @@ export default function App() {
           </div>
         </header>
         <main className="content" id="main-content">
-          {alerts}
-          {schoolId && !school && (
-            <p role="alert">This school is not available to your account.</p>
-          )}
-          {page === "lesson" && school && (
-            <DirectLesson
-              school={school}
-              manage={workspaceAccess.capabilities.includes(
-                "curriculum.manage",
-              )}
-            />
-          )}
-          {page === "operations" && school && adminExperience && (
-            <SchoolWorkspace key={school.id} school={school} />
-          )}
-          {(page === "learning" || (page === "overview" && !adminExperience)) &&
-            school &&
-            learningExperience && (
-              <SchoolWorkspace
-                key={school.id + "learning"}
+          <FeatureBoundary key={`${school?.id}:${page}`}>
+            {alerts}
+            {schoolId && !school && (
+              <p role="alert">This school is not available to your account.</p>
+            )}
+            {page === "lesson" && school && (
+              <DirectLesson
                 school={school}
-                experience="learning"
+                manage={workspaceAccess.capabilities.includes(
+                  "curriculum.manage",
+                )}
               />
             )}
-          {(page === "review" ||
-            (page === "overview" && !adminExperience && !learningExperience)) &&
-            school &&
-            (reviewerExperience ||
-              workspaceAccess.capabilities.includes("assessments.manage")) && (
-              <SchoolWorkspace
-                key={school.id + "review"}
-                school={school}
-                experience="review"
-              />
+            {page === "operations" && school && adminExperience && (
+              <SchoolWorkspace key={school.id} school={school} />
             )}
-          {page === "overview" && school && adminExperience && (
-            <SchoolHome
-              key={school.id}
-              school={school}
-              capabilities={workspaceAccess.capabilities}
-              name={me.account.displayName}
-            />
-          )}
-          {page === "overview" &&
-            !(
+            {(page === "learning" ||
+              (page === "overview" && !adminExperience)) &&
               school &&
-              (adminExperience || learningExperience || reviewerExperience)
-            ) && (
-              <>
-                <div className="page-heading">
-                  <span className="eyebrow">YOUR MUSIC SCHOOL</span>
-                  <h1>
-                    Welcome,{" "}
-                    {me.account.displayName === "School administrator"
-                      ? "teacher"
-                      : me.account.displayName.split(" ")[0]}
-                    .
-                  </h1>
-                  <p>
-                    {school
-                      ? "Your school administration and learning spaces are ready."
-                      : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
-                  </p>
-                </div>
-                {school ? (
-                  <>
-                    <section className="welcome-banner">
-                      <div>
-                        <span className="tag">YOUR MUSIC SCHOOL</span>
-                        <h2>A place for your whole school.</h2>
-                        <p>
-                          Manage your school and learning through the workspace
-                          assigned to you.
-                        </p>
-                        <button
-                          className="button cream"
-                          onClick={() =>
-                            setPage(
-                              adminExperience
-                                ? "operations"
-                                : learningExperience
-                                  ? "learning"
-                                  : reviewerExperience
-                                    ? "review"
-                                    : "account",
-                            )
-                          }
-                        >
-                          {adminExperience
-                            ? "Open school administration"
-                            : learningExperience
-                              ? "Open learning portal"
-                              : reviewerExperience
-                                ? "Open assigned reviews"
-                                : "Manage your account"}
-                          <ArrowRight size={16} />
-                        </button>
+              learningExperience && (
+                <SchoolWorkspace
+                  key={school.id + "learning"}
+                  school={school}
+                  experience="learning"
+                />
+              )}
+            {(page === "review" ||
+              (page === "overview" &&
+                !adminExperience &&
+                !learningExperience)) &&
+              school &&
+              (reviewerExperience ||
+                workspaceAccess.capabilities.includes(
+                  "assessments.manage",
+                )) && (
+                <SchoolWorkspace
+                  key={school.id + "review"}
+                  school={school}
+                  experience="review"
+                />
+              )}
+            {page === "overview" && school && adminExperience && (
+              <SchoolHome
+                key={school.id}
+                school={school}
+                capabilities={workspaceAccess.capabilities}
+                name={me.account.displayName}
+              />
+            )}
+            {page === "overview" &&
+              !(
+                school &&
+                (adminExperience || learningExperience || reviewerExperience)
+              ) && (
+                <>
+                  <div className="page-heading">
+                    <span className="eyebrow">YOUR MUSIC SCHOOL</span>
+                    <h1>
+                      Welcome,{" "}
+                      {me.account.displayName === "School administrator"
+                        ? "teacher"
+                        : me.account.displayName.split(" ")[0]}
+                      .
+                    </h1>
+                    <p>
+                      {school
+                        ? "Your school administration and learning spaces are ready."
+                        : "You’re signed in. A school owner needs to invite you before you can enter a workspace."}
+                    </p>
+                  </div>
+                  {school ? (
+                    <>
+                      <section className="welcome-banner">
+                        <div>
+                          <span className="tag">YOUR MUSIC SCHOOL</span>
+                          <h2>A place for your whole school.</h2>
+                          <p>
+                            Manage your school and learning through the
+                            workspace assigned to you.
+                          </p>
+                          <button
+                            className="button cream"
+                            onClick={() =>
+                              setPage(
+                                adminExperience
+                                  ? "operations"
+                                  : learningExperience
+                                    ? "learning"
+                                    : reviewerExperience
+                                      ? "review"
+                                      : "account",
+                              )
+                            }
+                          >
+                            {adminExperience
+                              ? "Open school administration"
+                              : learningExperience
+                                ? "Open learning portal"
+                                : reviewerExperience
+                                  ? "Open assigned reviews"
+                                  : "Manage your account"}
+                            <ArrowRight size={16} />
+                          </button>
+                        </div>
+                        <Music2 className="banner-music" size={115} />
+                      </section>
+                      <div className="section-heading">
+                        <h2>Set up your workspace</h2>
+                        <span>Available now</span>
                       </div>
-                      <Music2 className="banner-music" size={115} />
-                    </section>
-                    <div className="section-heading">
-                      <h2>Set up your workspace</h2>
-                      <span>Available now</span>
-                    </div>
-                    <div className="setup-grid">
-                      <button
-                        className="setup-card"
-                        onClick={() => setPage("account")}
-                      >
-                        <ShieldCheck />
-                        <h3>Your account</h3>
-                        <p>Manage sign-in methods and active sessions.</p>
-                        <span>
-                          Open account <ArrowRight size={15} />
-                        </span>
-                      </button>
-                      {school.role === "owner" && (
+                      <div className="setup-grid">
                         <button
                           className="setup-card"
-                          onClick={() => setPage("team")}
+                          onClick={() => setPage("account")}
                         >
-                          <Users />
-                          <h3>Your admin team</h3>
-                          <p>
-                            Invite trusted people to help manage your school.
-                          </p>
+                          <ShieldCheck />
+                          <h3>Your account</h3>
+                          <p>Manage sign-in methods and active sessions.</p>
                           <span>
-                            Manage access <ArrowRight size={15} />
+                            Open account <ArrowRight size={15} />
                           </span>
                         </button>
-                      )}
-                    </div>
-                    <div className="section-heading">
-                      <h2>School workflows</h2>
-                      <span>Available through assigned access</span>
-                    </div>
-                    <div className="future-grid">
-                      {[
-                        {
-                          icon: Users,
-                          title: "Households & students",
-                          text: "One family contact. Every learner’s own journey.",
-                        },
-                        {
-                          icon: CalendarDays,
-                          title: "Classes & attendance",
-                          text: "A reliable schedule for every batch.",
-                        },
-                        {
-                          icon: Wallet,
-                          title: "Fees & collections",
-                          text: "Clear dues, payments and household statements.",
-                        },
-                        {
-                          icon: BookOpen,
-                          title: "Learning & assessments",
-                          text: "Recordings, tests and thoughtful feedback.",
-                        },
-                      ].map((x) => (
-                        <div className="future-card" key={x.title}>
-                          <x.icon size={20} />
-                          <h3>{x.title}</h3>
-                          <p>{x.text}</p>
+                        {school.role === "owner" && (
+                          <button
+                            className="setup-card"
+                            onClick={() => setPage("team")}
+                          >
+                            <Users />
+                            <h3>Your admin team</h3>
+                            <p>
+                              Invite trusted people to help manage your school.
+                            </p>
+                            <span>
+                              Manage access <ArrowRight size={15} />
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="section-heading">
+                        <h2>School workflows</h2>
+                        <span>Available through assigned access</span>
+                      </div>
+                      <div className="future-grid">
+                        {[
+                          {
+                            icon: Users,
+                            title: "Households & students",
+                            text: "One family contact. Every learner’s own journey.",
+                          },
+                          {
+                            icon: CalendarDays,
+                            title: "Classes & attendance",
+                            text: "A reliable schedule for every batch.",
+                          },
+                          {
+                            icon: Wallet,
+                            title: "Fees & collections",
+                            text: "Clear dues, payments and household statements.",
+                          },
+                          {
+                            icon: BookOpen,
+                            title: "Learning & assessments",
+                            text: "Recordings, tests and thoughtful feedback.",
+                          },
+                        ].map((x) => (
+                          <div className="future-card" key={x.title}>
+                            <x.icon size={20} />
+                            <h3>{x.title}</h3>
+                            <p>{x.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <section className="panel">
+                      <ShieldCheck />
+                      <h2>Waiting for an invitation</h2>
+                      <p>
+                        Ask the owner to invite your verified email or phone
+                        number, then sign in again. Signing in does not create a
+                        school or grant access.
+                      </p>
+                    </section>
+                  )}
+                </>
+              )}
+            {page === "team" && school?.role === "owner" && (
+              <>
+                <div className="page-heading">
+                  <span className="eyebrow">TRUSTED PEOPLE</span>
+                  <h1>Team & access</h1>
+                  <p>Give your admin team a secure place to help.</p>
+                </div>
+                <section className="panel">
+                  <h2>Invite an administrator</h2>
+                  <p className="fine">
+                    Admins can enter this school workspace. Only the owner can
+                    manage team access. Invitations expire after 7 days.
+                  </p>
+                  <form
+                    className="invite-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      act(async () => {
+                        await api(
+                          "/schools/" + school.id + "/invitations",
+                          "POST",
+                          { channel, destination },
+                        );
+                        setDestination("");
+                      }, "Invitation created. Share the sign-in address with your administrator.");
+                    }}
+                  >
+                    <label>
+                      Sign-in method
+                      <select
+                        value={channel}
+                        onChange={(e) => setChannel(e.target.value)}
+                      >
+                        <option value="email">Google email</option>
+                        <option value="phone">Phone</option>
+                      </select>
+                    </label>
+                    {channel === "phone" ? (
+                      <PhoneInput
+                        value={destination}
+                        onChange={setDestination}
+                        required
+                      />
+                    ) : (
+                      <label>
+                        Email address
+                        <input
+                          required
+                          type="email"
+                          value={destination}
+                          onChange={(e) => setDestination(e.target.value)}
+                          placeholder="admin@example.com"
+                        />
+                      </label>
+                    )}
+                    <button className="button primary" disabled={busy}>
+                      <Plus size={17} />
+                      Create invitation
+                    </button>
+                  </form>
+                  <p className="fine">
+                    Invitations are recorded here; this release does not send
+                    WhatsApp or email messages.
+                  </p>
+                </section>
+                <section className="panel">
+                  <h2>School team</h2>
+                  {!team ? (
+                    <p>Loading team…</p>
+                  ) : (
+                    <>
+                      {team.members.map((m) => (
+                        <div className="list-row" key={m.id}>
+                          <div className="avatar">{m.display_name[0]}</div>
+                          <div className="row-detail">
+                            <strong>{m.display_name}</strong>
+                            <small>{m.role}</small>
+                          </div>
+                          {m.role === "admin" ? (
+                            <button
+                              className="text-button danger"
+                              disabled={busy}
+                              onClick={() =>
+                                act(
+                                  () =>
+                                    api(
+                                      "/schools/" +
+                                        school.id +
+                                        "/members/" +
+                                        m.id,
+                                      "DELETE",
+                                      {},
+                                    ),
+                                  "School access revoked.",
+                                )
+                              }
+                            >
+                              Revoke access
+                            </button>
+                          ) : (
+                            <span className="pill">Owner</span>
+                          )}
                         </div>
                       ))}
-                    </div>
-                  </>
-                ) : (
-                  <section className="panel">
-                    <ShieldCheck />
-                    <h2>Waiting for an invitation</h2>
-                    <p>
-                      Ask the owner to invite your verified email or phone
-                      number, then sign in again. Signing in does not create a
-                      school or grant access.
-                    </p>
-                  </section>
-                )}
-              </>
-            )}
-          {page === "team" && school?.role === "owner" && (
-            <>
-              <div className="page-heading">
-                <span className="eyebrow">TRUSTED PEOPLE</span>
-                <h1>Team & access</h1>
-                <p>Give your admin team a secure place to help.</p>
-              </div>
-              <section className="panel">
-                <h2>Invite an administrator</h2>
-                <p className="fine">
-                  Admins can enter this school workspace. Only the owner can
-                  manage team access. Invitations expire after 7 days.
-                </p>
-                <form
-                  className="invite-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    act(async () => {
-                      await api(
-                        "/schools/" + school.id + "/invitations",
-                        "POST",
-                        { channel, destination },
-                      );
-                      setDestination("");
-                    }, "Invitation created. Share the sign-in address with your administrator.");
-                  }}
-                >
-                  <label>
-                    Sign-in method
-                    <select
-                      value={channel}
-                      onChange={(e) => setChannel(e.target.value)}
-                    >
-                      <option value="email">Google email</option>
-                      <option value="phone">Phone</option>
-                    </select>
-                  </label>
-                  {channel === "phone" ? (
-                    <PhoneInput
-                      value={destination}
-                      onChange={setDestination}
-                      required
-                    />
-                  ) : (
-                    <label>
-                      Email address
-                      <input
-                        required
-                        type="email"
-                        value={destination}
-                        onChange={(e) => setDestination(e.target.value)}
-                        placeholder="admin@example.com"
-                      />
-                    </label>
-                  )}
-                  <button className="button primary" disabled={busy}>
-                    <Plus size={17} />
-                    Create invitation
-                  </button>
-                </form>
-                <p className="fine">
-                  Invitations are recorded here; this release does not send
-                  WhatsApp or email messages.
-                </p>
-              </section>
-              <section className="panel">
-                <h2>School team</h2>
-                {!team ? (
-                  <p>Loading team…</p>
-                ) : (
-                  <>
-                    {team.members.map((m) => (
-                      <div className="list-row" key={m.id}>
-                        <div className="avatar">{m.display_name[0]}</div>
-                        <div className="row-detail">
-                          <strong>{m.display_name}</strong>
-                          <small>{m.role}</small>
-                        </div>
-                        {m.role === "admin" ? (
+                      <h3 className="pending-title">Pending invitations</h3>
+                      {!team.invitations.length && (
+                        <p className="empty">No pending invitations.</p>
+                      )}
+                      {team.invitations.map((i) => (
+                        <div className="list-row" key={i.id}>
+                          {i.channel === "email" ? (
+                            <Mail size={20} />
+                          ) : (
+                            <Phone size={20} />
+                          )}
+                          <div className="row-detail">
+                            <strong>{i.destination}</strong>
+                            <small>
+                              Expires{" "}
+                              {new Date(i.expires_at).toLocaleDateString(
+                                "en-IN",
+                              )}
+                            </small>
+                          </div>
                           <button
                             className="text-button danger"
                             disabled={busy}
@@ -689,40 +747,79 @@ export default function App() {
                                   api(
                                     "/schools/" +
                                       school.id +
-                                      "/members/" +
-                                      m.id,
+                                      "/invitations/" +
+                                      i.id,
                                     "DELETE",
                                     {},
                                   ),
-                                "School access revoked.",
+                                "Invitation cancelled.",
                               )
                             }
                           >
-                            Revoke access
+                            Cancel
                           </button>
-                        ) : (
-                          <span className="pill">Owner</span>
-                        )}
-                      </div>
-                    ))}
-                    <h3 className="pending-title">Pending invitations</h3>
-                    {!team.invitations.length && (
-                      <p className="empty">No pending invitations.</p>
-                    )}
-                    {team.invitations.map((i) => (
-                      <div className="list-row" key={i.id}>
-                        {i.channel === "email" ? (
-                          <Mail size={20} />
-                        ) : (
-                          <Phone size={20} />
-                        )}
-                        <div className="row-detail">
-                          <strong>{i.destination}</strong>
-                          <small>
-                            Expires{" "}
-                            {new Date(i.expires_at).toLocaleDateString("en-IN")}
-                          </small>
                         </div>
+                      ))}
+                    </>
+                  )}
+                </section>
+              </>
+            )}
+            {page === "account" && (
+              <>
+                <div className="page-heading">
+                  <span className="eyebrow">YOUR PERSONAL WORKSPACE</span>
+                  <h1>My account</h1>
+                  <p>Your profile, sign-in methods and devices.</p>
+                </div>
+                <section className="panel">
+                  <h2>Profile</h2>
+                  <form
+                    className="profile-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      act(
+                        () => api("/account", "PATCH", { name }),
+                        "Profile updated.",
+                      );
+                    }}
+                  >
+                    <label>
+                      Display name
+                      <input
+                        required
+                        minLength={2}
+                        maxLength={80}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </label>
+                    <button className="button primary" disabled={busy}>
+                      Save name
+                    </button>
+                  </form>
+                </section>
+                <section className="panel">
+                  <h2>Sign-in methods</h2>
+                  <p className="fine">
+                    Verify a second method to use it with this account. Changes
+                    require sign-in within the last 5 minutes and sign out your
+                    other devices.
+                  </p>
+                  {me.account.identities.map((i) => (
+                    <div className="list-row" key={i.provider}>
+                      {i.provider === "phone" ? (
+                        <Phone size={20} />
+                      ) : (
+                        <Mail size={20} />
+                      )}
+                      <div className="row-detail">
+                        <strong>
+                          {i.provider === "phone" ? "Phone" : "Google"}
+                        </strong>
+                        <small>{i.label}</small>
+                      </div>
+                      {me.account.identities.length > 1 && (
                         <button
                           className="text-button danger"
                           disabled={busy}
@@ -730,173 +827,92 @@ export default function App() {
                             act(
                               () =>
                                 api(
-                                  "/schools/" +
-                                    school.id +
-                                    "/invitations/" +
-                                    i.id,
+                                  "/account/methods/" + i.provider,
                                   "DELETE",
                                   {},
                                 ),
-                              "Invitation cancelled.",
+                              "Sign-in method removed.",
                             )
                           }
                         >
-                          Cancel
+                          Remove
                         </button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </section>
-            </>
-          )}
-          {page === "account" && (
-            <>
-              <div className="page-heading">
-                <span className="eyebrow">YOUR PERSONAL WORKSPACE</span>
-                <h1>My account</h1>
-                <p>Your profile, sign-in methods and devices.</p>
-              </div>
-              <section className="panel">
-                <h2>Profile</h2>
-                <form
-                  className="profile-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    act(
-                      () => api("/account", "PATCH", { name }),
-                      "Profile updated.",
-                    );
-                  }}
-                >
-                  <label>
-                    Display name
-                    <input
-                      required
-                      minLength={2}
-                      maxLength={80}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </label>
-                  <button className="button primary" disabled={busy}>
-                    Save name
-                  </button>
-                </form>
-              </section>
-              <section className="panel">
-                <h2>Sign-in methods</h2>
-                <p className="fine">
-                  Verify a second method to use it with this account. Changes
-                  require sign-in within the last 5 minutes and sign out your
-                  other devices.
-                </p>
-                {me.account.identities.map((i) => (
-                  <div className="list-row" key={i.provider}>
-                    {i.provider === "phone" ? (
-                      <Phone size={20} />
-                    ) : (
-                      <Mail size={20} />
-                    )}
-                    <div className="row-detail">
-                      <strong>
-                        {i.provider === "phone" ? "Phone" : "Google"}
-                      </strong>
-                      <small>{i.label}</small>
+                      )}
+                      <span className="verified">
+                        <Check size={14} />
+                        Verified
+                      </span>
                     </div>
-                    {me.account.identities.length > 1 && (
-                      <button
-                        className="text-button danger"
-                        disabled={busy}
-                        onClick={() =>
-                          act(
-                            () =>
-                              api(
-                                "/account/methods/" + i.provider,
-                                "DELETE",
-                                {},
-                              ),
-                            "Sign-in method removed.",
-                          )
-                        }
-                      >
-                        Remove
-                      </button>
-                    )}
-                    <span className="verified">
-                      <Check size={14} />
-                      Verified
-                    </span>
-                  </div>
-                ))}
-                <button
-                  className="text-button add-method"
-                  onClick={() => {
-                    setLink(!link);
-                    setError("");
-                  }}
-                >
-                  {link ? <X size={16} /> : <Plus size={16} />}{" "}
-                  {link ? "Close" : "Link a sign-in method"}
-                </button>
-                {link && (
-                  <div className="link-form">
-                    <SignIn
-                      local={local}
-                      link
-                      onError={setError}
-                      onDone={async () => {
-                        await refresh();
-                        setLink(false);
-                        setNotice(
-                          "Sign-in method linked. Other sessions signed out.",
-                        );
-                      }}
-                    />
-                  </div>
-                )}
-                <p className="fine">
-                  To change a phone number, first link Google, remove the old
-                  phone, then verify the new number. Keep at least one method.
-                  If you lose one method, sign in using your other linked
-                  method.
-                </p>
-              </section>
-              <section className="panel">
-                <div className="section-heading">
-                  <h2>Active sessions</h2>
+                  ))}
                   <button
-                    className="text-button"
-                    disabled={busy}
-                    onClick={() =>
-                      act(
-                        () => api("/account/revoke-sessions", "POST", {}),
-                        "Other sessions signed out.",
-                      )
-                    }
+                    className="text-button add-method"
+                    onClick={() => {
+                      setLink(!link);
+                      setError("");
+                    }}
                   >
-                    Sign out other devices
+                    {link ? <X size={16} /> : <Plus size={16} />}{" "}
+                    {link ? "Close" : "Link a sign-in method"}
                   </button>
-                </div>
-                {me.account.sessions.map((s) => (
-                  <div className="list-row" key={s.id}>
-                    <ShieldCheck size={20} />
-                    <div className="row-detail">
-                      <strong>
-                        {s.current ? "This device" : "Other device"}
-                      </strong>
-                      <small className="device-label">{s.device}</small>
-                      <small>
-                        Signed in{" "}
-                        {new Date(s.createdAt).toLocaleString("en-IN")}
-                      </small>
+                  {link && (
+                    <div className="link-form">
+                      <SignIn
+                        local={local}
+                        link
+                        onError={setError}
+                        onDone={async () => {
+                          await refresh();
+                          setLink(false);
+                          setNotice(
+                            "Sign-in method linked. Other sessions signed out.",
+                          );
+                        }}
+                      />
                     </div>
-                    {s.current && <span className="pill">Current</span>}
+                  )}
+                  <p className="fine">
+                    To change a phone number, first link Google, remove the old
+                    phone, then verify the new number. Keep at least one method.
+                    If you lose one method, sign in using your other linked
+                    method.
+                  </p>
+                </section>
+                <section className="panel">
+                  <div className="section-heading">
+                    <h2>Active sessions</h2>
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() =>
+                        act(
+                          () => api("/account/revoke-sessions", "POST", {}),
+                          "Other sessions signed out.",
+                        )
+                      }
+                    >
+                      Sign out other devices
+                    </button>
                   </div>
-                ))}
-              </section>
-            </>
-          )}
+                  {me.account.sessions.map((s) => (
+                    <div className="list-row" key={s.id}>
+                      <ShieldCheck size={20} />
+                      <div className="row-detail">
+                        <strong>
+                          {s.current ? "This device" : "Other device"}
+                        </strong>
+                        <small className="device-label">{s.device}</small>
+                        <small>
+                          Signed in{" "}
+                          {new Date(s.createdAt).toLocaleString("en-IN")}
+                        </small>
+                      </div>
+                      {s.current && <span className="pill">Current</span>}
+                    </div>
+                  ))}
+                </section>
+              </>
+            )}
+          </FeatureBoundary>
         </main>
         <footer>
           Sangeetha <span>Made for the rhythm of your school.</span>
