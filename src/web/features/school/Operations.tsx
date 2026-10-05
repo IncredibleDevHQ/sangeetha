@@ -39,8 +39,8 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
     <>
       <h2>Batches & enrollments</h2>
       <div className="form-grid">
-        <section className="panel">
-          <h3>Create a batch</h3>
+        <WorkflowDetails className="task-disclosure">
+          <summary>Create a batch</summary>
           <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
@@ -78,9 +78,9 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
               Create batch
             </button>
           </WorkflowForm>
-        </section>
-        <section className="panel">
-          <h3>Enroll a learner</h3>
+        </WorkflowDetails>
+        <WorkflowDetails className="task-disclosure">
+          <summary>Enroll a learner</summary>
           <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
@@ -133,7 +133,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
               Enroll learner
             </button>
           </WorkflowForm>
-        </section>
+        </WorkflowDetails>
       </div>
       <section className="panel">
         <h3>Current enrollments</h3>
@@ -277,8 +277,8 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
   return (
     <>
       <h2>Classes & attendance</h2>
-      <section className="panel">
-        <h3>Schedule classes · India time</h3>
+      <WorkflowDetails className="task-disclosure">
+        <summary>Schedule classes · India time</summary>
         <WorkflowForm
           className="form-grid"
           onSubmit={async (e) => {
@@ -348,7 +348,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
             Schedule
           </button>
         </WorkflowForm>
-      </section>
+      </WorkflowDetails>
       <div className="toolbar">
         <button
           className="text-button"
@@ -573,8 +573,8 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
         </div>
       </div>
       <div className="form-grid">
-        <section className="panel">
-          <h3>Create learner charge</h3>
+        <WorkflowDetails className="task-disclosure">
+          <summary>Create learner charge</summary>
           <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
@@ -639,9 +639,9 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               Create charge
             </button>
           </WorkflowForm>
-        </section>
-        <section className="panel">
-          <h3>Recurring fee plan</h3>
+        </WorkflowDetails>
+        <WorkflowDetails className="task-disclosure">
+          <summary>Recurring fee plan</summary>
           <WorkflowForm
             onSubmit={async (e) => {
               e.preventDefault();
@@ -730,7 +730,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               Generate charges
             </button>
           </WorkflowForm>
-        </section>
+        </WorkflowDetails>
       </div>
       <section className="panel">
         <h3>Household statement</h3>

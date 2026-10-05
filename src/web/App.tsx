@@ -1,4 +1,7 @@
 import { useRouteValue, navigate } from "./routes";
+import { SchoolHome } from "./features/school/SchoolHome";
+import { availableModules } from "./features/school/navigation";
+import { Menu } from "lucide-react";
 import { DirectLesson } from "./components/DirectLesson";
 import PhoneInput from "./features/auth/PhoneInput";
 import SchoolWorkspace from "./features/school/Workspace";
@@ -36,6 +39,8 @@ function Brand() {
   );
 }
 export default function App() {
+  const [mobileNav, setMobileNav] = useState(false);
+  const [module] = useRouteValue("module");
   const [tenantName, setTenantName] = useState("");
   const [me, setMe] = useState<Me | null>(null),
     [loaded, setLoaded] = useState(false),
@@ -65,14 +70,8 @@ export default function App() {
         .then(setWorkspaceAccess)
         .catch((e) => setError(e.message));
   }, [school?.id, me?.account]);
-  const adminExperience = workspaceAccess.capabilities.some((c) =>
-    [
-      "crm.manage",
-      "schedule.manage",
-      "finance.manage",
-      "curriculum.manage",
-    ].includes(c),
-  );
+  const modules = availableModules(workspaceAccess.capabilities);
+  const adminExperience = modules.length > 0;
   const learningExperience = workspaceAccess.scopes.some((s) =>
     ["portal.learn", "classes.teach", "household.billing"].includes(
       s.capability,
@@ -84,6 +83,22 @@ export default function App() {
   useEffect(() => {
     if (school && !schoolId) navigate({ school: school.id }, true);
   }, [school?.id, schoolId]);
+  useEffect(() => {
+    if (!mobileNav) return;
+    document
+      .querySelector<HTMLButtonElement>("#school-navigation nav button")
+      ?.focus();
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileNav(false);
+        document
+          .querySelector<HTMLButtonElement>(".navigation-toggle")
+          ?.focus();
+      }
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [mobileNav]);
   async function refresh() {
     try {
       const next = await api<Me>("/me");
@@ -218,8 +233,11 @@ export default function App() {
       </main>
     );
   return (
-    <div className="app-layout">
-      <aside>
+    <div className={`app-layout ${mobileNav ? "nav-open" : ""}`}>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <aside id="school-navigation" aria-label="School navigation">
         <Brand />
         <div className="school-label">YOUR WORKSPACE</div>
         {me.schools.length > 1 ? (
@@ -240,18 +258,9 @@ export default function App() {
             <span>{school?.role || "Awaiting invitation"}</span>
           </div>
         )}
-        <nav>
+        <nav aria-label="Main navigation">
           {[
-            { id: "overview", label: "Overview", icon: LayoutDashboard },
-            ...(adminExperience
-              ? [
-                  {
-                    id: "operations",
-                    label: "School administration",
-                    icon: Users,
-                  },
-                ]
-              : []),
+            { id: "overview", label: "Home", icon: LayoutDashboard },
             ...(learningExperience
               ? [
                   {
@@ -261,18 +270,17 @@ export default function App() {
                   },
                 ]
               : []),
-            ...(reviewerExperience && !adminExperience
+            ...(reviewerExperience &&
+            !workspaceAccess.capabilities.includes("assessments.manage")
               ? [{ id: "review", label: "Assigned reviews", icon: BookOpen }]
               : []),
-            ...(school?.role === "owner"
-              ? [{ id: "team", label: "Team & access", icon: Users }]
-              : []),
-            { id: "account", label: "My account", icon: Settings },
           ].map((item) => (
             <button
               key={item.id}
               className={page === item.id ? "active" : ""}
+              aria-current={page === item.id ? "page" : undefined}
               onClick={() => {
+                setMobileNav(false);
                 setPage(item.id);
                 setError("");
                 setNotice("");
@@ -282,6 +290,67 @@ export default function App() {
               {item.label}
             </button>
           ))}
+          {["School", "Teaching", "Community", "Workspace"].map((group) => {
+            const items = modules.filter((m) => m.group === group);
+            return (
+              items.length > 0 && (
+                <div className="nav-group" key={group}>
+                  <span className="nav-group-label">{group}</span>
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      aria-current={
+                        page === "operations" && module === item.id
+                          ? "page"
+                          : undefined
+                      }
+                      className={
+                        page === "operations" && module === item.id
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() => {
+                        navigate({ page: "operations", module: item.id });
+                        setMobileNav(false);
+                        setError("");
+                        setNotice("");
+                      }}
+                    >
+                      <item.icon size={18} />
+                      {item.name}
+                    </button>
+                  ))}
+                </div>
+              )
+            );
+          })}
+          <div className="nav-group">
+            <span className="nav-group-label">Personal</span>
+            {school?.role === "owner" && (
+              <button
+                className={page === "team" ? "active" : ""}
+                aria-current={page === "team" ? "page" : undefined}
+                onClick={() => {
+                  setPage("team");
+                  setMobileNav(false);
+                }}
+              >
+                <Users size={18} />
+                Team & access
+              </button>
+            )}
+            <button
+              className={page === "account" ? "active" : ""}
+              aria-current={page === "account" ? "page" : undefined}
+              onClick={() => {
+                setPage("account");
+                setMobileNav(false);
+              }}
+            >
+              <Settings size={18} />
+              My account
+            </button>
+          </div>
         </nav>
         <div className="sidebar-bottom">
           <div className="avatar">
@@ -310,14 +379,24 @@ export default function App() {
       </aside>
       <div className="workspace">
         <header>
+          <button
+            className="navigation-toggle"
+            aria-controls="school-navigation"
+            aria-expanded={mobileNav}
+            onClick={() => setMobileNav(!mobileNav)}
+            aria-label={mobileNav ? "Close navigation" : "Open navigation"}
+          >
+            {mobileNav ? <X size={20} /> : <Menu size={20} />}
+          </button>
           <span>
             Workspace /{" "}
             {page === "overview"
-              ? "Overview"
+              ? "Home"
               : page === "lesson"
                 ? "Lesson"
                 : page === "operations"
-                  ? "School administration"
+                  ? modules.find((m) => m.id === module)?.name ||
+                    "School administration"
                   : page === "learning"
                     ? "Learning portal"
                     : page === "review"
@@ -341,7 +420,7 @@ export default function App() {
             </span>
           </div>
         </header>
-        <main className="content">
+        <main className="content" id="main-content">
           {alerts}
           {schoolId && !school && (
             <p role="alert">This school is not available to your account.</p>
@@ -374,7 +453,15 @@ export default function App() {
                 experience="review"
               />
             )}
-          {page === "overview" && (
+          {page === "overview" && school && adminExperience && (
+            <SchoolHome
+              key={school.id}
+              school={school}
+              capabilities={workspaceAccess.capabilities}
+              name={me.account.displayName}
+            />
+          )}
+          {page === "overview" && !(school && adminExperience) && (
             <>
               <div className="page-heading">
                 <span className="eyebrow">YOUR MUSIC SCHOOL</span>

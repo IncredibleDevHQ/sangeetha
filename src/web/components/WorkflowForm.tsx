@@ -36,13 +36,20 @@ export function WorkflowForm({
     return resource ? key + "-" + resource : key;
   };
   useEffect(() => {
-    if (form === routeKey() && ref.current?.getClientRects().length)
-      ref.current.scrollIntoView({ block: "start" });
+    if (form === routeKey() && ref.current) {
+      let parent = ref.current.parentElement;
+      while (parent) {
+        if (parent instanceof HTMLDetailsElement) parent.open = true;
+        parent = parent.parentElement;
+      }
+      ref.current.scrollIntoView({ block: "nearest" });
+    }
   }, [form, key]);
   return (
     <form
       {...props}
       ref={ref}
+      data-workflow-form={key}
       onFocus={(e) => {
         onFocus?.(e);
         if (form !== routeKey()) navigate({ form: routeKey() });

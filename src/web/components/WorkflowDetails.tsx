@@ -13,6 +13,7 @@ export function WorkflowDetails({
   ...props
 }: HTMLAttributes<HTMLDetailsElement> & { context?: Record<string, string> }) {
   const [action] = useRouteValue("action");
+  const [form] = useRouteValue("form");
   const ref = useRef<HTMLDetailsElement>(null);
   const summary = Children.toArray(children).find(
     (c) => isValidElement(c) && c.type === "summary",
@@ -25,8 +26,21 @@ export function WorkflowDetails({
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   useEffect(() => {
-    if (ref.current && id) ref.current.open = action === id;
-  }, [action, id]);
+    if (ref.current && id) {
+      const containsForm = Array.from(
+        ref.current.querySelectorAll<HTMLFormElement>(
+          "form[data-workflow-form]",
+        ),
+      ).some((element) => {
+        const resource = element
+          .closest("[data-route-resource]")
+          ?.getAttribute("data-route-resource");
+        const key = element.dataset.workflowForm;
+        return form === (resource ? key + "-" + resource : key);
+      });
+      ref.current.open = action === id || (!action && containsForm);
+    }
+  }, [action, id, form]);
   return (
     <details
       {...props}
@@ -34,7 +48,11 @@ export function WorkflowDetails({
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("summary") && id) {
           e.preventDefault();
-          navigate({ ...context, action: action === id ? "" : id });
+          navigate({
+            ...context,
+            action: ref.current?.open ? "" : id,
+            form: "",
+          });
         }
       }}
     >

@@ -1,3 +1,4 @@
+import { availableModules } from "./navigation";
 import { useRouteValue, navigate } from "../../routes";
 import { useEffect, useState } from "react";
 import Households from "./Households";
@@ -22,7 +23,7 @@ export default function SchoolWorkspace({
   const tools = useSchool(school),
     [caps, setCaps] = useState<string[]>([]),
     [scopes, setScopes] = useState<string[]>([]),
-    [page, setPage] = useRouteValue("module"),
+    [page] = useRouteValue("module"),
     [loaded, setLoaded] = useState(false);
   useEffect(() => {
     tools
@@ -36,52 +37,19 @@ export default function SchoolWorkspace({
       .catch((e) => tools.setError(e.message))
       .finally(() => setLoaded(true));
   }, [tools.read]);
-  const tabs = [
-    { id: "households", name: "Households", show: caps.includes("crm.manage") },
-    { id: "roster", name: "Batches", show: caps.includes("crm.manage") },
-    { id: "schedule", name: "Classes", show: caps.includes("schedule.manage") },
-    { id: "billing", name: "Fees", show: caps.includes("finance.manage") },
-    {
-      id: "library",
-      name: "Curriculum",
-      show: caps.includes("curriculum.manage"),
-    },
-    {
-      id: "tests",
-      name: "Tests & reviews",
-      show:
-        caps.includes("assessments.manage") ||
-        scopes.includes("assessments.review"),
-    },
-    { id: "events", name: "Events", show: caps.includes("events.manage") },
-    {
-      id: "messages",
-      name: "Messages",
-      show: caps.includes("communicate.manage"),
-    },
-    { id: "reports", name: "Reports", show: caps.includes("reports.read") },
-    { id: "access", name: "Access", show: caps.includes("team.manage") },
-    {
-      id: "integrations",
-      name: "Integrations",
-      show: caps.includes("team.manage"),
-    },
-    {
-      id: "portal",
-      name: "My learning & teaching",
-      show: scopes.some((s) =>
-        ["portal.learn", "classes.teach", "household.billing"].includes(s),
-      ),
-    },
-  ].filter(
-    (t) =>
-      t.show &&
-      (experience === "learning"
-        ? t.id === "portal"
-        : experience === "review"
-          ? t.id === "tests"
-          : t.id !== "portal"),
-  );
+  const tabs =
+    experience === "learning"
+      ? scopes.some((s) =>
+          ["portal.learn", "classes.teach", "household.billing"].includes(s),
+        )
+        ? [{ id: "portal", name: "My learning & teaching" }]
+        : []
+      : experience === "review"
+        ? caps.includes("assessments.manage") ||
+          scopes.includes("assessments.review")
+          ? [{ id: "tests", name: "Tests & reviews" }]
+          : []
+        : availableModules(caps);
   const active = tabs.some((t) => t.id === page) ? page : tabs[0]?.id;
   useEffect(() => {
     if (loaded && active && !page && experience !== "learning")
@@ -91,39 +59,14 @@ export default function SchoolWorkspace({
   return (
     <>
       {experience !== "learning" && (
-        <div className="page-heading">
-          <span className="eyebrow">
-            {experience === "admin"
-              ? "SCHOOL ADMINISTRATION"
-              : experience === "review"
-                ? "ASSIGNED REVIEW WORK"
-                : "LEARNING PORTAL"}
-          </span>
+        <div className="workspace-context">
           <h1>
-            {experience === "admin"
-              ? "Your school, together."
-              : experience === "review"
-                ? "Your review queue."
-                : "Your music journey."}
+            {tabs.find((t) => t.id === active)?.name || "School workspace"}
           </h1>
           <p>
-            {experience === "review"
-              ? "Listen to assigned recordings and prepare feedback."
-              : "Households, learning and money, with access scoped to your school."}
+            {availableModules(caps).find((m) => m.id === active)?.description ||
+              "Listen to assigned recordings and prepare feedback."}
           </p>
-        </div>
-      )}
-      {experience !== "learning" && (
-        <div className="module-tabs">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              className={active === t.id ? "selected" : ""}
-              onClick={() => setPage(t.id)}
-            >
-              {t.name}
-            </button>
-          ))}
         </div>
       )}
       <Alerts tools={tools} />
