@@ -510,8 +510,9 @@ export function EventsView({
               {registrations.filter((r) => !r.cancelled_at).length} participants
             </h3>
             <p>
-              Welcome families and give every performer a place in the
-              programme.
+              {event.cancelled_at
+                ? "Registration is closed. Participant and programme history remain available."
+                : "Welcome families and give every performer a place in the programme."}
             </p>
             <button
               className="button primary"
@@ -528,7 +529,7 @@ export function EventsView({
                 navigate({ mode: "programme", action: "", form: "" })
               }
             >
-              Plan the programme
+              {event.cancelled_at ? "View programme" : "Plan the programme"}
             </button>
           </section>
         </div>

@@ -301,6 +301,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                     className="integration-reconcile"
                     onSubmit={async (e) => {
                       e.preventDefault();
+                      if (!data.paymentsConfigured) return;
                       if (
                         await tools.command("payment-link.reconcile", {
                           id: selected.id,
@@ -308,18 +309,36 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                             "provider",
                           ),
                         })
-                      )
+                      ) {
                         await load();
+                        navigate({ form: "", action: "" });
+                        heading.current?.focus();
+                      }
                     }}
                   >
                     <h4>Reconcile the provider result</h4>
                     <label>
                       Provider payment-link ID
-                      <input name="provider" required placeholder="plink_…" />
+                      <input
+                        name="provider"
+                        required
+                        pattern="plink_[a-zA-Z0-9]+"
+                        title="Use the provider link ID beginning with plink_, followed by letters or numbers."
+                        placeholder="plink_…"
+                      />
                     </label>
-                    <button className="button secondary">
+                    <button
+                      className="button secondary"
+                      disabled={!data.paymentsConfigured}
+                    >
                       Reconcile with provider
                     </button>
+                    {!data.paymentsConfigured && (
+                      <p className="fine">
+                        Configure the payment provider before checking this
+                        link’s outcome.
+                      </p>
+                    )}
                   </WorkflowForm>
                 )}
               </article>

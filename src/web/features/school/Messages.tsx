@@ -142,7 +142,10 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
   );
   const current = messages.find((m) => m.id === messageId);
   const activeHouseholds = households.filter((h) => !h.archived_at);
-  const close = () => navigate({ message: "", action: "", form: "" });
+  const close = () => {
+    tools.setError("");
+    navigate({ message: "", action: "", form: "" });
+  };
   if (loading)
     return (
       <p className="ui-empty" role="status">
@@ -373,7 +376,8 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
               </p>
               <small>
                 Scheduled {dateLabel(text(current, "due_at"), true)} ·{" "}
-                {num(current, "attempts")} provider attempts
+                {num(current, "attempts")} provider{" "}
+                {num(current, "attempts") === 1 ? "attempt" : "attempts"}
               </small>
               {!!current.error && (
                 <p className="message-error">{text(current, "error")}</p>
@@ -490,8 +494,11 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
                         reason: f.get("reason"),
                         providerId: String(f.get("providerId")) || undefined,
                       })
-                    )
+                    ) {
                       await load();
+                      navigate({ form: "", action: "" });
+                      heading.current?.focus();
+                    }
                   }}
                 >
                   <label>

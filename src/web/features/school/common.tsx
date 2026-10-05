@@ -29,6 +29,7 @@ export function useSchool(school: School) {
   const [page] = useRouteValue("page");
   const [module] = useRouteValue("module");
   const [report] = useRouteValue("report");
+  const [selectedMessage] = useRouteValue("message");
   const [section] = useRouteValue("section");
   const [occurrence] = useRouteValue("occurrence");
   const [household] = useRouteValue("household");
@@ -44,6 +45,7 @@ export function useSchool(school: School) {
     page,
     module,
     report,
+    selectedMessage,
     section,
     occurrence,
     household,
