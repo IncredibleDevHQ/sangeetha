@@ -1,5 +1,5 @@
 import { useRouteValue, navigate } from "../../routes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   CalendarDays,
@@ -36,18 +36,37 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   const [learnerId, setLearnerId] = useRouteValue("learner");
   const [selectedTest, setSelectedTest] = useRouteValue("test");
   const [selectedReview, setSelectedReview] = useRouteValue("review");
+  const [occurrenceId] = useRouteValue("occurrence");
+  const [familyView, setFamilyView] = useRouteValue("familyView");
+  const [familyId, setFamilyId] = useRouteValue("household");
+  const [familyEvent] = useRouteValue("event");
+  const [familyForm] = useRouteValue("form");
+  const showingFamilyEvents =
+    familyView === "events" ||
+    (!familyView &&
+      (!!familyEvent ||
+        familyForm === "confirm-participants-and-contribution"));
+  const request = useRef(0);
   const [assets, setAssets] = useState<Record<string, string[]>>({});
-  const load = () =>
-    tools
-      .read<typeof data>("portal")
-      .then((result) => {
+  const load = async () => {
+    const version = ++request.current;
+    try {
+      const result = await tools.read<typeof data>("portal");
+      if (version === request.current) {
         setData(result);
         setLoadError("");
-      })
-      .catch((e) => setLoadError(e.message))
-      .finally(() => setReady(true));
+      }
+    } catch (e) {
+      if (version === request.current) setLoadError((e as Error).message);
+    } finally {
+      if (version === request.current) setReady(true);
+    }
+  };
   useEffect(() => {
     void load();
+    return () => {
+      request.current++;
+    };
   }, [tools.read]);
   const learners = data.learners || [],
     teaching = data.teachingBatches || [],
@@ -64,6 +83,9 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
     (c) =>
       teaching.some((b) => b.id === c.batch_id) ||
       ((c.learner_ids as string[]) || []).includes(id),
+  );
+  const teachingClass = classes.find(
+    (c) => c.id === occurrenceId && teaching.some((b) => b.id === c.batch_id),
   );
   const upcoming = classes.filter(
     (c) =>
@@ -150,13 +172,19 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
         {attendance &&
           c.status !== "cancelled" &&
           teaching.some((b) => b.id === c.batch_id) && (
-            <TeacherAttendance
-              tools={tools}
-              occurrence={c}
-              learners={(data.teachingLearners || []).filter(
-                (l) => l.batch_id === c.batch_id,
-              )}
-            />
+            <Action
+              variant="quiet"
+              onClick={() =>
+                navigate({
+                  section: "classes",
+                  occurrence: c.id,
+                  action: "",
+                  form: "",
+                })
+              }
+            >
+              Take attendance <ChevronRight size={14} />
+            </Action>
           )}
       </div>
       <Badge tone={c.status === "cancelled" ? "attention" : "neutral"}>
@@ -695,10 +723,64 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
             title="Classes"
             detail={`Times shown in ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`}
           />
-          <section className="learning-panel">
-            {classes.map((c) => classRow(c, true))}
-            {!classes.length && <EmptyState>No classes scheduled.</EmptyState>}
-          </section>
+          {teachingClass ? (
+            <>
+              <Action
+                variant="quiet"
+                onClick={() =>
+                  navigate({ occurrence: "", action: "", form: "" })
+                }
+              >
+                ← All classes
+              </Action>
+              <section className="learning-panel">
+                {classRow(teachingClass)}
+              </section>
+              <TeacherAttendance
+                key={teachingClass.id}
+                tools={tools}
+                occurrence={teachingClass}
+                learners={[
+                  ...new Map(
+                    (data.teachingEnrollments || [])
+                      .filter(
+                        (l) =>
+                          l.batch_id === teachingClass.batch_id &&
+                          text(l, "starts_on").slice(0, 10) <=
+                            new Date(text(teachingClass, "starts_at"))
+                              .toISOString()
+                              .slice(0, 10) &&
+                          (!l.ends_on ||
+                            text(l, "ends_on").slice(0, 10) >=
+                              new Date(text(teachingClass, "starts_at"))
+                                .toISOString()
+                                .slice(0, 10)),
+                      )
+                      .map((l) => [l.id, l]),
+                  ).values(),
+                ]}
+                marks={(data.teachingAttendance || []).filter(
+                  (a) => a.occurrence_id === teachingClass.id,
+                )}
+                onSaved={load}
+              />
+            </>
+          ) : (
+            <>
+              {occurrenceId && (
+                <p role="status">
+                  This teaching class is unavailable. Choose a class assigned to
+                  you below.
+                </p>
+              )}
+              <section className="learning-panel">
+                {classes.map((c) => classRow(c, true))}
+                {!classes.length && (
+                  <EmptyState>No classes scheduled.</EmptyState>
+                )}
+              </section>
+            </>
+          )}
           {learner && (
             <p className="learning-footnote">
               Attendance:{" "}
@@ -723,10 +805,70 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
             title="Family"
             detail="Shared statements and events for your household."
           />
-          {households.map((h) => (
-            <Statement tools={tools} household={h} key={h.id} />
-          ))}
-          <FamilyEvents tools={tools} />
+          <div
+            className="family-view-nav"
+            role="group"
+            aria-label="Family sections"
+          >
+            <Action
+              variant="quiet"
+              aria-pressed={!showingFamilyEvents}
+              onClick={() => {
+                setFamilyView("statement");
+                navigate({ event: "", action: "", form: "" });
+              }}
+            >
+              Statements & payments
+            </Action>
+            <Action
+              variant="quiet"
+              aria-pressed={showingFamilyEvents}
+              onClick={() => {
+                setFamilyView("events");
+                navigate({ action: "", form: "" });
+              }}
+            >
+              Event participation
+            </Action>
+          </div>
+          {showingFamilyEvents ? (
+            <FamilyEvents tools={tools} />
+          ) : (
+            <>
+              {households.length > 1 && (
+                <label className="family-household-picker">
+                  Household
+                  <select
+                    value={familyId || households[0]?.id || ""}
+                    onChange={(e) => {
+                      setFamilyId(e.target.value);
+                      navigate({ action: "", form: "" });
+                    }}
+                  >
+                    {households.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {text(h, "name")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {(familyId
+                ? households.filter((h) => h.id === familyId)
+                : households.slice(0, 1)
+              ).map((h) => (
+                <Statement tools={tools} household={h} key={h.id} />
+              ))}
+              {familyId && !households.some((h) => h.id === familyId) && (
+                <EmptyState>
+                  This household statement is unavailable.{" "}
+                  <button onClick={() => setFamilyId("")}>
+                    Use your household
+                  </button>
+                </EmptyState>
+              )}
+            </>
+          )}
         </>
       )}
       {page === "settings" && learner && (

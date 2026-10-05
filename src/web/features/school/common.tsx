@@ -19,10 +19,28 @@ export function useSchool(school: School) {
     [busy, setBusy] = useState(false);
   const [page] = useRouteValue("page");
   const [module] = useRouteValue("module");
+  const [section] = useRouteValue("section");
+  const [occurrence] = useRouteValue("occurrence");
+  const [household] = useRouteValue("household");
+  const [familyView] = useRouteValue("familyView");
+  const [event] = useRouteValue("event");
+  const [integration] = useRouteValue("integration");
+  const [paymentLink] = useRouteValue("link");
   useEffect(() => {
     setError("");
     setMessage("");
-  }, [page, module, school.id]);
+  }, [
+    page,
+    module,
+    section,
+    occurrence,
+    household,
+    familyView,
+    event,
+    integration,
+    paymentLink,
+    school.id,
+  ]);
   const prefix = "/schools/" + school.id;
   const read = useCallback(
     <T,>(view: string, query = "") => api<T>(prefix + "/views/" + view + query),

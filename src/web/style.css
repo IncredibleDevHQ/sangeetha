@@ -353,7 +353,7 @@ select:focus {
   display: grid;
   grid-template-columns: 240px 1fr;
 }
-aside {
+.app-layout > aside {
   background: #f1eee8;
   border-right: 1px solid #e5e1d9;
   padding: 28px 22px;
@@ -748,7 +748,7 @@ footer {
   .app-layout {
     grid-template-columns: 210px 1fr;
   }
-  aside {
+  .app-layout > aside {
     padding: 25px 17px;
   }
   .content {
@@ -818,7 +818,7 @@ footer {
   .app-layout {
     display: block;
   }
-  aside {
+  .app-layout > aside {
     position: static;
     height: auto;
     padding: 19px 20px;
@@ -834,7 +834,7 @@ footer {
     display: inline;
     margin-left: 12px;
   }
-  aside .brand {
+  .app-layout > aside .brand {
     font-size: 21px;
   }
   .app-layout > aside nav {

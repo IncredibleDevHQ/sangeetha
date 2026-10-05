@@ -34,13 +34,25 @@ export class PortalService extends SchoolAccess {
       ).rows,
       classes: (
         await this.db.query(
-          "SELECT DISTINCT o.id,o.batch_id,o.teacher_id,o.starts_at,o.ends_at,o.status,o.location,ARRAY(SELECT e.learner_id FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active') AS learner_ids,b.name AS batch_name FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id WHERE o.school_id=$1 AND (o.batch_id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active')) ORDER BY starts_at",
+          "SELECT DISTINCT o.id,o.batch_id,o.teacher_id,o.starts_at,o.ends_at,o.status,o.location,CASE WHEN o.batch_id=ANY($3::uuid[]) THEN o.notes ELSE NULL END AS teaching_notes,ARRAY(SELECT e.learner_id FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active') AS learner_ids,b.name AS batch_name FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id WHERE o.school_id=$1 AND (o.batch_id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM enrollments e WHERE e.school_id=o.school_id AND e.batch_id=o.batch_id AND e.learner_id=ANY($2::uuid[]) AND e.status='active')) ORDER BY starts_at",
           [c.schoolId, ids, batchIds],
         )
       ).rows,
       teachingLearners: (
         await this.db.query(
           "SELECT l.id,p.name,e.batch_id FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN enrollments e ON e.school_id=l.school_id AND e.learner_id=l.id WHERE l.school_id=$1 AND e.batch_id=ANY($2::uuid[]) AND e.status='active'",
+          [c.schoolId, batchIds],
+        )
+      ).rows,
+      teachingAttendance: (
+        await this.db.query(
+          "SELECT a.* FROM attendance a JOIN class_occurrences o ON o.school_id=a.school_id AND o.id=a.occurrence_id WHERE a.school_id=$1 AND o.batch_id=ANY($2::uuid[])",
+          [c.schoolId, batchIds],
+        )
+      ).rows,
+      teachingEnrollments: (
+        await this.db.query(
+          "SELECT l.id,p.name,e.batch_id,e.starts_on,e.ends_on FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id JOIN enrollments e ON e.school_id=l.school_id AND e.learner_id=l.id WHERE l.school_id=$1 AND e.batch_id=ANY($2::uuid[])",
           [c.schoolId, batchIds],
         )
       ).rows,

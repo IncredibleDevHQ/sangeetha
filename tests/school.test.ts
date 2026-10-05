@@ -548,6 +548,76 @@ it("allows teaching assigned material but denies other batches and finance", asy
     (await new PortalService(db).view(teacher)).teachingLearners,
   ).toHaveLength(1);
 });
+it("restores assigned teaching marks and keeps staff notes out of learner views", async () => {
+  const h = await crm.create(c, family());
+  const batch = await crm.batch(c, {
+    name: "Assigned",
+    course: "Vocal",
+    capacity: 10,
+  });
+  const other = await crm.batch(c, {
+    name: "Other",
+    course: "Vocal",
+    capacity: 10,
+  });
+  await crm.enroll(c, {
+    learner: h.learners[0],
+    batch: batch.id,
+    household: h.id,
+    starts: "2026-01-01",
+  });
+  await crm.enroll(c, {
+    learner: h.learners[1],
+    batch: other.id,
+    household: h.id,
+    starts: "2026-01-01",
+  });
+  const teacher = await account("attendance-teacher@example.test", [
+    { capability: "classes.teach", resource: batch.id },
+  ]);
+  const student = await account("attendance-student@example.test", [
+    { capability: "portal.learn", resource: h.learners[0] },
+  ]);
+  const first = await schedule.create(c, {
+    batch: batch.id,
+    teacher: c.session.accountId,
+    starts: "2026-10-05T10:00:00+05:30",
+    ends: "2026-10-05T11:00:00+05:30",
+  });
+  const second = await schedule.create(c, {
+    batch: other.id,
+    teacher: c.session.accountId,
+    starts: "2026-10-06T10:00:00+05:30",
+    ends: "2026-10-06T11:00:00+05:30",
+  });
+  await schedule.mark(teacher, first.ids[0], {
+    entries: [{ learner: h.learners[0], status: "excused" }],
+    notes: "Staff rehearsal plan",
+  });
+  await schedule.mark(c, second.ids[0], {
+    entries: [{ learner: h.learners[1], status: "absent" }],
+    notes: "Other staff note",
+  });
+  const portal = new PortalService(db),
+    teaching = await portal.view(teacher),
+    learning = await portal.view(student);
+  expect(teaching.teachingAttendance).toMatchObject([
+    {
+      occurrence_id: first.ids[0],
+      learner_id: h.learners[0],
+      status: "excused",
+    },
+  ]);
+  expect(teaching.teachingAttendance).toHaveLength(1);
+  expect(teaching.classes).toHaveLength(1);
+  expect(teaching.classes[0].teaching_notes).toBe("Staff rehearsal plan");
+  expect(teaching.teachingEnrollments).toHaveLength(1);
+  expect(teaching.teachingEnrollments[0].id).toBe(h.learners[0]);
+  expect(learning.teachingAttendance).toEqual([]);
+  expect(learning.teachingEnrollments).toEqual([]);
+  expect(learning.classes[0].teaching_notes).toBeNull();
+  expect(learning.attendance[0].status).toBe("excused");
+});
 it("deduplicates per-household event contributions and keeps event collections separate from tuition", async () => {
   const h = await crm.create(c, family()),
     svc = new EventService(db);
