@@ -52,6 +52,13 @@ export function WorkflowForm({
       data-workflow-form={key}
       onFocus={(e) => {
         onFocus?.(e);
+        // Focusing an action must not scroll its form between pointer down and
+        // click. Record form intent when the user enters an editable control.
+        if (
+          e.target instanceof HTMLButtonElement ||
+          e.target instanceof HTMLAnchorElement
+        )
+          return;
         if (form !== routeKey()) navigate({ form: routeKey() });
       }}
     >
