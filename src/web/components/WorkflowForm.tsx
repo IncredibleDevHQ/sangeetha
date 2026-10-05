@@ -55,8 +55,10 @@ export function WorkflowForm({
         // Focusing an action must not scroll its form between pointer down and
         // click. Record form intent when the user enters an editable control.
         if (
-          e.target instanceof HTMLButtonElement ||
-          e.target instanceof HTMLAnchorElement
+          !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLSelectElement) &&
+          !(e.target instanceof HTMLTextAreaElement) &&
+          !(e.target instanceof HTMLElement && e.target.isContentEditable)
         )
           return;
         if (form !== routeKey()) navigate({ form: routeKey() });
