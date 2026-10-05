@@ -643,10 +643,18 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                 ← All feedback
               </Action>
               <Review
+                key={review.id}
                 tools={tools}
-                submission={review}
+                submission={{
+                  ...review,
+                  learner_name: text(learner || {}, "name"),
+                }}
                 labels={[]}
                 canPublish={false}
+                rubric={
+                  (data.tests.find((test) => test.id === review.assessment_id)
+                    ?.rubric || []) as { name: string; max: number }[]
+                }
               />
             </>
           ) : (

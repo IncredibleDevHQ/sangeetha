@@ -207,7 +207,7 @@ export function MusicPlayer({
       {error && <p role="alert">{error}</p>}
       {editable && (
         <WorkflowDetails
-          context={{ lesson: lesson.id, asset: asset.id }}
+          context={{ lesson: lesson.id, asset: asset.id, mode: "materials" }}
           onToggle={(e) => setEditing(e.currentTarget.open)}
         >
           <summary>Align notes to this recording</summary>

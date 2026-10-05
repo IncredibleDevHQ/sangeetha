@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useRouteValue } from "../../routes";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
 export type Row = Record<string, unknown> & { id: string };
 export type School = { id: string; name: string; role: string };
@@ -16,6 +17,12 @@ export function useSchool(school: School) {
   const [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [page] = useRouteValue("page");
+  const [module] = useRouteValue("module");
+  useEffect(() => {
+    setError("");
+    setMessage("");
+  }, [page, module, school.id]);
   const prefix = "/schools/" + school.id;
   const read = useCallback(
     <T,>(view: string, query = "") => api<T>(prefix + "/views/" + view + query),

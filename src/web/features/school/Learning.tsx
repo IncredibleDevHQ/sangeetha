@@ -1,8 +1,12 @@
+export { TestsView } from "./TestsView";
+export { Review } from "./Review";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { WorkflowDetails } from "../../components/WorkflowDetails";
 import { useRouteValue, navigate, resourceLink } from "../../routes";
 import { MusicPlayer } from "../../components/MusicPlayer";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, BookOpen, ArrowLeft, Plus, Users } from "lucide-react";
+import { Badge } from "../../components/ui";
+import { LessonFields } from "./LessonFields";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type Row, type SchoolTools, text, num, Select } from "./common";
 type Library = {
@@ -220,33 +224,66 @@ export function LibraryView({
   const [curriculum, setCurriculum] = useRouteValue("curriculum");
   const [selected] = useRouteValue("lesson");
   const setSelected = (lesson: string) =>
-    navigate({ lesson, asset: "", action: "", form: "" });
+    navigate({ lesson, asset: "", action: "", form: "", mode: "" });
   const [assetId, setAssetId] = useRouteValue("asset");
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [action] = useRouteValue("action");
+  const [formId] = useRouteValue("form");
+  const [mode] = useRouteValue("mode", "preview");
+  const creating =
+    action === "add-a-lesson-or-start-a-curriculum" ||
+    formId === "create-draft-lesson";
+  const authorMode =
+    action === "edit-lesson-and-music-notes" || formId === "save-lesson"
+      ? "edit"
+      : action === "align-notes-to-this-recording"
+        ? "materials"
+        : ["preview", "materials", "edit"].includes(mode)
+          ? mode
+          : "preview";
+  const request = useRef(0);
   const [category, setCategory] = useRouteValue("category");
   const [block, setBlock] = useRouteValue("block");
   const reader = useRef<HTMLElement>(null);
+  const composerHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (creating) composerHeading.current?.focus();
+  }, [creating]);
   const [batch, setBatch] = useState("");
   const [practiceLesson, setPracticeLesson] = useState("");
   const [learner, setLearner] = useState("");
   const [viewLearner, setViewLearner] = useRouteValue("learner");
-  const load = () =>
-    tools
-      .read<Library>("library")
-      .then(setData)
-      .catch((e) => tools.setError(e.message))
-      .finally(() => setReady(true));
+  async function load() {
+    const id = ++request.current;
+    setLoadError("");
+    try {
+      const result = await tools.read<Library>("library");
+      if (id === request.current) setData(result);
+    } catch (e) {
+      if (id === request.current) setLoadError((e as Error).message);
+    } finally {
+      if (id === request.current) setReady(true);
+    }
+  }
   useEffect(() => {
+    let active = true;
     void load();
     if (manage)
       tools
         .read<{ capabilities: string[] }>("bootstrap")
-        .then((access) => {
-          if (access.capabilities.includes("crm.manage"))
-            return tools.read<typeof roster>("roster").then(setRoster);
+        .then(async (access) => {
+          if (access.capabilities.includes("crm.manage")) {
+            const result = await tools.read<typeof roster>("roster");
+            if (active) setRoster(result);
+          }
         })
         .catch((e) => tools.setError(e.message));
-  }, [tools.read]);
+    return () => {
+      active = false;
+      request.current++;
+    };
+  }, [tools.read, manage]);
   const canWrite = manage || batches.length > 0 || !!data.batches?.length;
   const linkedEligible = (data.lessons.find((l) => l.id === selected)
     ?.eligible_learners || []) as string[];
@@ -296,6 +333,33 @@ export function LibraryView({
     (manage ||
       !!current.can_edit ||
       batches.some((b) => b.id === current.batch_id));
+  const suggestions = {
+    curricula,
+    categories: [
+      ...new Set(
+        visibleLessons
+          .filter((l) => l.curriculum === activeCurriculum)
+          .map((l) => text(l, "category")),
+      ),
+    ],
+    blocks: [
+      ...new Set(
+        visibleLessons
+          .filter(
+            (l) =>
+              l.curriculum === activeCurriculum &&
+              (!category || l.category === category),
+          )
+          .map((l) => text(l, "module")),
+      ),
+    ],
+  };
+  const audienceName = current?.batch_id
+    ? text(
+        (data.batches || batches).find((b) => b.id === current.batch_id) || {},
+        "name",
+      ) || "Assigned batch"
+    : `${current ? text(current, "level") : ""} level`;
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -325,349 +389,458 @@ export function LibraryView({
   }
   return (
     <>
-      <h2>Curriculum and lessons</h2>
-      <p>
-        Explore categories and blocks, then listen, watch and practise each
-        lesson.
-      </p>
-      {canWrite && (
-        <WorkflowDetails className="record-card">
-          <summary>Add a lesson or start a curriculum</summary>
-          <WorkflowForm className="form-grid" onSubmit={create}>
-            <label>
-              Curriculum name
-              <input
-                name="curriculum"
-                required
-                defaultValue={activeCurriculum || "Carnatic Junior"}
-              />
-            </label>
-            <label>
-              Lesson number
-              <input
-                type="number"
-                name="position"
-                min="1"
-                max="10000"
-                required
-                defaultValue={lessons.length + 1}
-              />
-            </label>
-            <label>
-              Title
-              <input name="title" required />
-            </label>
-            <label>
-              Level
-              <input name="level" required defaultValue="Beginner" />
-            </label>
-            <label>
-              Block name
-              <input name="module" required defaultValue="Foundations" />
-            </label>
-            <label>
-              Category
-              <input name="category" defaultValue="Foundations" required />
-            </label>
-            <label>
-              Category order
-              <input
-                name="categoryPosition"
-                type="number"
-                min="1"
-                defaultValue="1"
-                required
-              />
-            </label>
-            <label>
-              Block order
-              <input
-                name="blockPosition"
-                type="number"
-                min="1"
-                defaultValue="1"
-                required
-              />
-            </label>
-            <label>
-              Raga
-              <input name="raga" />
-            </label>
-            <label>
-              Tala
-              <input name="tala" />
-            </label>
-            <Select
-              label="Batch"
-              optional={manage}
-              rows={data.batches || batches}
-              value={batch}
-              onChange={setBatch}
-            />
-            <label className="wide">
-              Lesson instructions
-              <textarea name="instructions" />
-            </label>
-            <label className="wide">
-              Music notes
-              <textarea
-                className="music-notes-input"
-                name="musicNotes"
-                placeholder="S R G M | P D N Ṡ"
-                rows={5}
-              />
-            </label>
-            <button>Create draft lesson</button>
-          </WorkflowForm>
-        </WorkflowDetails>
-      )}
-      {portalLearners.length > 1 && (
-        <Select
-          label="Learning as"
-          rows={portalLearners}
-          value={activeLearner}
-          onChange={(id) => {
-            setViewLearner(id);
-            setSelected("");
-          }}
-        />
-      )}
-      {curricula.length > 0 && (
-        <label>
-          Curriculum
-          <select
-            value={activeCurriculum}
-            onChange={(e) => {
+      <div className="library-heading">
+        <div>
+          <h2 ref={composerHeading} tabIndex={-1}>
+            {canWrite && creating
+              ? "Create a lesson"
+              : "Curriculum and lessons"}
+          </h2>
+          <p>
+            {canWrite && creating
+              ? "Start with a draft. Add material and publish when you’re ready."
+              : canWrite
+                ? "Build a clear path through your school’s music."
+                : "Explore your lessons, then listen, watch and practise."}
+          </p>
+        </div>
+        {canWrite && !creating && (
+          <button
+            className="button primary"
+            onClick={() =>
               navigate({
-                curriculum: e.target.value,
-                category: "",
-                block: "",
-                lesson: "",
-                asset: "",
-                action: "",
+                action: "add-a-lesson-or-start-a-curriculum",
                 form: "",
-              });
-            }}
-          >
-            {curricula.map((name) => (
-              <option key={name}>{name}</option>
-            ))}
-          </select>
-        </label>
-      )}
-      {ready && selected && !current && (
-        <p role="alert">
-          This lesson was not found or is not available to your account.
-        </p>
-      )}
-      {curricula.length > 0 && (
-        <label>
-          Category
-          <select
-            value={category}
-            onChange={(e) => {
-              navigate({
-                curriculum: activeCurriculum,
-                category: e.target.value,
-                block: "",
-                lesson: "",
-                asset: "",
-                action: "",
-                form: "",
-              });
-            }}
-          >
-            <option value="">All categories</option>
-            {[
-              ...new Set(
-                visibleLessons
-                  .filter((l) => l.curriculum === activeCurriculum)
-                  .map((l) => text(l, "category") || "General"),
-              ),
-            ].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-      )}
-      {curricula.length > 0 && (
-        <label>
-          Block
-          <select
-            value={block}
-            onChange={(e) =>
-              navigate({
-                curriculum: activeCurriculum,
-                block: e.target.value,
-                lesson: "",
-                asset: "",
-                action: "",
-                form: "",
+                mode: "",
               })
             }
           >
-            <option value="">All blocks</option>
-            {[
-              ...new Set(
-                visibleLessons
-                  .filter(
-                    (l) =>
-                      l.curriculum === activeCurriculum &&
-                      (!category || l.category === category),
-                  )
-                  .map((l) => text(l, "module")),
-              ),
-            ].map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
-        </label>
+            <Plus size={16} />
+            Add lesson
+          </button>
+        )}
+      </div>
+      {canWrite && creating && (
+        <section className="lesson-composer">
+          <button
+            className="back-link"
+            onClick={() => navigate({ action: "", form: "" })}
+          >
+            <ArrowLeft size={16} />
+            Back to curriculum
+          </button>
+          <WorkflowForm className="form-grid" onSubmit={create}>
+            <LessonFields
+              creating
+              initial={{
+                curriculum: activeCurriculum || "Carnatic Junior",
+                category: category || "Foundations",
+                module: block || "Foundations",
+                position:
+                  Math.max(0, ...lessons.map((l) => num(l, "position"))) + 1,
+              }}
+              suggestions={suggestions}
+              audience={
+                <Select
+                  label="Batch"
+                  optional={manage}
+                  rows={data.batches || batches}
+                  value={batch}
+                  onChange={setBatch}
+                />
+              }
+            />
+            <div className="composer-footer wide">
+              <p>
+                A draft is visible to authorised teaching staff. Learners see it
+                after publication.
+              </p>
+              <button className="button primary" disabled={tools.busy}>
+                Create draft lesson
+              </button>
+            </div>
+          </WorkflowForm>
+        </section>
       )}
-      {!selected && !current && (
-        <p>
-          No lessons are available yet. Published lessons appear here for their
-          assigned batch or level.
-        </p>
-      )}
-      {current && (
-        <div className="curriculum-layout">
-          <nav className="curriculum-outline" aria-label="Lesson sequence">
-            <h3>{activeCurriculum}</h3>
-            <p>
-              {lessons.length} lessons
-              {activeLearner
-                ? ` · ${lessons.filter((l) => completed(l.id)).length} completed`
-                : ""}
+      <div hidden={canWrite && creating}>
+        {!ready && (
+          <p role="status" className="ui-empty">
+            Loading curriculum…
+          </p>
+        )}
+        {loadError && (
+          <div className="ui-empty" role="alert">
+            <h3>We couldn’t load your curriculum</h3>
+            <p>{loadError}</p>
+            <button onClick={() => void load()}>Try again</button>
+          </div>
+        )}
+        <div className="curriculum-filters">
+          {portalLearners.length > 1 && (
+            <Select
+              label="Learning as"
+              rows={portalLearners}
+              value={activeLearner}
+              onChange={(id) => {
+                setViewLearner(id);
+                setSelected("");
+              }}
+            />
+          )}
+          {curricula.length > 0 && (
+            <label>
+              Curriculum
+              <select
+                value={activeCurriculum}
+                onChange={(e) => {
+                  navigate({
+                    curriculum: e.target.value,
+                    mode: "",
+                    category: "",
+                    block: "",
+                    lesson: "",
+                    asset: "",
+                    action: "",
+                    form: "",
+                  });
+                }}
+              >
+                {curricula.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {ready && !loadError && selected && !current && (
+            <p role="alert">
+              This lesson was not found or is not available to your account.
             </p>
-            {[
-              ...new Set(lessons.map((l) => text(l, "category") || "General")),
-            ].map((cat) => (
-              <section className="curriculum-category" key={cat}>
-                <h4>{cat}</h4>
+          )}
+          {curricula.length > 0 && (
+            <label>
+              Category
+              <select
+                value={category}
+                onChange={(e) => {
+                  navigate({
+                    curriculum: activeCurriculum,
+                    category: e.target.value,
+                    mode: "",
+                    block: "",
+                    lesson: "",
+                    asset: "",
+                    action: "",
+                    form: "",
+                  });
+                }}
+              >
+                <option value="">All categories</option>
                 {[
                   ...new Set(
-                    lessons
-                      .filter((l) => (text(l, "category") || "General") === cat)
-                      .map((l) => text(l, "module")),
+                    visibleLessons
+                      .filter((l) => l.curriculum === activeCurriculum)
+                      .map((l) => text(l, "category") || "General"),
                   ),
-                ].map((block) => (
-                  <div className="curriculum-block" key={block}>
-                    <h5>{block}</h5>
-                    {lessons
+                ].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {curricula.length > 0 && (
+            <label>
+              Block
+              <select
+                value={block}
+                onChange={(e) =>
+                  navigate({
+                    curriculum: activeCurriculum,
+                    block: e.target.value,
+                    mode: "",
+                    lesson: "",
+                    asset: "",
+                    action: "",
+                    form: "",
+                  })
+                }
+              >
+                <option value="">All blocks</option>
+                {[
+                  ...new Set(
+                    visibleLessons
                       .filter(
                         (l) =>
-                          (text(l, "category") || "General") === cat &&
-                          l.module === block,
+                          l.curriculum === activeCurriculum &&
+                          (!category || l.category === category),
                       )
-                      .map((l) => (
-                        <button
-                          key={l.id}
-                          aria-current={
-                            current.id === l.id ? "step" : undefined
-                          }
-                          onClick={() => navigate({ lesson: l.id, asset: "" })}
-                        >
-                          <span>{text(l, "title")}</span>
-                          <small>
-                            {completed(l.id)
-                              ? "Completed"
-                              : l.published
-                                ? "Lesson"
-                                : "Draft"}
-                          </small>
-                        </button>
-                      ))}
-                  </div>
+                      .map((l) => text(l, "module")),
+                  ),
+                ].map((b) => (
+                  <option key={b}>{b}</option>
                 ))}
-              </section>
-            ))}
-          </nav>
-          <article
-            className="record-card lesson-reader"
-            key={current.id}
-            ref={reader}
-          >
-            <small>
-              Lesson {index + 1} of {lessons.length} · {text(current, "level")}
-            </small>
-            <div className="toolbar">
-              <h3>{text(current, "title")}</h3>
-              <a
-                href={resourceLink(tools.school.id, {
-                  page: "lesson",
-                  lesson: current.id,
-                })}
-              >
-                Lesson permalink
-              </a>
-            </div>
-            <p className="fine">
-              {activeCurriculum} / {text(current, "category")} /{" "}
-              {text(current, "module")}
-            </p>
+              </select>
+            </label>
+          )}
+        </div>
+        {ready && !loadError && !selected && !current && (
+          <div className="library-empty">
+            <BookOpen size={28} />
+            <h3>
+              {visibleLessons.length
+                ? "No lessons in this selection"
+                : canWrite
+                  ? "Create your first learning path"
+                  : "Your lessons will appear here"}
+            </h3>
             <p>
+              {canWrite
+                ? "Organise lessons into curricula, categories and blocks, then add recordings and music notes."
+                : "Your teacher’s published lessons appear for your assigned batch or level."}
+            </p>
+            {visibleLessons.length > 0 && (
+              <button
+                onClick={() =>
+                  navigate({ category: "", block: "", lesson: "", asset: "" })
+                }
+              >
+                Show all lessons in this curriculum
+              </button>
+            )}
+          </div>
+        )}
+        {current && (
+          <div className="curriculum-layout">
+            <nav className="curriculum-outline" aria-label="Lesson sequence">
+              <h3>{activeCurriculum}</h3>
+              <p>
+                {lessons.length} lessons
+                {activeLearner
+                  ? ` · ${lessons.filter((l) => completed(l.id)).length} completed`
+                  : ""}
+              </p>
               {[
-                text(current, "module"),
-                text(current, "raga"),
-                text(current, "tala"),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            <p className="lesson-instructions">
-              {text(current, "instructions")}
-            </p>
-            {text(current, "music_notes") && (
-              <section>
-                <h4>Music notes</h4>
-                <pre className="music-notes">
-                  {text(current, "music_notes")}
-                </pre>
-              </section>
-            )}
-            {assetId && (
-              <>
-                <button onClick={() => setAssetId("")}>
-                  Show all lesson assets
-                </button>
-                {!data.assets.some(
-                  (a) => a.id === assetId && a.lesson_id === current.id,
-                ) && (
-                  <p role="alert">
-                    This asset is not available in this lesson.
-                  </p>
-                )}
-              </>
-            )}
-            {data.assets
-              .filter(
-                (a) =>
-                  a.lesson_id === current.id && (!assetId || a.id === assetId),
-              )
-              .map((a) => (
-                <LessonMaterial
-                  key={a.id}
-                  tools={tools}
-                  asset={a}
-                  lesson={current}
-                  editable={!!editable}
-                  onSaved={() => void load()}
-                />
+                ...new Set(
+                  lessons.map((l) => text(l, "category") || "General"),
+                ),
+              ].map((cat) => (
+                <section className="curriculum-category" key={cat}>
+                  <h4>{cat}</h4>
+                  {[
+                    ...new Set(
+                      lessons
+                        .filter(
+                          (l) => (text(l, "category") || "General") === cat,
+                        )
+                        .map((l) => text(l, "module")),
+                    ),
+                  ].map((block) => (
+                    <div className="curriculum-block" key={block}>
+                      <h5>{block}</h5>
+                      {lessons
+                        .filter(
+                          (l) =>
+                            (text(l, "category") || "General") === cat &&
+                            l.module === block,
+                        )
+                        .map((l) => (
+                          <button
+                            key={l.id}
+                            aria-current={
+                              current.id === l.id ? "step" : undefined
+                            }
+                            onClick={() => setSelected(l.id)}
+                          >
+                            <span>{text(l, "title")}</span>
+                            <small>
+                              {completed(l.id)
+                                ? "Completed"
+                                : l.published
+                                  ? "Lesson"
+                                  : "Draft"}
+                            </small>
+                          </button>
+                        ))}
+                    </div>
+                  ))}
+                </section>
               ))}
-            {editable && (
-              <>
-                <p>
-                  {current.published
-                    ? "Published to eligible learners"
-                    : "Draft — visible to teachers only"}
+            </nav>
+            <article
+              className="record-card lesson-reader"
+              key={current.id}
+              ref={reader}
+            >
+              <small>
+                Lesson {index + 1} of {lessons.length} ·{" "}
+                {text(current, "level")}
+              </small>
+              <div className="toolbar">
+                <h3>{text(current, "title")}</h3>
+                <a
+                  href={resourceLink(tools.school.id, {
+                    page: "lesson",
+                    lesson: current.id,
+                  })}
+                >
+                  Lesson permalink
+                </a>
+              </div>
+              {editable && (
+                <>
+                  <div className="lesson-publication">
+                    <div>
+                      <Badge tone={current.published ? "success" : "neutral"}>
+                        {current.published ? "Published" : "Draft"}
+                      </Badge>
+                      <span>
+                        <Users size={14} />
+                        {audienceName}
+                      </span>
+                    </div>{" "}
+                    <button
+                      className="button secondary"
+                      disabled={tools.busy}
+                      onClick={async () => {
+                        if (
+                          await tools.command("lesson.publish", {
+                            id: current.id,
+                            published: !current.published,
+                          })
+                        )
+                          await load();
+                      }}
+                    >
+                      {current.published ? "Unpublish" : "Publish"} lesson
+                    </button>
+                  </div>
+                  <div
+                    className="view-switch lesson-mode"
+                    aria-label="Lesson authoring views"
+                  >
+                    {[
+                      ["preview", "Lesson"],
+                      ["materials", "Materials"],
+                      ["edit", "Edit details"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        aria-pressed={authorMode === value}
+                        onClick={() =>
+                          navigate({
+                            lesson: current.id,
+                            mode: value,
+                            action: "",
+                            form: "",
+                            asset: "",
+                          })
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div hidden={!!editable && authorMode === "edit"}>
+                <p className="fine">
+                  {activeCurriculum} / {text(current, "category")} /{" "}
+                  {text(current, "module")}
                 </p>
-                <Upload
-                  tools={tools}
-                  lesson={current.id}
-                  onReady={() => void load()}
-                />
-                <WorkflowDetails context={{ lesson: current.id }}>
-                  <summary>Edit lesson and music notes</summary>
+                <p>
+                  {[
+                    text(current, "module"),
+                    text(current, "raga"),
+                    text(current, "tala"),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <p className="lesson-instructions">
+                  {text(current, "instructions")}
+                </p>
+                {text(current, "music_notes") && (
+                  <section>
+                    <h4>Music notes</h4>
+                    <pre className="music-notes">
+                      {text(current, "music_notes")}
+                    </pre>
+                  </section>
+                )}
+                {assetId && (
+                  <>
+                    <button onClick={() => setAssetId("")}>
+                      Show all lesson assets
+                    </button>
+                    {!data.assets.some(
+                      (a) => a.id === assetId && a.lesson_id === current.id,
+                    ) && (
+                      <p role="alert">
+                        This asset is not available in this lesson.
+                      </p>
+                    )}
+                  </>
+                )}
+                {editable &&
+                  authorMode === "preview" &&
+                  !data.assets.some((a) => a.lesson_id === current.id) && (
+                    <div className="lesson-material-empty">
+                      <UploadCloud size={22} />
+                      <h4>Add a reference for this lesson</h4>
+                      <p>
+                        Audio, video and notation give learners something to
+                        practise with.
+                      </p>
+                      <button
+                        className="button secondary"
+                        onClick={() =>
+                          navigate({
+                            lesson: current.id,
+                            mode: "materials",
+                            action: "",
+                            form: "",
+                          })
+                        }
+                      >
+                        Add lesson material
+                      </button>
+                    </div>
+                  )}
+                {data.assets
+                  .filter(
+                    (a) =>
+                      a.lesson_id === current.id &&
+                      (!assetId || a.id === assetId),
+                  )
+                  .map((a) => (
+                    <LessonMaterial
+                      key={a.id}
+                      tools={tools}
+                      asset={a}
+                      lesson={current}
+                      editable={!!editable && authorMode === "materials"}
+                      onSaved={() => void load()}
+                    />
+                  ))}
+                {editable && authorMode === "materials" && (
+                  <section className="lesson-upload-panel">
+                    <h4>Add lesson material</h4>
+                    <p>
+                      Upload recordings, video or notation. Use the audio
+                      player’s timing editor to align your notes.
+                    </p>
+                    <Upload
+                      tools={tools}
+                      lesson={current.id}
+                      onReady={() => void load()}
+                    />
+                  </section>
+                )}
+              </div>
+              {editable && (
+                <div
+                  hidden={authorMode !== "edit"}
+                  className="lesson-edit-panel"
+                >
                   <WorkflowForm
                     className="form-grid"
                     onSubmit={async (e) => {
@@ -688,672 +861,110 @@ export function LibraryView({
                           raga: f.get("raga"),
                           tala: f.get("tala"),
                         })
+                      ) {
+                        navigate({ mode: "preview", action: "", form: "" });
+                        await load();
+                      }
+                    }}
+                  >
+                    <LessonFields initial={current} suggestions={suggestions} />
+                    <div className="composer-footer wide">
+                      <p>
+                        {current.published
+                          ? "Saving updates the published lesson for its current audience."
+                          : "Saving keeps this lesson as a draft."}
+                      </p>
+                      <button className="button primary" disabled={tools.busy}>
+                        Save lesson
+                      </button>
+                    </div>
+                  </WorkflowForm>
+                </div>
+              )}
+              {activeLearner &&
+                (current.eligible_learners as string[]).includes(
+                  activeLearner,
+                ) && (
+                  <button
+                    onClick={async () => {
+                      if (
+                        await tools.command("lesson.complete", {
+                          lesson: current.id,
+                          learner: activeLearner,
+                          completed: !completed(current.id),
+                        })
                       )
                         await load();
                     }}
                   >
-                    <label>
-                      Title
-                      <input
-                        name="title"
-                        required
-                        defaultValue={text(current, "title")}
-                      />
-                    </label>
-                    <label>
-                      Curriculum name
-                      <input
-                        name="curriculum"
-                        required
-                        defaultValue={text(current, "curriculum")}
-                      />
-                    </label>
-                    <label>
-                      Lesson number
-                      <input
-                        name="position"
-                        type="number"
-                        min="1"
-                        max="10000"
-                        required
-                        defaultValue={num(current, "position")}
-                      />
-                    </label>
-                    <label>
-                      Category
-                      <input
-                        name="category"
-                        required
-                        defaultValue={text(current, "category")}
-                      />
-                    </label>
-                    <label>
-                      Category order
-                      <input
-                        name="categoryPosition"
-                        type="number"
-                        min="1"
-                        required
-                        defaultValue={num(current, "category_position")}
-                      />
-                    </label>
-                    <label>
-                      Block name
-                      <input
-                        name="module"
-                        required
-                        defaultValue={text(current, "module")}
-                      />
-                    </label>
-                    <label>
-                      Block order
-                      <input
-                        name="blockPosition"
-                        type="number"
-                        min="1"
-                        required
-                        defaultValue={num(current, "block_position")}
-                      />
-                    </label>
-                    <label>
-                      Raagam
-                      <input name="raga" defaultValue={text(current, "raga")} />
-                    </label>
-                    <label>
-                      Thaalam
-                      <input name="tala" defaultValue={text(current, "tala")} />
-                    </label>
-                    <label className="wide">
-                      Lesson instructions
-                      <textarea
-                        name="instructions"
-                        defaultValue={text(current, "instructions")}
-                      />
-                    </label>
-                    <label className="wide">
-                      Music notes
-                      <textarea
-                        name="musicNotes"
-                        rows={6}
-                        className="music-notes-input"
-                        defaultValue={text(current, "music_notes")}
-                      />
-                    </label>
-                    <button>Save lesson</button>
-                  </WorkflowForm>
-                </WorkflowDetails>
-                <button
-                  onClick={async () => {
-                    if (
-                      await tools.command("lesson.publish", {
-                        id: current.id,
-                        published: !current.published,
-                      })
-                    )
-                      await load();
-                  }}
-                >
-                  {current.published ? "Unpublish" : "Publish"} lesson
-                </button>
-              </>
-            )}
-            {activeLearner &&
-              (current.eligible_learners as string[]).includes(
-                activeLearner,
-              ) && (
-                <button
-                  onClick={async () => {
-                    if (
-                      await tools.command("lesson.complete", {
-                        lesson: current.id,
-                        learner: activeLearner,
-                        completed: !completed(current.id),
-                      })
-                    )
-                      await load();
-                  }}
-                >
-                  {completed(current.id)
-                    ? "Mark as still practising"
-                    : "Mark lesson complete"}
-                </button>
-              )}
-            <div className="lesson-navigation">
-              <button
-                disabled={index === 0}
-                onClick={() => setSelected(lessons[index - 1].id)}
-              >
-                Previous lesson
-              </button>
-              <button
-                disabled={index === lessons.length - 1}
-                onClick={() => setSelected(lessons[index + 1].id)}
-              >
-                Next lesson
-              </button>
-            </div>
-          </article>
-        </div>
-      )}
-      {canWrite && (
-        <WorkflowDetails className="record-card">
-          <summary>Assign practice</summary>
-          <WorkflowForm
-            className="form-grid"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              await tools.command("practice.create", {
-                lesson: practiceLesson,
-                learner,
-                text: f.get("text"),
-                due: f.get("due"),
-              });
-            }}
-          >
-            <Select
-              label="Lesson"
-              value={practiceLesson}
-              onChange={setPracticeLesson}
-              rows={data.lessons}
-              labelKey="title"
-            />
-            <Select
-              label="Learner"
-              value={learner}
-              onChange={setLearner}
-              rows={manage ? roster.learners : learners}
-            />
-            <label>
-              Due
-              <input type="date" name="due" required />
-            </label>
-            <label>
-              Exercise
-              <textarea name="text" required />
-            </label>
-            <button>Assign practice</button>
-          </WorkflowForm>
-        </WorkflowDetails>
-      )}
-    </>
-  );
-}
-export function Review({
-  tools,
-  submission,
-  labels,
-  canPublish,
-  rubric = [],
-}: {
-  tools: SchoolTools;
-  submission: Row;
-  labels: string[];
-  canPublish: boolean;
-  rubric?: { name: string; max: number }[];
-}) {
-  const assets = submission.asset_ids as string[],
-    [asset, setAsset] = useState(assets[0]),
-    [annotations, setAnnotations] = useState<Row[]>([]),
-    [start, setStart] = useState(0),
-    [end, setEnd] = useState(1),
-    [kind, setKind] = useState("point");
-  const audio = useRef<HTMLAudioElement>(null);
-  const load = () =>
-    tools
-      .read<Row[]>("annotations", "?id=" + submission.id)
-      .then(setAnnotations)
-      .catch((e) => tools.setError(e.message));
-  useEffect(() => {
-    void load();
-  }, [submission.id]);
-  return (
-    <article className="record-card" data-route-resource={submission.id}>
-      <a
-        href={resourceLink(tools.school.id, {
-          page: labels.length || canPublish ? "review" : "learning",
-          module: "tests",
-          section: "feedback",
-          test: text(submission, "assessment_id"),
-          review: submission.id,
-        })}
-      >
-        Review permalink
-      </a>
-      <h3>
-        {text(submission, "learner_name") || "Your submission"} ·{" "}
-        {text(submission, "title")} · version {num(submission, "version")}
-      </h3>
-      <label>
-        Recording
-        <select value={asset} onChange={(e) => setAsset(e.target.value)}>
-          {assets.map((a, i) => (
-            <option value={a} key={a}>
-              Recording {i + 1}
-            </option>
-          ))}
-        </select>
-      </label>
-      <audio
-        ref={audio}
-        controls
-        preload="metadata"
-        src={`/api/schools/${tools.school.id}/media/${asset}`}
-      />
-      {annotations
-        .filter((a) => a.asset_id === asset)
-        .map((a) => (
-          <p key={a.id}>
-            <button
-              onClick={() => {
-                if (audio.current) {
-                  audio.current.currentTime = num(a, "start_ms") / 1000;
-                  void audio.current.play();
-                }
-              }}
-            >
-              {(num(a, "start_ms") / 1000).toFixed(2)}s
-              {a.end_ms != null
-                ? "–" + (num(a, "end_ms") / 1000).toFixed(2) + "s"
-                : ""}
-            </button>{" "}
-            <strong>{text(a, "label")}</strong> {text(a, "comment")}{" "}
-            {text(a, "exercise")} · {text(a, "reviewer")}{" "}
-            {a.verified_at ? "(verified)" : ""}
-          </p>
-        ))}
-      {labels.length > 0 && !submission.review_published_at && (
-        <WorkflowForm
-          className="form-grid"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            if (
-              await tools.command("review.annotate", {
-                submission: submission.id,
-                asset,
-                kind,
-                start: Math.round(start * 1000),
-                end: kind === "interval" ? Math.round(end * 1000) : undefined,
-                label: f.get("label"),
-                comment: f.get("comment"),
-                exercise: f.get("exercise"),
-              })
-            )
-              void load();
-          }}
-        >
-          <label>
-            Kind
-            <select value={kind} onChange={(e) => setKind(e.target.value)}>
-              <option value="point">Point</option>
-              <option value="interval">Passage</option>
-            </select>
-          </label>
-          <label>
-            Start (seconds)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={start}
-              onChange={(e) => setStart(Number(e.target.value))}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => setStart(audio.current?.currentTime || 0)}
-          >
-            Use playback position
-          </button>
-          {kind === "interval" && (
-            <label>
-              End (seconds)
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={end}
-                onChange={(e) => setEnd(Number(e.target.value))}
-              />
-            </label>
-          )}
-          <label>
-            Issue label
-            <select name="label">
-              {labels.map((l) => (
-                <option key={l}>{l}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Feedback
-            <textarea name="comment" required />
-          </label>
-          <label>
-            Suggested exercise
-            <textarea name="exercise" />
-          </label>
-          <button>Add draft feedback</button>
-        </WorkflowForm>
-      )}
-      {!!submission.review_published_at && (
-        <dl className="review-scores" aria-label="Assessment scores">
-          {Object.entries(
-            (submission.scores || {}) as Record<string, number>,
-          ).map(([name, score]) => (
-            <div key={name}>
-              <dt>{name}</dt>
-              <dd>{score}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {rubric.length > 0 && !submission.review_published_at && (
-        <WorkflowForm
-          className="form-grid"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            await tools.command("review.score", {
-              id: submission.id,
-              scores: Object.fromEntries(
-                rubric.map((r) => [r.name, Number(f.get(r.name))]),
-              ),
-            });
-          }}
-        >
-          {rubric.map((r) => (
-            <label key={r.name}>
-              {r.name} / {r.max}
-              <input
-                type="number"
-                name={r.name}
-                min="0"
-                max={r.max}
-                step="0.5"
-                defaultValue={Number(
-                  (submission.scores as Record<string, number>)?.[r.name] || 0,
+                    {completed(current.id)
+                      ? "Mark as still practising"
+                      : "Mark lesson complete"}
+                  </button>
                 )}
-              />
-            </label>
-          ))}
-          <button>Save draft scores</button>
-        </WorkflowForm>
-      )}
-      {canPublish && !submission.review_published_at && (
-        <button
-          onClick={async () => {
-            if (
-              await tools.command("review.moderate", {
-                id: submission.id,
-                publish: true,
-              })
-            ) {
-              submission.review_published_at = new Date().toISOString();
-              void load();
-            }
-          }}
-        >
-          Verify and publish feedback
-        </button>
-      )}
-      <p>
-        {submission.review_published_at
-          ? "Feedback published"
-          : "Draft feedback is private until the owner publishes it."}
-      </p>
-    </article>
-  );
-}
-export function TestsView({
-  tools,
-  manage,
-  canPublish,
-  canExport,
-}: {
-  tools: SchoolTools;
-  manage: boolean;
-  canPublish: boolean;
-  canExport: boolean;
-}) {
-  const [testId] = useRouteValue("test");
-  const [reviewId] = useRouteValue("review");
-  const [data, setData] = useState<{
-      tests: Row[];
-      submissions: Row[];
-      taxonomies: Row[];
-    }>({ tests: [], submissions: [], taxonomies: [] }),
-    [learners, setLearners] = useState<Row[]>([]),
-    [selected, setSelected] = useState<string[]>([]);
-  const load = () =>
-    tools
-      .read<typeof data>("tests")
-      .then(setData)
-      .catch((e) => tools.setError(e.message));
-  useEffect(() => {
-    void load();
-    if (manage)
-      tools
-        .read<{ learners: Row[] }>("roster")
-        .then((r) => setLearners(r.learners))
-        .catch((e) => tools.setError(e.message));
-  }, [tools.read]);
-  return (
-    <>
-      <h2>Tests and review queue</h2>
-      {manage && (
-        <>
-          <WorkflowForm
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              if (
-                await tools.command("taxonomy.create", {
-                  labels: String(f.get("labels"))
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                })
-              )
-                void load();
-            }}
-          >
-            <label>
-              Issue vocabulary, separated by commas
-              <input
-                name="labels"
-                required
-                defaultValue="Shruti, Rhythm, Pronunciation, Breath, Gamaka"
-              />
-            </label>
-            <button>Create vocabulary version</button>
-          </WorkflowForm>
-          <WorkflowDetails>
-            <summary>Create test</summary>
+              <div className="lesson-navigation">
+                <button
+                  disabled={index === 0}
+                  onClick={() => setSelected(lessons[index - 1].id)}
+                >
+                  Previous lesson
+                </button>
+                <button
+                  disabled={index === lessons.length - 1}
+                  onClick={() => setSelected(lessons[index + 1].id)}
+                >
+                  Next lesson
+                </button>
+              </div>
+            </article>
+          </div>
+        )}
+        {canWrite && (
+          <WorkflowDetails className="record-card">
+            <summary>Assign practice</summary>
             <WorkflowForm
               className="form-grid"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
-                if (
-                  await tools.command("test.create", {
-                    title: f.get("title"),
-                    instructions: f.get("instructions"),
-                    due: new Date(
-                      String(f.get("due")) + "+05:30",
-                    ).toISOString(),
-                    taxonomy: Number(f.get("taxonomy")),
-                    learners: selected,
-                    rubric: String(f.get("rubric"))
-                      .split(",")
-                      .map((s) => ({ name: s.trim(), max: 10 })),
-                    published: true,
-                  })
-                )
-                  void load();
+                await tools.command("practice.create", {
+                  lesson: practiceLesson,
+                  learner,
+                  text: f.get("text"),
+                  due: f.get("due"),
+                });
               }}
             >
+              <Select
+                label="Lesson"
+                value={practiceLesson}
+                onChange={setPracticeLesson}
+                rows={data.lessons}
+                labelKey="title"
+              />
+              <Select
+                label="Learner"
+                value={learner}
+                onChange={setLearner}
+                rows={[
+                  ...new Map(
+                    (manage ? roster.learners : learners).map((l) => [l.id, l]),
+                  ).values(),
+                ]}
+              />
               <label>
-                Title
-                <input name="title" required />
+                Due
+                <input type="date" name="due" required />
               </label>
               <label>
-                Due (IST)
-                <input type="datetime-local" name="due" required />
+                Exercise
+                <textarea name="text" required />
               </label>
-              <label>
-                Vocabulary
-                <select name="taxonomy" required>
-                  {data.taxonomies.map((t) => (
-                    <option key={num(t, "version")} value={num(t, "version")}>
-                      Version {num(t, "version")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Rubric criteria, each out of 10
-                <input
-                  name="rubric"
-                  required
-                  defaultValue="Pitch,Rhythm,Expression"
-                />
-              </label>
-              <label className="wide">
-                Instructions
-                <textarea name="instructions" required />
-              </label>
-              <div className="wide member-picker">
-                {learners.map((l) => (
-                  <label key={l.id}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(l.id)}
-                      onChange={(e) =>
-                        setSelected((s) =>
-                          e.target.checked
-                            ? [...s, l.id]
-                            : s.filter((i) => i !== l.id),
-                        )
-                      }
-                    />
-                    {text(l, "name")}
-                  </label>
-                ))}
-              </div>
-              <button>Create and publish test</button>
+              <button>Assign practice</button>
             </WorkflowForm>
           </WorkflowDetails>
-        </>
-      )}
-      {(testId || reviewId) && (
-        <button onClick={() => navigate({ test: "", review: "" })}>
-          Show all tests and reviews
-        </button>
-      )}
-      {data.tests
-        .filter((t) => !testId || t.id === testId)
-        .map((t) => (
-          <article key={t.id}>
-            <a
-              href={resourceLink(tools.school.id, {
-                page: manage ? "operations" : "review",
-                module: "tests",
-                test: t.id,
-              })}
-            >
-              {text(t, "title")}
-            </a>{" "}
-            · due{" "}
-            {new Date(text(t, "due_at")).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-            })}{" "}
-            IST · {text(t, "instructions")}
-            {manage && (
-              <WorkflowForm
-                className="form-grid"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const f = new FormData(e.currentTarget);
-                  await tools.command("test.update", {
-                    id: t.id,
-                    due: new Date(
-                      String(f.get("due")) + "+05:30",
-                    ).toISOString(),
-                    published: f.get("published") === "on",
-                  });
-                  void load();
-                }}
-              >
-                <label>
-                  Extend deadline (IST)
-                  <input
-                    type="datetime-local"
-                    name="due"
-                    required
-                    defaultValue={new Date(text(t, "due_at"))
-                      .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
-                      .replace(" ", "T")
-                      .slice(0, 16)}
-                  />
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    name="published"
-                    defaultChecked={!!t.published}
-                  />{" "}
-                  Published
-                </label>
-                <button>Update availability</button>
-              </WorkflowForm>
-            )}
-          </article>
-        ))}
-      {data.submissions
-        .filter(
-          (s) =>
-            (!testId || s.assessment_id === testId) &&
-            (!reviewId || s.id === reviewId),
-        )
-        .map((s) => (
-          <Review
-            key={s.id}
-            tools={tools}
-            submission={s}
-            labels={
-              (data.taxonomies.find(
-                (t) =>
-                  t.version ===
-                  data.tests.find((t) => t.id === s.assessment_id)
-                    ?.taxonomy_version,
-              )?.labels || []) as string[]
-            }
-            canPublish={canPublish}
-            rubric={
-              (data.tests.find((t) => t.id === s.assessment_id)?.rubric ||
-                []) as { name: string; max: number }[]
-            }
-          />
-        ))}
-      {canExport && (
-        <button
-          onClick={async () => {
-            try {
-              tools.download(
-                "verified-labels.json",
-                JSON.stringify(await tools.read("dataset"), null, 2),
-                "application/json",
-              );
-            } catch (e) {
-              tools.setError((e as Error).message);
-            }
-          }}
-        >
-          Export consented, verified labels
-        </button>
-      )}
+        )}
+      </div>
     </>
   );
 }
