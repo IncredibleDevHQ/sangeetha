@@ -207,6 +207,11 @@ it("allocates one INR 2000 payment to INR 1500 mother and INR 500 son, leaving I
   const statement = await billing.statement(c, h.id);
   expect(statement.charges.map((ch) => ch.due).sort()).toEqual([0, 50000]);
   expect(statement.payments[0].credit).toBe(0);
+  expect(
+    statement.charges.every(
+      (charge) => charge.household_name === "Iyer household",
+    ),
+  ).toBe(true);
   await expect(
     billing.allocate(c, String(payment.id), {
       key: "allocation-key-2",

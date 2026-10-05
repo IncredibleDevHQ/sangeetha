@@ -8,7 +8,7 @@ export class BillingService extends SchoolAccess {
   async balances(tx: Executor, c: Context, household?: string) {
     return (
       await tx.query(
-        `SELECT ch.*,p.name AS learner_name, (ch.amount+coalesce((SELECT sum(f.amount) FROM financial_entries f WHERE f.school_id=ch.school_id AND f.charge_id=ch.id AND f.kind='adjustment'),0)-coalesce((SELECT sum(a.amount) FROM allocations a WHERE a.school_id=ch.school_id AND a.charge_id=ch.id AND a.reversed_at IS NULL),0))::int AS due FROM charges ch LEFT JOIN learners l ON l.school_id=ch.school_id AND l.id=ch.learner_id LEFT JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id WHERE ch.school_id=$1 AND ($2::uuid IS NULL OR ch.household_id=$2) ORDER BY due_on`,
+        `SELECT ch.*,p.name AS learner_name,h.name AS household_name, (ch.amount+coalesce((SELECT sum(f.amount) FROM financial_entries f WHERE f.school_id=ch.school_id AND f.charge_id=ch.id AND f.kind='adjustment'),0)-coalesce((SELECT sum(a.amount) FROM allocations a WHERE a.school_id=ch.school_id AND a.charge_id=ch.id AND a.reversed_at IS NULL),0))::int AS due FROM charges ch JOIN households h ON h.school_id=ch.school_id AND h.id=ch.household_id LEFT JOIN learners l ON l.school_id=ch.school_id AND l.id=ch.learner_id LEFT JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id WHERE ch.school_id=$1 AND ($2::uuid IS NULL OR ch.household_id=$2) ORDER BY due_on`,
         [c.schoolId, household || null],
       )
     ).rows;

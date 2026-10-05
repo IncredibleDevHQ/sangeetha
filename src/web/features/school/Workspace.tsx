@@ -93,7 +93,9 @@ export default function SchoolWorkspace({
           <EventsView tools={tools} finance={caps.includes("finance.manage")} />
         )}{" "}
         {active === "messages" && <MessagesView tools={tools} />}{" "}
-        {active === "reports" && <ReportsView tools={tools} />}{" "}
+        {active === "reports" && (
+          <ReportsView tools={tools} capabilities={caps} />
+        )}{" "}
         {active === "access" && <AccessView tools={tools} />}{" "}
         {active === "integrations" && <IntegrationsView tools={tools} />}{" "}
         {active === "portal" && <PortalView tools={tools} />}{" "}
