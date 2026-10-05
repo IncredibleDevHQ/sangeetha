@@ -26,6 +26,7 @@ export default function TeamSettings({
 }) {
   const [team, setTeam] = useState<Team | null>(null),
     [loading, setLoading] = useState(true),
+    [refreshFailed, setRefreshFailed] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
@@ -50,15 +51,20 @@ export default function TeamSettings({
     setError("");
     try {
       const data = await api<Team>(`/schools/${school.id}/team`);
-      if (version === request.current)
+      if (version === request.current) {
+        setRefreshFailed(false);
         setTeam({
           ...data,
           members: data.members.filter(
             (m) => m.role === "owner" || m.role === "admin",
           ),
         });
+      }
     } catch (e) {
-      if (version === request.current) setError((e as Error).message);
+      if (version === request.current) {
+        setRefreshFailed(true);
+        setError((e as Error).message);
+      }
     } finally {
       if (version === request.current) setLoading(false);
     }
@@ -115,13 +121,20 @@ export default function TeamSettings({
           {message}
         </div>
       )}
-      {!team ? (
+      {!team || refreshFailed ? (
         <div className="settings-empty">
           {loading ? (
             <p role="status">Loading your team…</p>
           ) : (
             <>
-              <h2>Team unavailable</h2>
+              <h2 ref={heading} tabIndex={-1}>
+                {team ? "Couldn’t refresh the team" : "Team unavailable"}
+              </h2>
+              {message && (
+                <p>
+                  Your change is saved. Retry loading the latest access records.
+                </p>
+              )}
               <button className="button secondary" onClick={() => void load()}>
                 Try again
               </button>

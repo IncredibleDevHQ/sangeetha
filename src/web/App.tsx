@@ -540,7 +540,11 @@ export default function App() {
                   />
                 )}
                 {page === "operations" && school && adminExperience && (
-                  <SchoolWorkspace key={school.id} school={school} />
+                  <SchoolWorkspace
+                    key={school.id}
+                    school={school}
+                    access={workspaceAccess}
+                  />
                 )}
                 {(page === "learning" ||
                   (page === "overview" && !adminExperience)) &&
@@ -549,6 +553,7 @@ export default function App() {
                     <SchoolWorkspace
                       key={school.id + "learning"}
                       school={school}
+                      access={workspaceAccess}
                       experience="learning"
                     />
                   )}
@@ -564,6 +569,7 @@ export default function App() {
                     <SchoolWorkspace
                       key={school.id + "review"}
                       school={school}
+                      access={workspaceAccess}
                       experience="review"
                     />
                   )}

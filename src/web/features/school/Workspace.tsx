@@ -1,6 +1,6 @@
 import { availableModules } from "./navigation";
 import { useRouteValue, navigate } from "../../routes";
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect } from "react";
 import { FeatureBoundary } from "../../components/FeatureBoundary";
 import { useSchool, Alerts, type School } from "./common";
 
@@ -40,28 +40,17 @@ const IntegrationsView = lazy(() =>
 );
 export default function SchoolWorkspace({
   school,
+  access,
   experience = "admin",
 }: {
   school: School;
+  access: { capabilities: string[]; scopes: { capability: string }[] };
   experience?: "admin" | "learning" | "review";
 }) {
   const tools = useSchool(school),
-    [caps, setCaps] = useState<string[]>([]),
-    [scopes, setScopes] = useState<string[]>([]),
-    [page] = useRouteValue("module"),
-    [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    tools
-      .read<{ capabilities: string[]; scopes: { capability: string }[] }>(
-        "bootstrap",
-      )
-      .then((b) => {
-        setCaps(b.capabilities);
-        setScopes(b.scopes.map((s) => s.capability));
-      })
-      .catch((e) => tools.setError(e.message))
-      .finally(() => setLoaded(true));
-  }, [tools.read]);
+    caps = access.capabilities,
+    scopes = access.scopes.map((scope) => scope.capability),
+    [page] = useRouteValue("module");
   const tabs =
     experience === "learning"
       ? scopes.some((s) =>
@@ -77,10 +66,9 @@ export default function SchoolWorkspace({
         : availableModules(caps);
   const active = tabs.some((t) => t.id === page) ? page : tabs[0]?.id;
   useEffect(() => {
-    if (loaded && active && !page && experience !== "learning")
+    if (active && !page && experience !== "learning")
       navigate({ module: active }, true);
-  }, [loaded, active, page, experience]);
-  if (!loaded) return <p>Opening school operations…</p>;
+  }, [active, page, experience]);
   return (
     <>
       {experience !== "learning" && (

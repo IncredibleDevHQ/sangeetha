@@ -144,7 +144,10 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
   const roleFor = (id: string) => roles.find((r) => r.id === id);
   const role = roleFor(cap)!;
   const availableScopes = rowsFor(cap).filter((r) => !r.archived_at);
-  const close = () => navigate({ action: "", form: "", grant: "" });
+  const close = () => {
+    tools.setError("");
+    navigate({ action: "", form: "", grant: "" });
+  };
   const invitations = data.invitations.filter(
     (i) => new Date(text(i, "expires_at")).getTime() > Date.now(),
   );

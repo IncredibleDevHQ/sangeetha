@@ -16,9 +16,19 @@ export const today = () =>
 export function useSchool(school: School) {
   const [error, setError] = useState(""),
     [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [exportFile, setExportFile] = useState<{
+      name: string;
+      url: string;
+    } | null>(null);
+  useEffect(() => {
+    return () => {
+      if (exportFile) URL.revokeObjectURL(exportFile.url);
+    };
+  }, [exportFile]);
   const [page] = useRouteValue("page");
   const [module] = useRouteValue("module");
+  const [report] = useRouteValue("report");
   const [section] = useRouteValue("section");
   const [occurrence] = useRouteValue("occurrence");
   const [household] = useRouteValue("household");
@@ -29,9 +39,11 @@ export function useSchool(school: School) {
   useEffect(() => {
     setError("");
     setMessage("");
+    setExportFile(null);
   }, [
     page,
     module,
+    report,
     section,
     occurrence,
     household,
@@ -75,17 +87,48 @@ export function useSchool(school: School) {
         a = document.createElement("a");
       a.href = url;
       a.download = name;
+      setExportFile({ name, url });
+      a.hidden = true;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
     },
     [],
   );
-  return { school, read, command, error, setError, message, busy, download };
+  return {
+    school,
+    read,
+    command,
+    error,
+    setError,
+    message,
+    busy,
+    download,
+    exportFile,
+    dismissExport: () => setExportFile(null),
+  };
 }
 export type SchoolTools = ReturnType<typeof useSchool>;
 export function Alerts({ tools }: { tools: SchoolTools }) {
   return (
     <>
+      {tools.exportFile && (
+        <div className="export-notice" role="status">
+          <span>
+            Export ready: <strong>{tools.exportFile.name}</strong>
+          </span>
+          <a href={tools.exportFile.url} download={tools.exportFile.name}>
+            Download file
+          </a>
+          <button
+            className="button secondary"
+            onClick={tools.dismissExport}
+            aria-label="Dismiss export notice"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {tools.error && (
         <div className="alert" role="alert">
           {tools.error}

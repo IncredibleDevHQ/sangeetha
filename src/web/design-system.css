@@ -2217,3 +2217,31 @@ details > summary {
 .lesson-reader .toolbar a {
   font-size: 11px;
 }
+
+.export-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--sg-edge);
+  border-radius: 10px;
+  background: var(--sg-panel);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.export-notice > span {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.export-notice .button {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.export-notice a {
+  color: var(--sg-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
