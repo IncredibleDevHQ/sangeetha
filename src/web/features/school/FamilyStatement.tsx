@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Download, Wallet } from "lucide-react";
-import { Badge, dateLabel } from "../../components/ui";
+import { Download, Wallet } from "lucide-react";
+import {
+  Badge,
+  BackLink,
+  StatusPill,
+  dateLabel,
+  paymentMethod,
+  statusLabel,
+} from "../../components/ui";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { navigate, useRouteValue } from "../../routes";
 import { text, num, money, type Row, type SchoolTools } from "./common";
@@ -70,9 +77,7 @@ export function Statement({
   if (reporting)
     return (
       <section className="family-statement" data-route-resource={household.id}>
-        <button className="back-link" onClick={close}>
-          <ArrowLeft size={16} /> Back to statement
-        </button>
+        <BackLink onClick={close}>Back to statement</BackLink>
         <header>
           <span className="eyebrow">{text(household, "name")}</span>
           <h2 ref={heading} tabIndex={-1}>
@@ -146,11 +151,10 @@ export function Statement({
     <section className="family-statement">
       <header className="family-statement-heading">
         <div>
-          <span className="eyebrow">Household statement</span>
           <h2 ref={heading} tabIndex={-1}>
             {text(household, "name")}
           </h2>
-          <p>Each learner's charges, together in one place.</p>
+          <p>Each learner’s charges, together in one place.</p>
         </div>
         <button
           className="button primary"
@@ -162,7 +166,7 @@ export function Statement({
             })
           }
         >
-          <Wallet size={16} /> Report a payment
+          <Wallet size={16} aria-hidden="true" /> Report a payment
         </button>
       </header>
       <div className="family-balance-summary">
@@ -170,10 +174,12 @@ export function Statement({
           <span>Outstanding balance</span>
           <strong>{money(balance)}</strong>
         </div>
-        <div>
-          <span>Verified credit awaiting allocation</span>
-          <strong>{money(credit)}</strong>
-        </div>
+        {credit > 0 && (
+          <div>
+            <span>Received, being applied to charges</span>
+            <strong>{money(credit)}</strong>
+          </div>
+        )}
       </div>
       <h3>Charges</h3>
       <div className="family-charge-list">
@@ -188,8 +194,22 @@ export function Statement({
               <small>Due {dateLabel(text(c, "due_on").slice(0, 10))}</small>
             </div>
             <div className="family-charge-amount">
-              <strong>{money(num(c, "due"))}</strong>
-              <small>Outstanding · originally {money(num(c, "amount"))}</small>
+              {num(c, "due") === 0 ? (
+                <>
+                  <strong>Paid</strong>
+                  <small>{money(num(c, "amount"))}</small>
+                </>
+              ) : num(c, "due") < num(c, "amount") ? (
+                <>
+                  <strong>{money(num(c, "due"))}</strong>
+                  <small>Still due · of {money(num(c, "amount"))}</small>
+                </>
+              ) : (
+                <>
+                  <strong>{money(num(c, "due"))}</strong>
+                  <small>Due</small>
+                </>
+              )}
             </div>
           </article>
         ))}
@@ -210,22 +230,18 @@ export function Statement({
             <div>
               <strong>{money(num(p, "amount"))}</strong>
               <p>
-                {text(p, "method").toUpperCase()} ·{" "}
+                {paymentMethod(text(p, "method"))} ·{" "}
                 {text(p, "reference") || "No reference"}
               </p>
             </div>
-            <Badge tone={p.status === "verified" ? "success" : "attention"}>
-              {p.status === "claim"
-                ? "Awaiting verification"
-                : text(p, "status")}
-            </Badge>
+            <StatusPill status={text(p, "status")} />
             {!!p.receipt && (
               <button
                 className="button secondary"
                 onClick={() =>
                   tools.download(
                     "receipt-" + p.id + ".txt",
-                    `${tools.school.name}\nReceipt ${text(p, "receipt")}\n${text(household, "name")}\nINR ${num(p, "amount") / 100}\nMethod ${text(p, "method")}\nReference ${text(p, "reference")}\nStatus ${text(p, "status")}`,
+                    `${tools.school.name}\nReceipt ${text(p, "receipt")}\n${text(household, "name")}\nINR ${num(p, "amount") / 100}\nPaid by ${paymentMethod(text(p, "method"))}\nReference ${text(p, "reference")}\nStatus ${statusLabel(text(p, "status"))}`,
                     "text/plain",
                   )
                 }
@@ -238,10 +254,79 @@ export function Statement({
       </div>
       {!data.payments.length && (
         <p className="ui-empty">
-          No payments reported yet. Use Report a payment after paying the
-          school.
+          No payments yet. After you pay the school, use Report a payment so
+          the office can match it.
         </p>
       )}
+    </section>
+  );
+}
+
+/** A family's balance at a glance, and the way to report a payment. */
+export function FamilyBalance({
+  tools,
+  household,
+}: {
+  tools: SchoolTools;
+  household: Row;
+}) {
+  const [due, setDue] = useState<number | null>(null),
+    [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    tools
+      .read<{ charges: Row[] }>("statement", "?id=" + household.id)
+      .then((r) => {
+        if (active) setDue(r.charges.reduce((n, c) => n + num(c, "due"), 0));
+      })
+      .catch((e) => {
+        if (active) setError((e as Error).message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [household.id, tools.read]);
+  const open = (action = "") =>
+    navigate({
+      section: "family",
+      familyView: "statement",
+      household: household.id,
+      action,
+      form: "",
+    });
+  return (
+    <section className="family-balance">
+      <div>
+        <span className="eyebrow">{text(household, "name")}</span>
+        <h2>
+          {error
+            ? "Balance unavailable"
+            : due === null
+              ? "Checking your balance…"
+              : due > 0
+                ? `${money(due)} due`
+                : "All paid up"}
+        </h2>
+        <p>
+          {error ||
+            (due && due > 0
+              ? "Paid already? Tell the office, and they’ll check it."
+              : "Charges and payments appear on your statement.")}
+        </p>
+      </div>
+      <div className="family-balance-actions">
+        {!!due && due > 0 && (
+          <button
+            className="button primary"
+            onClick={() => open("report-payment")}
+          >
+            Report a payment
+          </button>
+        )}
+        <button className="button secondary" onClick={() => open()}>
+          See statement
+        </button>
+      </div>
     </section>
   );
 }

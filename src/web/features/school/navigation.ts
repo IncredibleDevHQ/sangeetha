@@ -7,7 +7,7 @@ import {
   CalendarHeart,
   MessageCircle,
   ChartNoAxesCombined,
-  ShieldCheck,
+  UsersRound,
   SlidersHorizontal,
   Layers,
 } from "lucide-react";
@@ -19,6 +19,7 @@ export const schoolModules = [
     icon: Users,
     capability: "crm.manage",
     description: "Every family connected. Every learner recognised.",
+    summary: "Families, their contacts and learners, with follow-ups for the office.",
   },
   {
     id: "roster",
@@ -27,6 +28,7 @@ export const schoolModules = [
     icon: Layers,
     capability: "crm.manage",
     description: "Bring learners together in the right class.",
+    summary: "Teaching groups and the learners enrolled in each.",
   },
   {
     id: "schedule",
@@ -35,6 +37,7 @@ export const schoolModules = [
     icon: CalendarDays,
     capability: "schedule.manage",
     description: "Plan the week and keep attendance up to date.",
+    summary: "Schedule classes and keep attendance up to date. Times are India time.",
   },
   {
     id: "billing",
@@ -43,6 +46,16 @@ export const schoolModules = [
     icon: Wallet,
     capability: "finance.manage",
     description: "A clear picture of charges, payments and what is due.",
+    summary: "Charges, payments and what each family owes.",
+  },
+  {
+    id: "reports",
+    name: "Reports",
+    group: "School",
+    icon: ChartNoAxesCombined,
+    capability: "reports.read",
+    description: "Understand attendance, learning and collections.",
+    summary: "Attendance, learning and collections at a glance.",
   },
   {
     id: "library",
@@ -51,6 +64,7 @@ export const schoolModules = [
     icon: BookOpen,
     capability: "curriculum.manage",
     description: "Shape a learning journey, one lesson at a time.",
+    summary: "Lessons, recordings and music notes, in the order learners meet them.",
   },
   {
     id: "tests",
@@ -59,6 +73,7 @@ export const schoolModules = [
     icon: ClipboardCheck,
     capability: "assessments.manage",
     description: "Listen closely. Give feedback that helps learners grow.",
+    summary: "Listen to submitted recordings and publish feedback.",
   },
   {
     id: "events",
@@ -67,6 +82,7 @@ export const schoolModules = [
     icon: CalendarHeart,
     capability: "events.manage",
     description: "Bring your school together for its next performance.",
+    summary: "Plan gatherings, register performers and track contributions.",
   },
   {
     id: "messages",
@@ -75,22 +91,17 @@ export const schoolModules = [
     icon: MessageCircle,
     capability: "communicate.manage",
     description: "The right update, to the right family.",
-  },
-  {
-    id: "reports",
-    name: "Reports",
-    group: "Workspace",
-    icon: ChartNoAxesCombined,
-    capability: "reports.read",
-    description: "Understand attendance, learning and collections.",
+    summary: "Every notice to families, with its delivery status.",
   },
   {
     id: "access",
-    name: "Roles & invitations",
+    name: "People",
     group: "Workspace",
-    icon: ShieldCheck,
+    icon: UsersRound,
     capability: "team.manage",
     description: "Give each person the access they need.",
+    summary:
+      "Teachers, reviewers, families and administrators: invite people and see what each can do.",
   },
   {
     id: "integrations",
@@ -99,6 +110,7 @@ export const schoolModules = [
     icon: SlidersHorizontal,
     capability: "team.manage",
     description: "Connect payments and school communication.",
+    summary: "WhatsApp delivery and Razorpay payment links.",
   },
 ];
 export function availableModules(capabilities: string[]) {

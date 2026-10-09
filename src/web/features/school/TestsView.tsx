@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, ClipboardCheck, Search } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Plus, Search } from "lucide-react";
 import { Review } from "./Review";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { WorkflowDetails } from "../../components/WorkflowDetails";
-import { Badge, dateLabel } from "../../components/ui";
+import {
+  WorkflowDetails,
+  WorkflowPanel,
+  openWorkflow,
+} from "../../components/WorkflowDetails";
+import { MoreMenu, PageActions } from "../../components/PageHeader";
+import { Badge, BackLink, dateLabel } from "../../components/ui";
+import { EmptyArt } from "../../components/Art";
 import { useRouteValue, navigate } from "../../routes";
 import { type Row, type SchoolTools, text, num } from "./common";
 export function TestsView({
@@ -81,14 +87,42 @@ export function TestsView({
         .includes(query.toLowerCase()),
   );
   const back = () => navigate({ review: "", form: "", action: "" });
+  const setupTools = [
+    ...(manage
+      ? [
+          {
+            label: "Review labels",
+            onSelect: () => openWorkflow("Review labels"),
+          },
+        ]
+      : []),
+    ...(canExport
+      ? [
+          {
+            label: "Export verified labels",
+            onSelect: () => openWorkflow("Export verified labels"),
+          },
+        ]
+      : []),
+  ];
   return (
     <>
+      {!reviewId && (setupTools.length > 0 || manage) && (
+        <PageActions>
+          {setupTools.length > 0 && <MoreMenu items={setupTools} />}
+          {manage && (
+            <button
+              className="button primary"
+              onClick={() => openWorkflow("Create test")}
+            >
+              <Plus size={16} aria-hidden="true" /> Create test
+            </button>
+          )}
+        </PageActions>
+      )}
       {reviewId ? (
         <>
-          <button className="back-link" onClick={back}>
-            <ArrowLeft size={16} />
-            Back to review queue
-          </button>
+          <BackLink onClick={back}>Review queue</BackLink>
           {loading ? (
             <p className="ui-empty" role="status">
               Loading review…
@@ -121,41 +155,11 @@ export function TestsView({
       ) : (
         <>
           {manage && (
-            <div className="review-setup">
-              <WorkflowDetails className="task-disclosure">
-                <summary>Manage issue vocabulary</summary>
-                <p className="fine">
-                  Versions keep the labels on older tests consistent. Create a
-                  new vocabulary when your review criteria change.
-                </p>
-                <WorkflowForm
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    if (
-                      await tools.command("taxonomy.create", {
-                        labels: String(f.get("labels"))
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      })
-                    )
-                      void load();
-                  }}
-                >
-                  <label>
-                    Issue vocabulary, separated by commas
-                    <input
-                      name="labels"
-                      required
-                      defaultValue="Shruti, Rhythm, Pronunciation, Breath, Gamaka"
-                    />
-                  </label>
-                  <button>Create vocabulary version</button>
-                </WorkflowForm>
-              </WorkflowDetails>
-              <WorkflowDetails className="task-disclosure">
-                <summary>Create test</summary>
+            <>
+              <WorkflowPanel
+                title="Create test"
+                description="Learners record their attempt; reviewers listen and publish feedback."
+              >
                 <WorkflowForm
                   className="form-grid"
                   onSubmit={async (e) => {
@@ -198,18 +202,19 @@ export function TestsView({
                     <input name="title" required />
                   </label>
                   <label>
-                    Due (IST)
+                    Due
                     <input type="datetime-local" name="due" required />
                   </label>
                   <label>
-                    Vocabulary
+                    Review labels
                     <select name="taxonomy" required>
                       {data.taxonomies.map((t) => (
                         <option
                           key={num(t, "version")}
                           value={num(t, "version")}
                         >
-                          Version {num(t, "version")}
+                          {(t.labels as string[] | undefined)?.join(", ") ||
+                            "Label set " + num(t, "version")}
                         </option>
                       ))}
                     </select>
@@ -262,25 +267,79 @@ export function TestsView({
                     Create and publish test
                   </button>
                 </WorkflowForm>
-              </WorkflowDetails>
-            </div>
+              </WorkflowPanel>
+              <WorkflowPanel
+                title="Review labels"
+                description="The words reviewers attach to a moment in a recording, like Shruti or Gamaka. Older tests keep the set they were created with."
+              >
+                <WorkflowForm
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const f = new FormData(e.currentTarget);
+                    if (
+                      await tools.command("taxonomy.create", {
+                        labels: String(f.get("labels"))
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    ) {
+                      navigate({ action: "", form: "" });
+                      void load();
+                    }
+                  }}
+                >
+                  <label>
+                    Labels, separated by commas
+                    <input
+                      name="labels"
+                      required
+                      defaultValue="Shruti, Rhythm, Pronunciation, Breath, Gamaka"
+                    />
+                  </label>
+                  <button className="button primary">
+                    Save as a new label set
+                  </button>
+                </WorkflowForm>
+              </WorkflowPanel>
+            </>
+          )}
+          {canExport && (
+            <WorkflowPanel
+              title="Export verified labels"
+              description="Only verified labels, from learners whose families allow their recordings to be reused."
+            >
+              <button
+                className="button primary"
+                onClick={async () => {
+                  try {
+                    tools.download(
+                      "verified-labels.json",
+                      JSON.stringify(await tools.read("dataset"), null, 2),
+                      "application/json",
+                    );
+                  } catch (e) {
+                    tools.setError((e as Error).message);
+                  }
+                }}
+              >
+                Download verified labels
+              </button>
+            </WorkflowPanel>
           )}
           {testId && (
-            <button
-              className="back-link"
+            <BackLink
               onClick={() =>
                 navigate({ test: "", review: "", action: "", form: "" })
               }
             >
-              <ArrowLeft size={16} />
               All tests and reviews
-            </button>
+            </BackLink>
           )}
           {testId && test && (
             <section className="test-detail">
               <div className="attendance-heading">
                 <div>
-                  <span className="eyebrow">Assessment</span>
                   <h2>{text(test, "title")}</h2>
                   <p>Due {dateLabel(text(test, "due_at"), true)}</p>
                 </div>
@@ -315,7 +374,7 @@ export function TestsView({
                     }}
                   >
                     <label>
-                      Extend deadline (IST)
+                      Deadline
                       <input
                         type="datetime-local"
                         name="due"
@@ -409,7 +468,7 @@ export function TestsView({
                 <button
                   className="review-queue-row"
                   key={s.id}
-                  aria-label={`Review ${text(s, "learner_name")} · ${text(s, "title")} · version ${num(s, "version")}`}
+                  aria-label={`Review ${text(s, "learner_name")} · ${text(s, "title")} · attempt ${num(s, "version")}`}
                   onClick={() =>
                     navigate({
                       test: text(s, "assessment_id"),
@@ -429,7 +488,7 @@ export function TestsView({
                   <span className="review-queue-person">
                     <strong>{text(s, "learner_name")}</strong>
                     <small>
-                      {text(s, "title")} · Version {num(s, "version")}
+                      {text(s, "title")} · Attempt {num(s, "version")}
                     </small>
                     <small>
                       Submitted {dateLabel(text(s, "created_at"), true)}
@@ -438,13 +497,13 @@ export function TestsView({
                   <Badge tone={s.review_published_at ? "success" : "attention"}>
                     {s.review_published_at ? "Published" : "Awaiting feedback"}
                   </Badge>
-                  <ArrowUpRight size={17} />
+                  <ChevronRight size={17} aria-hidden="true" />
                 </button>
               ))}
             </div>
           ) : (
             <div className="review-empty">
-              <ClipboardCheck size={28} />
+              <EmptyArt name="icon-record" />
               <h3>
                 {query
                   ? "No matching recordings"
@@ -455,7 +514,7 @@ export function TestsView({
               <p>
                 {query
                   ? "Try a learner’s name or another test title."
-                  : "Submitted recordings appear here with their learner and version."}
+                  : "Submitted recordings appear here with their learner and attempt."}
               </p>
               {(query || filter !== "all") && (
                 <button onClick={() => navigate({ q: "", queue: "all" })}>
@@ -494,7 +553,11 @@ export function TestsView({
                         data.submissions.filter((s) => s.assessment_id === t.id)
                           .length
                       }{" "}
-                      submitted versions
+                      {data.submissions.filter((s) => s.assessment_id === t.id)
+                        .length === 1
+                        ? "attempt"
+                        : "attempts"}{" "}
+                      submitted
                     </span>
                     <Badge tone={t.published ? "success" : "neutral"}>
                       {t.published ? "Published" : "Hidden"}
@@ -504,30 +567,7 @@ export function TestsView({
               </div>
             </section>
           )}
-          {canExport && (
-            <WorkflowDetails className="task-disclosure review-export">
-              <summary>Dataset export</summary>
-              <p className="fine">
-                Export only verified labels with the required learner reuse
-                consent.
-              </p>
-              <button
-                onClick={async () => {
-                  try {
-                    tools.download(
-                      "verified-labels.json",
-                      JSON.stringify(await tools.read("dataset"), null, 2),
-                      "application/json",
-                    );
-                  } catch (e) {
-                    tools.setError((e as Error).message);
-                  }
-                }}
-              >
-                Export consented, verified labels
-              </button>
-            </WorkflowDetails>
-          )}
+
         </>
       )}
     </>

@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  BookOpen,
-  Plus,
-  Search,
-  Users,
-} from "lucide-react";
+import { BookOpen, ChevronRight, Plus, Search } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { WorkflowDetails } from "../../components/WorkflowDetails";
-import { Badge, dateLabel } from "../../components/ui";
+import { Badge, BackLink, StatusPill, dateLabel } from "../../components/ui";
+import { PageActions, focusPageHeading } from "../../components/PageHeader";
+import { EmptyArt } from "../../components/Art";
 import { navigate, useRouteValue } from "../../routes";
 import { text, num, today, Select, type Row, type SchoolTools } from "./common";
 
@@ -68,7 +63,8 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
     };
   }, [t.read]);
   useEffect(() => {
-    heading.current?.focus();
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [batchId, enrollmentId, creating, enrolling, loading]);
   const learners = [...new Map(data.learners.map((l) => [l.id, l])).values()];
   const batch = data.batches.find((b) => b.id === batchId);
@@ -133,10 +129,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
   if (creating)
     return (
       <section className="batch-composer">
-        <button className="back-link" onClick={closeComposer}>
-          <ArrowLeft size={16} />
-          Back to batches
-        </button>
+        <BackLink onClick={closeComposer}>Back to batches</BackLink>
         <div className="batch-page-heading">
           <div>
             <span className="eyebrow">Teaching group</span>
@@ -217,10 +210,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
   if (enrolling)
     return (
       <section className="batch-composer">
-        <button className="back-link" onClick={closeComposer}>
-          <ArrowLeft size={16} />
-          Back to {batch ? "batch" : "batches"}
-        </button>
+        <BackLink onClick={closeComposer}>Back to {batch ? "batch" : "batches"}</BackLink>
         <div className="batch-page-heading">
           <div>
             <span className="eyebrow">Enrolment</span>
@@ -324,7 +314,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
                 activeCount(batch.id) >= num(batch, "capacity")
               }
             >
-              Enroll learner
+              Enrol learner
             </button>
           </div>
         </WorkflowForm>
@@ -334,13 +324,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
   if (enrollmentId)
     return (
       <>
-        <button
-          className="back-link"
-          onClick={() => navigate({ enrollment: "", action: "", form: "" })}
-        >
-          <ArrowLeft size={16} />
-          Back to batch
-        </button>
+        <BackLink onClick={() => navigate({ enrollment: "", action: "", form: "" })}>Back to batch</BackLink>
         {!enrollment ? (
           <div className="ui-empty" role="alert">
             This enrolment is not available.
@@ -365,11 +349,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
                   )}
                 </p>
               </div>
-              <Badge
-                tone={enrollment.status === "active" ? "success" : "neutral"}
-              >
-                {text(enrollment, "status")}
-              </Badge>
+              <StatusPill status={text(enrollment, "status")} />
             </div>
             <dl className="enrollment-facts">
               <div>
@@ -491,10 +471,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
   return (
     <>
       {batchId && (
-        <button className="back-link" onClick={() => openBatch("")}>
-          <ArrowLeft size={16} />
-          All batches
-        </button>
+        <BackLink onClick={() => openBatch("")}>All batches</BackLink>
       )}
       {batchId && !batch ? (
         <div className="ui-empty" role="alert">
@@ -502,18 +479,42 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
         </div>
       ) : (
         <>
+          {!batch && (
+            <PageActions>
+              {data.batches.length > 0 && (
+                <button
+                  className="button secondary"
+                  onClick={() => {
+                    setLearner("");
+                    navigate({
+                      action: "enroll-a-learner",
+                      form: "",
+                      household: "",
+                    });
+                  }}
+                >
+                  Enrol a learner
+                </button>
+              )}
+              <button
+                className="button primary"
+                onClick={() =>
+                  navigate({ action: "create-a-batch", form: "", household: "" })
+                }
+              >
+                <Plus size={16} aria-hidden="true" /> Create a batch
+              </button>
+            </PageActions>
+          )}
+          {batch && (
           <div className="batch-page-heading">
             <div>
-              <span className="eyebrow">
-                {batch ? text(batch, "course") : "Teaching groups"}
-              </span>
+              <span className="eyebrow">{text(batch, "course")}</span>
               <h2 ref={heading} tabIndex={-1}>
-                {batch ? text(batch, "name") : "Your batches"}
+                {text(batch, "name")}
               </h2>
               <p>
-                {batch
-                  ? `${activeCount(batch.id)} active ${activeCount(batch.id) === 1 ? "learner" : "learners"} · ${Math.max(0, num(batch, "capacity") - activeCount(batch.id))} ${num(batch, "capacity") - activeCount(batch.id) === 1 ? "place" : "places"} available`
-                  : "Find a teaching group, then manage its learners."}
+                {`${activeCount(batch.id)} active ${activeCount(batch.id) === 1 ? "learner" : "learners"} · ${Math.max(0, num(batch, "capacity") - activeCount(batch.id))} ${num(batch, "capacity") - activeCount(batch.id) === 1 ? "place" : "places"} available`}
               </p>
             </div>
             <button
@@ -521,16 +522,17 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
               onClick={() => {
                 setLearner("");
                 navigate({
-                  action: batch ? "enroll-a-learner" : "create-a-batch",
+                  action: "enroll-a-learner",
                   form: "",
                   household: "",
                 });
               }}
             >
-              <Plus size={16} />
-              {batch ? "Add learner" : "Create a batch"}
+              <Plus size={16} aria-hidden="true" />
+              Add learner
             </button>
           </div>
+          )}
           <div className="batch-list-toolbar">
             <label className="batch-search">
               <Search size={17} />
@@ -546,21 +548,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </label>
-            {!batch && data.batches.length > 0 && (
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setLearner("");
-                  navigate({
-                    action: "enroll-a-learner",
-                    form: "",
-                    household: "",
-                  });
-                }}
-              >
-                Enroll a learner
-              </button>
-            )}
+
           </div>
           {batch ? (
             <>
@@ -610,16 +598,14 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
                         {dateLabel(text(e, "starts_on"))}
                       </small>
                     </span>
-                    <Badge tone={e.status === "active" ? "success" : "neutral"}>
-                      {text(e, "status")}
-                    </Badge>
-                    <ArrowUpRight size={17} aria-hidden="true" />
+                    <StatusPill status={text(e, "status")} usual="active" />
+                    <ChevronRight size={17} aria-hidden="true" />
                   </button>
                 ))}
               </div>
               {!shownMembers.length && (
                 <div className="ui-empty">
-                  <Users size={26} />
+                  <EmptyArt name="icon-families" />
                   <h3>
                     {query
                       ? "No matching learners"
@@ -651,8 +637,8 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
                       onClick={() => openBatch(b.id)}
                     >
                       <div className="batch-card-top">
-                        <BookOpen size={22} />
-                        <ArrowUpRight size={17} />
+                        <BookOpen size={22} aria-hidden="true" />
+                        <ChevronRight size={17} aria-hidden="true" />
                       </div>
                       <strong>{text(b, "name")}</strong>
                       <p>{text(b, "course")}</p>
@@ -681,7 +667,7 @@ export function RosterView({ tools: t }: { tools: SchoolTools }) {
               </div>
               {!shownBatches.length && (
                 <div className="ui-empty">
-                  <BookOpen size={28} />
+                  <EmptyArt name="practice-corner" />
                   <h3>
                     {query
                       ? "No matching batches"

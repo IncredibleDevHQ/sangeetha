@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowUpRight,
   CalendarDays,
+  ChevronRight,
   MapPin,
   Plus,
   Search,
   Users,
-  Music2,
 } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { WorkflowDetails } from "../../components/WorkflowDetails";
-import { Badge, dateLabel } from "../../components/ui";
+import { Badge, BackLink, dateLabel } from "../../components/ui";
+import { PageActions, focusPageHeading } from "../../components/PageHeader";
+import { EmptyArt } from "../../components/Art";
 import { navigate, useRouteValue } from "../../routes";
 import { text, num, money, Select, type Row, type SchoolTools } from "./common";
 
@@ -79,7 +79,8 @@ export function EventsView({
     };
   }, [tools.read]);
   useEffect(() => {
-    heading.current?.focus();
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [eventId, creating, registering, loading]);
   const event = data.events.find((e) => e.id === eventId);
   const registrations = data.registrations.filter(
@@ -137,10 +138,7 @@ export function EventsView({
   if (creating)
     return (
       <section className="event-composer">
-        <button className="back-link" onClick={closeAction}>
-          <ArrowLeft size={16} />
-          Back to events
-        </button>
+        <BackLink onClick={closeAction}>Back to events</BackLink>
         <div className="event-heading">
           <div>
             <span className="eyebrow">Bring the school together</span>
@@ -251,24 +249,15 @@ export function EventsView({
   if (!eventId)
     return (
       <>
-        <div className="event-heading">
-          <div>
-            <span className="eyebrow">Music brings us together</span>
-            <h2 ref={heading} tabIndex={-1}>
-              School gatherings
-            </h2>
-            <p>
-              Plan the occasion, welcome families and prepare the programme.
-            </p>
-          </div>
+        <PageActions>
           <button
             className="button primary"
             onClick={() => navigate({ action: "create-event", form: "" })}
           >
-            <Plus size={16} />
+            <Plus size={16} aria-hidden="true" />
             Create event
           </button>
-        </div>
+        </PageActions>
         <div className="event-list-toolbar">
           <div className="segmented" aria-label="Event status">
             {["upcoming", "past", "cancelled", "all"].map((s) => (
@@ -332,14 +321,14 @@ export function EventsView({
                     ? `${money(num(e, "contribution"))} / ${text(e, "basis")}`
                     : "Free event"}
                 </span>
-                <ArrowUpRight size={17} />
+                <ChevronRight size={17} aria-hidden="true" />
               </div>
             </button>
           ))}
         </div>
         {!shown.length && (
           <div className="ui-empty">
-            <CalendarDays size={28} />
+            <EmptyArt name="icon-events" />
             <h3>
               {query
                 ? "No matching events"
@@ -362,10 +351,7 @@ export function EventsView({
   if (!event)
     return (
       <>
-        <button className="back-link" onClick={() => openEvent("")}>
-          <ArrowLeft size={16} />
-          All events
-        </button>
+        <BackLink onClick={() => openEvent("")}>All events</BackLink>
         <p className="ui-empty" role="alert">
           This event is not available.
         </p>
@@ -374,10 +360,7 @@ export function EventsView({
   if (registering)
     return (
       <section className="event-composer">
-        <button className="back-link" onClick={closeAction}>
-          <ArrowLeft size={16} />
-          Back to event
-        </button>
+        <BackLink onClick={closeAction}>Back to event</BackLink>
         <div className="event-heading">
           <div>
             <span className="eyebrow">{text(event, "title")}</span>
@@ -406,10 +389,7 @@ export function EventsView({
     );
   return (
     <>
-      <button className="back-link" onClick={() => openEvent("")}>
-        <ArrowLeft size={16} />
-        All events
-      </button>
+      <BackLink onClick={() => openEvent("")}>All events</BackLink>
       <div className="event-heading">
         <div>
           <span className="eyebrow">School event</span>
@@ -583,7 +563,7 @@ export function EventsView({
                 }
               >
                 Programme details
-                <ArrowUpRight size={14} />
+                <ChevronRight size={14} aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -624,7 +604,7 @@ export function EventsView({
           ))}
           {!registrations.length && (
             <div className="ui-empty">
-              <Music2 size={28} />
+              <EmptyArt name="recital-stage" />
               <h3>Make space for your performers</h3>
               <p>
                 Register participants first, then add their music and rehearsal
@@ -980,7 +960,7 @@ function EventFunds({ tools, event }: { tools: SchoolTools; event: string }) {
           onClick={() => navigate({ module: "billing" })}
         >
           Open Fees
-          <ArrowUpRight size={14} />
+          <ChevronRight size={14} aria-hidden="true" />
         </button>
       </div>
       <dl className="event-fund-summary">

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowUpRight,
   Check,
+  ChevronRight,
   Mail,
   Phone,
   Plus,
@@ -14,15 +13,20 @@ import {
 import type { Team } from "../../contracts";
 import { api } from "../../lib/api";
 import { navigate, useRouteValue } from "../../routes";
-import { Badge } from "../../components/ui";
+import { Badge, BackLink, Initials, StatusPill } from "../../components/ui";
+import { formatWhen } from "../../lib/when";
+import { personalName } from "../../../core/account";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import PhoneInput from "../auth/PhoneInput";
 import "./Settings.css";
 
 export default function TeamSettings({
   school,
+  embedded = false,
 }: {
   school: { id: string; name: string };
+  /** Shown inside People, which already has the page header. */
+  embedded?: boolean;
 }) {
   const [team, setTeam] = useState<Team | null>(null),
     [loading, setLoading] = useState(true),
@@ -100,16 +104,20 @@ export default function TeamSettings({
       setBusy(false);
     }
   }
+  const memberName = (m: Team["members"][number]) =>
+    personalName(m.display_name) || m.identity || "Administrator";
   const member = team?.members.find((m) => m.id === record),
     invitation = team?.invitations.find((i) => i.id === record);
   const list = () => go({ action: "", form: "", record: "" });
   return (
     <section className="settings-workspace">
-      <div className="page-heading">
-        <span className="eyebrow">Trusted people · {school.name}</span>
-        <h1>Team & access</h1>
-        <p>Your school’s administrators, with access kept explicit.</p>
-      </div>
+      {!embedded && (
+        <div className="page-heading">
+          <span className="eyebrow">Trusted people · {school.name}</span>
+          <h1>Team & access</h1>
+          <p>Your school’s administrators, with access kept explicit.</p>
+        </div>
+      )}
       {error && (
         <div className="alert" role="alert">
           {error}
@@ -145,9 +153,7 @@ export default function TeamSettings({
         <fieldset disabled={busy} className="settings-body">
           {composing ? (
             <>
-              <button className="settings-back" onClick={list}>
-                <ArrowLeft size={15} /> All administrators
-              </button>
+              <BackLink onClick={list}>All administrators</BackLink>
               <div className="settings-columns">
                 <WorkflowForm
                   className="settings-card settings-form"
@@ -233,37 +239,47 @@ export default function TeamSettings({
                 </WorkflowForm>
                 <aside className="settings-help">
                   <Users size={22} />
-                  <h3>Teaching duties only?</h3>
+                  <h3>Teaching, reviewing or finance only?</h3>
                   <p>
-                    Use a specialist role for a curriculum creator, test
-                    reviewer, assigned teacher or finance operator. Each role
-                    can have a narrower resource scope.
+                    A narrower role fits better: it covers one batch, one test
+                    or the school’s finances, and nothing else.
                   </p>
                   <button
                     className="button secondary"
-                    onClick={() => go({ page: "operations", module: "access" })}
+                    onClick={() =>
+                      go({
+                        page: "operations",
+                        module: "access",
+                        status: "active",
+                        action: "invite-access",
+                        form: "",
+                        record: "",
+                        teamView: "",
+                      })
+                    }
                   >
-                    Open specialist roles <ArrowUpRight size={14} />
+                    Choose a narrower role
+                    <ChevronRight size={14} aria-hidden="true" />
                   </button>
                 </aside>
               </div>
             </>
           ) : record ? (
             <>
-              <button className="settings-back" onClick={list}>
-                <ArrowLeft size={15} /> All administrators
-              </button>
+              <BackLink onClick={list}>All administrators</BackLink>
               {member || invitation ? (
                 <article className="settings-card settings-record">
                   <span className="settings-icon">
                     {member ? <ShieldCheck size={23} /> : <Mail size={23} />}
                   </span>
                   <h2 ref={heading} tabIndex={-1}>
-                    {member?.display_name || invitation?.destination}
+                    {member ? memberName(member) : invitation?.destination}
                   </h2>
-                  <Badge tone="neutral">
-                    {member?.role || "Invitation pending"}
-                  </Badge>
+                  {member ? (
+                    <StatusPill status={member.role} />
+                  ) : (
+                    <Badge tone="attention">Invitation pending</Badge>
+                  )}
                   <dl>
                     <div>
                       <dt>School</dt>
@@ -290,7 +306,7 @@ export default function TeamSettings({
                         <div>
                           <dt>Invitation expires</dt>
                           <dd>
-                            {new Date(invitation.expires_at).toLocaleString()}
+                            {formatWhen(invitation.expires_at, "dayTime")}
                           </dd>
                         </div>
                       </>
@@ -450,45 +466,35 @@ export default function TeamSettings({
                       )
                       .map((i) => (
                         <button key={i.id} onClick={() => go({ record: i.id })}>
-                          <span className="settings-avatar">
-                            {i.channel === "phone" ? (
-                              <Phone size={20} />
-                            ) : (
-                              <Mail size={20} />
-                            )}
-                          </span>
+                          <Initials name={i.destination} />
                           <span className="settings-person">
                             <strong>{i.destination}</strong>
                             <small>
-                              Expires{" "}
-                              {new Date(i.expires_at).toLocaleDateString()}
+                              Expires {formatWhen(i.expires_at, "date")}
                             </small>
                           </span>
-                          <Badge tone="neutral">Pending</Badge>
-                          <ArrowUpRight size={15} />
+                          <ChevronRight size={15} aria-hidden="true" />
                         </button>
                       ))
                   : team.members
                       .filter((m) =>
-                        (m.display_name + " " + m.role)
+                        (memberName(m) + " " + m.role)
                           .toLowerCase()
                           .includes(query.toLowerCase()),
                       )
                       .map((m) => (
                         <button key={m.id} onClick={() => go({ record: m.id })}>
-                          <span className="settings-avatar">
-                            {m.display_name.slice(0, 1)}
-                          </span>
+                          <Initials name={memberName(m)} />
                           <span className="settings-person">
-                            <strong>{m.display_name}</strong>
+                            <strong>{memberName(m)}</strong>
                             <small>
                               {m.role === "owner"
                                 ? "Manages this school and its access"
                                 : "School operations"}
                             </small>
                           </span>
-                          <Badge tone="neutral">{m.role}</Badge>
-                          <ArrowUpRight size={15} />
+                          <StatusPill status={m.role} />
+                          <ChevronRight size={15} aria-hidden="true" />
                         </button>
                       ))}
               </div>
@@ -497,7 +503,7 @@ export default function TeamSettings({
                     i.destination.toLowerCase().includes(query.toLowerCase()),
                   )
                 : team.members.some((m) =>
-                    (m.display_name + " " + m.role)
+                    (memberName(m) + " " + m.role)
                       .toLowerCase()
                       .includes(query.toLowerCase()),
                   )) && (
@@ -525,17 +531,7 @@ export default function TeamSettings({
                   )}
                 </div>
               )}
-              <p className="settings-hint">
-                Curriculum creators, test reviewers and assigned teachers are
-                managed in{" "}
-                <button
-                  className="text-button"
-                  onClick={() => go({ page: "operations", module: "access" })}
-                >
-                  Roles & invitations
-                </button>
-                .
-              </p>
+
             </>
           )}
         </fieldset>

@@ -3,20 +3,25 @@ import { SchoolHome } from "./features/school/SchoolHome";
 import { availableModules } from "./features/school/navigation";
 import { Menu } from "lucide-react";
 import { FeatureBoundary } from "./components/FeatureBoundary";
+import { Brand } from "./components/Brand";
+import { AccountMenu } from "./components/AccountMenu";
+import { personalName } from "../core/account";
+import {
+  portalGroupName,
+  portalRoles,
+  portalSections,
+} from "./features/school/portalSections";
 
 import type { Me } from "./contracts";
 import { api, ApiError } from "./lib/api";
 import SignIn from "./features/auth/SignIn";
 import { lazy, useEffect, useState } from "react";
 import {
-  Music2,
   LayoutDashboard,
-  Users,
   ShieldCheck,
-  LogOut,
   Check,
-  Settings,
   BookOpen,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 const TeamSettings = lazy(() => import("./features/settings/TeamSettings"));
@@ -35,21 +40,10 @@ type WorkspaceAccess = {
   scopes: { capability: string }[];
 };
 
-function Brand() {
-  return (
-    <div className="brand">
-      <span className="brand-icon">
-        <Music2 size={22} />
-      </span>
-      <span>
-        Sangeetha<small>MUSIC SCHOOL WORKSPACE</small>
-      </span>
-    </div>
-  );
-}
 export default function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [module] = useRouteValue("module");
+  const [section] = useRouteValue("section");
   const [tenantName, setTenantName] = useState("");
   const [me, setMe] = useState<Me | null>(null),
     [loaded, setLoaded] = useState(false),
@@ -147,6 +141,18 @@ export default function App() {
     if (school && !schoolId) navigate({ school: school.id }, true);
   }, [school?.id, schoolId]);
   useEffect(() => {
+    if (!accessReady) return;
+    const onlyArea =
+      modules.length === 1 && !learningExperience && !reviewerExperience;
+    if (page === "overview" && onlyArea)
+      navigate({ page: "operations", module: modules[0].id }, true);
+    if (page === "team" && school?.role === "owner")
+      navigate(
+        { page: "operations", module: "access", status: "admins" },
+        true,
+      );
+  }, [accessReady, page, modules.length, learningExperience, school?.role]);
+  useEffect(() => {
     if (!mobileNav) return;
     document
       .querySelector<HTMLButtonElement>("#school-navigation nav button")
@@ -222,7 +228,7 @@ export default function App() {
       )}
     </>
   );
-  if (!loaded) return <main className="loading">Opening Sangeetha…</main>;
+  if (!loaded) return <main className="loading">Opening Tulsi…</main>;
   if (!authReady)
     return (
       <main className="loading">
@@ -237,35 +243,48 @@ export default function App() {
     );
   if (!me)
     return (
-      <main className="login-layout">
-        <section className="login-story">
+      <main className="tulsi-login">
+        <section className="tulsi-login-story">
           <Brand />
-          <div className="story-content">
-            <span className="eyebrow">MORE MUSIC. LESS ADMIN.</span>
-            <h1>
-              A calmer rhythm <br />
-              for your school.
-            </h1>
+          <div>
+            <h1>Where music grows, a little every day.</h1>
             <p>
-              One home for your music school. <br />A little more time for what
-              you love teaching.
+              In many homes the day begins at the tulsi — a little water, a
+              lamp, a moment of care. Riyaz grows the same way. Tulsi gives your
+              school one calm courtyard for it: classes, families, fees and the
+              music itself.
             </p>
-            <div className="staff-lines">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <Music2 size={70} />
-            </div>
           </div>
-          <span className="story-footer">
-            Built around your teaching practice.
-          </span>
+          <ul className="tulsi-features" aria-label="What Tulsi brings">
+            {[
+              ["icon-calendar", "Live attendance"],
+              ["icon-practice", "Swara-synced practice"],
+              ["icon-fees", "UPI fees"],
+              ["icon-feedback", "WhatsApp reminders"],
+            ].map(([icon, label]) => (
+              <li className="tulsi-feature" key={icon}>
+                <img
+                  className="tulsi-art"
+                  src={`/art/${icon}.svg`}
+                  width={36}
+                  height={36}
+                  alt=""
+                />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <img
+            className="tulsi-art tulsi-login-art"
+            src="/art/courtyard-dawn.svg"
+            width={520}
+            height={520}
+            alt=""
+          />
         </section>
-        <section className="login-panel">
+        <section className="tulsi-login-panel">
           <div className="login-card">
-            <span className="eyebrow">WELCOME TO SANGEETHA</span>
+            <span className="eyebrow">Welcome to Tulsi</span>
             <h2>Your school starts here.</h2>
             <p className="subtitle">
               {tenantName
@@ -282,80 +301,186 @@ export default function App() {
         </section>
       </main>
     );
+  const settings = modules.filter((m) => m.group === "Workspace");
+  const inSettings =
+    page === "operations" && settings.some((m) => m.id === module);
+  // A copied review link opens the review page. Staff who manage tests have no
+  // "Assigned reviews" item, so it belongs to their Tests & reviews module.
+  const reviewModule =
+    page === "review" &&
+    workspaceAccess.capabilities.includes("assessments.manage")
+      ? modules.find((m) => m.id === "tests")
+      : undefined;
+  const roles = portalRoles(workspaceAccess.scopes);
+  const sections = learningExperience ? portalSections(roles) : [];
+  // Learning-only people use Home for the portal; staff who are also family get it as a group.
+  const portalPage = adminExperience ? "learning" : "overview";
+  const showPortal = (id: string) => {
+    setMobileNav(false);
+    setError("");
+    setNotice("");
+    navigate({
+      page: portalPage,
+      section: id === "overview" ? "" : id,
+      test: "",
+      review: "",
+      lesson: "",
+      asset: "",
+      action: "",
+      form: "",
+      occurrence: "",
+      learner: "",
+    });
+  };
+  const sectionActive = (id: string) =>
+    page === portalPage && (section || "overview") === id;
+  const singleArea =
+    adminExperience &&
+    modules.length === 1 &&
+    !learningExperience &&
+    !reviewerExperience;
+  const name =
+    personalName(me.account.displayName) ||
+    me.account.identities[0]?.label ||
+    "Your account";
+  const roleLabel =
+    school?.role === "owner"
+      ? "Owner"
+      : school?.role === "admin"
+        ? "Administrator"
+        : adminExperience
+          ? "Staff"
+          : roles.billing
+            ? "Family"
+            : roles.teaches
+              ? "Teacher"
+              : reviewerExperience
+                ? "Reviewer"
+                : roles.learns
+                  ? "Learner"
+                  : "Member";
+  const pageName =
+    page === "overview"
+      ? learningExperience && !adminExperience
+        ? sections.find((s) => s.id === (section || "overview"))?.label ||
+          "Home"
+        : "Home"
+      : page === "lesson"
+        ? "Lesson"
+        : page === "operations"
+          ? (inSettings ? "Settings / " : "") +
+            (modules.find((m) => m.id === module)?.name || "School")
+          : page === "learning"
+            ? portalGroupName(roles)
+            : page === "review"
+              ? reviewModule?.name || "Assigned reviews"
+              : "My account";
   return (
-    <div className={`app-layout ${mobileNav ? "nav-open" : ""}`}>
+    <div
+      className={`app-layout ${mobileNav ? "nav-open" : ""} ${
+        learningExperience && !adminExperience ? "has-tabbar" : ""
+      }`}
+    >
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
       <aside id="school-navigation" aria-label="School navigation">
-        <Brand />
-        <div className="school-label">YOUR WORKSPACE</div>
-        {me.schools.length > 1 ? (
-          <select
-            aria-label="School"
-            value={school?.id}
-            onChange={(e) => setSchoolId(e.target.value)}
-          >
-            {me.schools.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="school-name">
-            {school?.name || "No school access"}
-            <span>{school?.role || "Awaiting invitation"}</span>
-          </div>
-        )}
-        <nav aria-label="Main navigation">
-          {[
-            { id: "overview", label: "Home", icon: LayoutDashboard },
-            ...(learningExperience
-              ? [
-                  {
-                    id: "learning",
-                    label: "My learning & teaching",
-                    icon: BookOpen,
-                  },
-                ]
-              : []),
-            ...(reviewerExperience &&
-            !workspaceAccess.capabilities.includes("assessments.manage")
-              ? [{ id: "review", label: "Assigned reviews", icon: BookOpen }]
-              : []),
-          ].map((item) => (
+        <div className="sidebar-top">
+          <Brand />
+          {me.schools.length > 1 ? (
+            <select
+              className="school-switch"
+              aria-label="School"
+              value={school?.id}
+              onChange={(e) => setSchoolId(e.target.value)}
+            >
+              {me.schools.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="school-switch">
+              {school?.name || "No school access yet"}
+            </p>
+          )}
+        </div>
+        <nav aria-label="Main navigation" className="sidebar-nav">
+          {!singleArea && (adminExperience || !learningExperience) && (
             <button
-              key={item.id}
-              className={page === item.id ? "active" : ""}
-              aria-current={page === item.id ? "page" : undefined}
+              className={page === "overview" ? "active" : ""}
+              aria-current={page === "overview" ? "page" : undefined}
               onClick={() => {
                 setMobileNav(false);
-                setPage(item.id);
+                setPage("overview");
                 setError("");
                 setNotice("");
               }}
             >
-              <item.icon size={19} />
-              {item.label}
+              <LayoutDashboard size={18} aria-hidden="true" />
+              Home
             </button>
-          ))}
-          {["School", "Teaching", "Community", "Workspace"].map((group) => {
+          )}
+          {sections.length > 0 && (
+            <div className="nav-group">
+              {adminExperience && (
+                <span className="nav-group-label">
+                  {"My " + portalGroupName(roles).toLowerCase()}
+                </span>
+              )}
+              {sections
+                .filter((s) => adminExperience || s.id !== "settings")
+                .map((s) => (
+                  <button
+                    key={s.id}
+                    className={sectionActive(s.id) ? "active" : ""}
+                    aria-current={sectionActive(s.id) ? "page" : undefined}
+                    onClick={() => showPortal(s.id)}
+                  >
+                    <s.icon size={18} aria-hidden="true" />
+                    {adminExperience && s.id === "overview"
+                      ? "Overview"
+                      : s.label}
+                  </button>
+                ))}
+            </div>
+          )}
+          {reviewerExperience &&
+            !workspaceAccess.capabilities.includes("assessments.manage") && (
+              <button
+                className={page === "review" ? "active" : ""}
+                aria-current={page === "review" ? "page" : undefined}
+                onClick={() => {
+                  setMobileNav(false);
+                  setPage("review");
+                }}
+              >
+                <BookOpen size={18} aria-hidden="true" />
+                Assigned reviews
+              </button>
+            )}
+          {["School", "Teaching", "Community"].map((group) => {
             const items = modules.filter((m) => m.group === group);
             return (
               items.length > 0 && (
                 <div className="nav-group" key={group}>
-                  <span className="nav-group-label">{group}</span>
+                  {!singleArea && (
+                    <span className="nav-group-label">{group}</span>
+                  )}
                   {items.map((item) => (
                     <button
                       key={item.id}
+                      title={item.description}
                       aria-current={
-                        page === "operations" && module === item.id
+                        (page === "operations" && module === item.id) ||
+                        reviewModule === item
                           ? "page"
                           : undefined
                       }
                       className={
-                        page === "operations" && module === item.id
+                        (page === "operations" && module === item.id) ||
+                        reviewModule === item
                           ? "active"
                           : ""
                       }
@@ -366,7 +491,7 @@ export default function App() {
                         setNotice("");
                       }}
                     >
-                      <item.icon size={18} />
+                      <item.icon size={18} aria-hidden="true" />
                       {item.name}
                     </button>
                   ))}
@@ -374,58 +499,52 @@ export default function App() {
               )
             );
           })}
-          <div className="nav-group">
-            <span className="nav-group-label">Personal</span>
-            {school?.role === "owner" && (
+          {settings.length > 0 && (
+            <div className="nav-group">
               <button
-                className={page === "team" ? "active" : ""}
-                aria-current={page === "team" ? "page" : undefined}
+                className={inSettings ? "active" : ""}
+                aria-current={inSettings ? "page" : undefined}
                 onClick={() => {
-                  setPage("team");
+                  navigate({ page: "operations", module: settings[0].id });
                   setMobileNav(false);
+                  setError("");
+                  setNotice("");
                 }}
               >
-                <Users size={18} />
-                Team & access
+                <SlidersHorizontal size={18} aria-hidden="true" />
+                Settings
               </button>
-            )}
-            <button
-              className={page === "account" ? "active" : ""}
-              aria-current={page === "account" ? "page" : undefined}
-              onClick={() => {
-                setPage("account");
-                setMobileNav(false);
-              }}
-            >
-              <Settings size={18} />
-              My account
-            </button>
-          </div>
+            </div>
+          )}
+          {learningExperience && !adminExperience && (
+            <div className="nav-group">
+              {sections
+                .filter((s) => s.id === "settings")
+                .map((s) => (
+                  <button
+                    key={s.id}
+                    className={sectionActive(s.id) ? "active" : ""}
+                    aria-current={sectionActive(s.id) ? "page" : undefined}
+                    onClick={() => showPortal(s.id)}
+                  >
+                    <s.icon size={18} aria-hidden="true" />
+                    Learning privacy
+                  </button>
+                ))}
+            </div>
+          )}
         </nav>
-        <div className="sidebar-bottom">
-          <div className="avatar">
-            {me.account.displayName.slice(0, 1).toUpperCase()}
-          </div>
-          <div>
-            {me.account.displayName}
-            <small>
-              {school?.role === "owner"
-                ? "School owner"
-                : adminExperience
-                  ? workspaceAccess.capabilities.includes(
-                      "curriculum.manage",
-                    ) && !workspaceAccess.capabilities.includes("crm.manage")
-                    ? "Curriculum Creator"
-                    : "School staff"
-                  : reviewerExperience
-                    ? "Test Reviewer"
-                    : "Learning community"}
-            </small>
-          </div>
-          <button aria-label="Sign out" disabled={busy} onClick={signOut}>
-            <LogOut size={18} />
-          </button>
-        </div>
+        <AccountMenu
+          name={name}
+          detail={roleLabel}
+          busy={busy}
+          current={page === "account"}
+          onAccount={() => {
+            setMobileNav(false);
+            setPage("account");
+          }}
+          onSignOut={signOut}
+        />
       </aside>
       <div className="workspace">
         <header>
@@ -438,32 +557,11 @@ export default function App() {
           >
             {mobileNav ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <span>
-            Workspace /{" "}
-            {page === "overview"
-              ? "Home"
-              : page === "lesson"
-                ? "Lesson"
-                : page === "operations"
-                  ? modules.find((m) => m.id === module)?.name ||
-                    "School administration"
-                  : page === "learning"
-                    ? "Learning portal"
-                    : page === "review"
-                      ? "Assigned reviews"
-                      : page === "team"
-                        ? "Team & access"
-                        : "My account"}
+          <span className="crumb">
+            <span className="crumb-root">{school?.name || "Tulsi"} / </span>
+            {pageName}
           </span>
           <div className="header-actions">
-            <button
-              className="mobile-logout"
-              aria-label="Sign out on mobile"
-              disabled={busy}
-              onClick={signOut}
-            >
-              <LogOut size={17} />
-            </button>
             <span className="pill">
               <span className="status-dot" />
               {local ? "Local development" : "Connected"}
@@ -593,7 +691,7 @@ export default function App() {
                         <ShieldCheck size={24} />
                       </span>
                       <span className="eyebrow">
-                        {school ? school.name : "WELCOME TO SANGEETHA"}
+                        {school ? school.name : "WELCOME TO TULSI"}
                       </span>
                       <h1>
                         {school
@@ -651,9 +749,23 @@ export default function App() {
           </FeatureBoundary>
         </main>
         <footer>
-          Sangeetha <span>Made for the rhythm of your school.</span>
+          Tulsi <span>Where music grows, a little every day.</span>
         </footer>
       </div>
+      {learningExperience && !adminExperience && (
+        <nav className="portal-tabbar" aria-label="Sections">
+          {sections.slice(0, 5).map((s) => (
+            <button
+              key={s.id}
+              aria-current={sectionActive(s.id) ? "page" : undefined}
+              onClick={() => showPortal(s.id)}
+            >
+              <s.icon size={20} aria-hidden="true" />
+              <span>{s.id === "family" ? "Fees" : s.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }

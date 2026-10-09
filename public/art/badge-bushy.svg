@@ -1,0 +1,368 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 80 80" width="80" height="80">
+
+  <ellipse cx="39.83" cy="39.06" rx="29.39" ry="30.07" fill="#3D6B52" />
+  <circle cx="39.83" cy="38.85" r="25.59" fill="#E7EFE6" />
+  <circle cx="39.97" cy="10.77" r="1.362" fill="#E39A3B" />
+  <linearGradient id="paint3_linear_2069_16366" x1="39.97" x2="39.97" y1="9.538" y2="11.83" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FAC769" offset="0" />
+    <stop stop-color="#E3901E" offset="1" />
+  </linearGradient>
+  <circle cx="39.97" cy="10.56" r=".8337" fill="#E39A3B" fill-opacity=".5" />
+  <path d="m38.31 62.61c0.17-2.03 0.17-4.93 0.15-6.28-0.1-2.02-1.67-3.52-2.64-3.82l0.37-0.84c0.98 0.27 1.87 1.2 2.3 2.07 0.08-1.75 0.1-3.37 0.08-4.08-0.2-1.2-1.5-2.65-2.22-2.9l0.6-0.57c0.61 0.32 1.33 1.26 1.63 1.74 0.03-0.62 0.03-1.19 0-1.45-0.45-1.8-2.35-3.66-3.62-3.71l0.34-0.54c0.57 0.02 1.36 0.35 1.67 0.56-0.67-1.58-2.02-3.75-2.75-4.9l0.6-0.9 2.56 5.12 0.07-1.65 0.39-0.11c-0.16 0.88-0.18 1.9-0.13 2.26l1.11 2.66c0.22-3.37 0.36-7.66 0.33-9.41-0.07-0.9-0.78-1.8-1.19-2.09l0.54-0.56c0.33 0.24 0.69 0.88 0.81 1.12 0.01-1.14-0.02-2.21-0.05-2.68-0.14-0.8-0.81-1.77-1.14-2.03l0.49-0.54c0.31 0.23 0.67 0.81 0.8 1.09v-4.38h0.74v3.89c0.22-0.45 0.77-1.13 1.04-1.27l0.28 0.39c-0.79 0.68-1.31 1.75-1.35 2.36v3.2c0.2-0.4 0.67-0.99 0.95-1.12l0.19 0.55c-0.76 0.75-1.18 1.65-1.22 2.2v1.54c0.3-0.43 0.94-1.08 1.27-1.16l0.26 0.59c-0.89 0.67-1.51 1.66-1.57 2.26v1.07c0.23-0.49 0.73-1.1 1.04-1.2l0.25 0.85c-0.82 0.67-1.35 1.59-1.4 2.35-0.09 2.09-0.09 5.02-0.06 6.41 0.71-1.22 1.68-2.93 1.95-3.67 0.25-0.73 0.29-1.74 0.26-2.21l0.55-0.14-0.08 1.46 1.32-2.09 0.58 0.37-1.92 3.13c0.7-0.52 1.9-0.98 2.59-0.93l0.46 0.57c-1.96-0.29-4.19 1.42-4.77 3.34l0.81 0.17-0.07 0.54c-0.85 0.44-1.54 1.45-1.59 2.03-0.02 1.47-0.02 3.35 0.01 4.2 0.43-0.96 1.39-1.99 2.11-2.13l0.37 0.84c-1.53 0.52-2.32 2.4-2.3 3.73 0.01 1.76 0.19 3.86 0.3 4.63-0.08 0.97-2.03 0.87-2.1 0.07z" fill="#3D6B52" />
+  <path d="m38.48 62.72c0.36-2.53 0.32-5.73 0.27-7.76l0.37 1.42c0.19-1.47 0.19-5.13 0.29-7.46 0.18-3.46 0.35-10.06 0.43-16.6l0.11-6.72h0.24l-0.09 4.59-0.07 4.33-0.14 4.76-0.12 7.97-0.11 4.5 0.15 4.41 0.37 4.09 0.17 2.41c-0.36 0.44-1.46 0.46-1.87 0.06z" fill="#3D6B52" />
+  <path d="m35.93 52.32 0.19-0.4c1.16 0.54 2.13 1.69 2.47 2.46l0.15 1.8c-0.24-1.57-1.49-3.32-2.81-3.86z" fill="#22261F" />
+  <path d="m40.05 56.29c0.27-1.39 1.34-2.72 2.12-2.88l0.31 0.66c-1.29 0.38-2.1 1.83-2.35 3.38l-0.08-1.16z" fill="#22261F" />
+  <path d="m35.14 42.62c-1.08 1.03-2.73 1.59-4.04 1.24-1.49 1.19-3.27 1.69-4.32 1.08-1.34 0.58-2.74 0.43-3.53-0.16-0.83-0.17-1.7-0.14-2.5 0.15-0.49 0.14-0.71-0.08-0.69-0.45-0.08-0.89 0.48-2 1.05-2.49-0.1-1.05 1.59-2.2 2.62-2.46-0.07-0.84 2.58-1.49 4.09-1.11 1.19-0.81 4.86 0.09 6.03 1.96 0.62 0.75 2.05 1.2 2.44 2.16l-1.15 0.08z" fill="#3D6B52" />
+  <radialGradient id="paint4_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(27.74 41.96) rotate(166.1) scale(7.363 2.26)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#77A15D" offset="0" />
+    <stop stop-color="#558044" offset="1" />
+  </radialGradient>
+  <path d="m20.42 44.68c0.9-0.35 2.09-0.16 2.87 0.03 1.01 0.6 2.6 0.27 3.53 0.07 1.44 0.7 3.37-0.4 4.35-1.17 1.46 0.45 3.22-0.4 4.09-1.13 0.46-0.1 1.04 0.05 1.17 0.06-1.35-1.1-4.92-1.79-7.24-1.81-3.71-0.36-7.35 1.45-8.77 3.95z" fill="#3D6B52" />
+  <path d="m23.54 44.75c1.42-2.02 3.56-3.8 5.52-3.98 1.1-0.01 2.12 0.15 2.83 0.27-2.13 0.1-3.77 2.53-5.26 3.54-0.78 0.39-2.09 0.44-3.09 0.17z" fill="#9EBFA9" opacity=".25" />
+  <path d="m26.98 44.76c1.81-1.67 3.66-3.63 5.61-3.39l1.99 0.72c-1.67 0-2.98 0.82-3.84 1.65-0.93 0.76-2.51 1.33-3.76 1.02z" fill="#3D6B52" opacity=".25" />
+  <path d="m21.15 41.88c1.13-0.83 3.6-1.75 5.16-1.76l2.48 0.63c-2.99-0.21-5.49 1.82-7.35 2.19-0.55-0.03-0.4-0.69-0.29-1.06z" fill="#9EBFA9" opacity=".25" />
+  <path d="m23.85 39.4c0.92-0.73 2.81-0.88 3.77-0.71 1.37 0.16 3.13 0.2 4.01 0.69l1.59 1.54c-2.8-1.21-6.56-1.97-9.37-1.52z" fill="#9EBFA9" opacity=".25" />
+  <path d="m47.3 41.88c0.3-0.36 1.08-0.69 1.49-0.73 1.45-0.88 4.3-1.29 5.27-0.54 1.33-0.11 3.29 0.44 3.41 1.28 0.93 0.47 1.75 1.62 1.79 2.46 0.02 0.31-0.18 0.47-0.49 0.41-0.8-0.21-1.79-0.11-2.4 0.16-0.44 0.49-1.26 0.74-1.77 0.82-0.37 0.83-1.88 1.17-2.72 1.03-0.99 0.61-2.42 0.22-3.17-0.32-1.15 0.14-2.21-0.54-2.77-1.28-0.55-0.43-1.56-0.5-2.03-0.48 0.71-1.04 2.47-1.62 2.86-2.19l0.53-0.62z" fill="#3D6B52" />
+  <radialGradient id="paint5_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(52.16 43.24) rotate(13.03) scale(7.146 2.121)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#80A964" offset="0" />
+    <stop stop-color="#5C8649" offset="1" />
+  </radialGradient>
+  <path d="m58.99 44.5c-0.86-0.35-2.17-0.09-2.72 0.25-0.5 0.53-1.33 0.78-1.73 0.9-0.69 0.82-2.03 0.97-2.76 0.99-1.08 0.45-2.51-0.1-3.17-0.46-1.19 0.22-2.48-0.84-3.02-1.43-0.47-0.22-1.23-0.09-1.45-0.1 1.03-0.77 3.69-1.66 5.51-1.78 3.56-0.78 7.8-0.37 9.34 1.63z" fill="#3D6B52" />
+  <path d="m54.52 45.39c-1.85-1-4.15-1.86-5.68-1.75l-1.45 0.17c2.05 0.03 3.73 1.38 5.06 2.1 0.74 0.36 1.86 0.01 2.07-0.52z" fill="#9EBFA9" opacity=".25" />
+  <path d="m57.13 44.18c-1.29-1.25-3.75-1.38-4.92-1.25l-1.51 0.28c1.92-0.12 3.45 1.41 4.72 1.78 0.63 0.19 1.51-0.35 1.71-0.81z" fill="#9EBFA9" opacity=".25" />
+  <path d="m57.38 41.94c-1.22-0.5-3.88-0.19-5.3 0.69l-1.11 0.55c2.43-0.99 4.94-0.33 6.58 0.21 1.22 0.46 0.62-0.95-0.17-1.45z" fill="#9EBFA9" opacity=".25" />
+  <path d="m53.74 40.42c-1.6-0.26-3.91 0.57-5.15 2.17l-1.29 0.67c2.6-1.46 4.61-2.19 6.44-2.84z" fill="#9EBFA9" opacity=".25" />
+  <path d="m48.51 49.83c1.47-0.17 3.91 0.67 4.01 1.76 1.18 0.6 2.5 2.26 2.1 3.28 0.52 0.91 0.54 2.37 0.23 3.18-0.19 0.42-0.54 0.46-0.91 0.3-0.75-0.4-1.75-0.48-2.39-0.43-1.31 0.6-2.83 0.26-3.61-0.26-1.47 0.43-2.97-0.58-3.59-1.33-1.06 0.06-1.92-1.37-2.23-2.05-0.5-0.4-1.3-0.04-1.62 0.27 0.38-1.35 1.51-2.67 2.78-3.11 1.15-1.45 3.41-2.39 5.23-1.88v0.27z" fill="#3D6B52" />
+  <radialGradient id="paint6_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(48.45 54.97) rotate(10.93) scale(6.845 3.57)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#769E5C" offset="0" />
+    <stop stop-color="#517A3D" offset="1" />
+  </radialGradient>
+  <path d="m54.57 58.09c-0.77-0.61-2.06-0.52-3.05-0.33-1.09 0.48-2.67 0.03-3.65-0.41-1.47 0.42-2.8-0.6-3.5-1.27-1.11 0.02-1.99-1.66-2.28-2.31-0.55-0.28-1.15 0.14-1.31 0.48 0.69-1.45 3.31-2.18 5.19-2.04 3.5-0.27 8.67 2.13 8.6 5.88z" fill="#3D6B52" />
+  <path d="m51.45 57.67c-1.46-2.72-3.66-5.12-5.65-5.26h-1.37c1.83 0.74 2.28 3.26 3.46 4.66 0.91 0.77 2.57 1.02 3.56 0.6z" fill="#9EBFA9" opacity=".25" />
+  <path d="m54.26 57.65c-0.69-2.36-3.05-3.94-4.46-4.29h-1.21c1.79 1 2.71 3.33 3.84 4.21 0.59 0.41 1.49 0.4 1.83 0.08z" fill="#3D6B52" opacity=".25" />
+  <path d="m54.51 54.54c-0.75-1.09-2.85-1.58-4.59-1.38l0.95 0.51c1.28 0.24 2.6 1.35 3.51 1.61 0.32 0.09 0.3-0.47 0.13-0.74z" fill="#9EBFA9" opacity=".25" />
+  <path d="m52.38 51.59c-1.26-0.71-3.69-0.37-5.18 0.75l0.51 0.23c1.88-0.7 3.89-0.18 4.96-0.13 0.32-0.06 0.14-0.63-0.29-0.85z" fill="#9EBFA9" opacity=".25" />
+  <path d="m48.62 49.94c-1.57-0.14-4.11 0.95-5.23 1.94h2.82c1.18-0.36 2.46-1.14 3-1.6l-0.59-0.34z" fill="#3D6B52" opacity=".25" />
+  <path d="m30.7 47.74c1.6-0.58 4.16 0.58 4.85 1.91 1.37 0.63 2.27 2.1 2.28 3.36l-0.21 0.14c-0.37-0.7-1.1-1.11-1.6-1.19-0.24 0.65-0.64 1.75-1.33 1.69-0.4 1.14-2.43 2.33-3.85 2.04-1.25 0.9-2.63 1.16-3.77 0.78-0.86 0.05-1.69 0.34-2.36 0.74-0.46 0.2-0.83 0.02-0.93-0.46-0.29-1.36-0.14-2.87 0.56-3.79-0.39-0.89 1.02-3.02 2.5-3.6 0.25-1.09 2.47-1.82 3.86-1.62z" fill="#3D6B52" />
+  <radialGradient id="paint7_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(30.73 53.56) rotate(-17.2) scale(6.771 3.453)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#6D9552" offset="0" />
+    <stop stop-color="#4F7839" offset="1" />
+  </radialGradient>
+  <path d="m24.13 56.96c0.88-0.49 2.08-0.55 2.99-0.61 1.05 0.62 2.76-0.15 3.66-0.8 1.64 0.36 3.41-0.99 3.73-2.04 0.76 0.1 1.11-1.06 1.41-1.54 0.78-0.32 1.59 0.39 1.77 0.91-0.67-1.8-3.25-2.67-5.06-2.49-3.96-0.22-9.51 3.38-8.5 6.57z" fill="#3D6B52" />
+  <path d="m29.15 55.82c1.59-1.51 3.32-4.87 5.19-5.13l-1.53-0.27c-2.41 0.51-3.29 3.51-4 5.09-0.12 0.33 0.12 0.43 0.34 0.31z" fill="#9EBFA9" opacity=".25" />
+  <path d="m24.39 56.72c0.63-2.19 3.5-4.57 4.84-5.49h-1.11c-2.32 0.88-4.37 3.18-4.03 5.32l0.3 0.17z" fill="#3D6B52" opacity=".25" />
+  <path d="m24.34 52.86c1.71-1.04 4.05-1.37 5.35-1.76l1.62-0.74c-2.79-1.18-6.67 0.2-6.97 2.5z" fill="#9EBFA9" opacity=".25" />
+  <path d="m27.05 49.25c1.39-0.14 3.34 0.07 4.59 0.25h2.64c-1.94-1.82-5.99-1.96-7.23-0.25z" fill="#9EBFA9" opacity=".25" />
+  <path d="m34.72 25.48c0.59-0.15 1.47-0.08 1.79 0.2 0.56-0.13 1.27 0.3 1.37 0.84 0.87 0.33 1.37 1.84 1.04 2.89-0.82 0.79-2.69 0.03-2.81-1.05-0.46-0.2-0.97-0.55-1.02-1.01-0.1-0.47-0.72-0.84-1.07-1.06-0.31-0.38 0.16-0.72 0.7-0.81z" fill="#3D6B52" />
+  <radialGradient id="paint8_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(36.62 27.48) rotate(12.82) scale(2.445 1.511)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#93C65D" offset="0" />
+    <stop stop-color="#66973B" offset="1" />
+  </radialGradient>
+  <path d="m38.58 29.38c-0.87 0.31-2.37-0.02-2.86-1.17-0.77-0.6-0.98-1.77-1.37-2.15 1.05-0.57 4.62 1.08 4.23 3.32z" fill="#3D6B52" />
+  <path d="m43.48 24.61c0.58-0.52 2.06-0.28 2.33 0.14 0.15 0.29-0.16 0.49-0.42 0.72-0.34 0.28-0.46 0.71-0.56 1.08-0.17 0.44-0.67 0.74-1.02 0.77-0.1 0.96-1.84 2.03-2.97 1.39-0.64-0.91 0.07-2.95 1-3.27 0.15-0.6 0.95-1.05 1.64-0.83z" fill="#3D6B52" />
+  <radialGradient id="paint9_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(43.59 26.39) rotate(135) scale(2.264 1.543)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#94C75B" offset="0" />
+    <stop stop-color="#689A3B" offset="1" />
+  </radialGradient>
+  <path d="m41.01 28.52c-0.29-1.41 1.85-4.18 4.41-3.77-0.05 0.49-0.6 1.05-0.86 1.83-0.22 0.52-0.89 0.72-1.1 0.97-0.25 0.88-1.49 1.5-2.45 0.97z" fill="#3D6B52" />
+  <path d="m50.31 32.18c0.81-0.7 2.84-1.02 3.35-0.47 1.25-0.2 2.82 0.8 3.13 1.6 0.11 0.3-0.1 0.48-0.4 0.5-0.73 0.07-1.52 0.5-1.84 0.84-0.33 0.77-1.49 1.36-2.27 1.44-0.25 0.76-1.77 1.07-2.51 1.03-1.08-0.72-2.45-2.2-2.52-2.85 0.48-1.1 1.9-2.28 3.06-2.09z" fill="#3D6B52" />
+  <radialGradient id="paint10_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(52.24 33.81) rotate(8.345) scale(4.36 1.68)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#80AB60" offset="0" />
+    <stop stop-color="#5D8748" offset="1" />
+  </radialGradient>
+  <path d="m49.5 36.85c1.51-0.01 2.19-0.27 2.59-0.83 0.83-0.27 1.99-0.73 2.26-1.41 0.59-0.56 1.76-0.92 2.35-1.06-0.22-0.97-2.34-0.96-3.58-0.51-2.09 0.02-4.01 1.16-4.5 1.84l0.88 1.97z" fill="#3D6B52" />
+  <path d="m56.32 33.42c-1.23-1.09-3.65-0.25-4.85 0.07l1.84 0.59c0.9-0.89 2.18-0.79 3.01-0.66z" fill="#9EBFA9" opacity=".5" />
+  <path d="m53.85 31.77c-1.53-0.56-3.77 0.42-4.04 2.37l0.44 0.51c1.25-1.46 2.71-2.39 3.6-2.88z" fill="#9EBFA9" opacity=".5" />
+  <path d="m31.25 36.07c0.34 0.63 1.73 1.08 2.42 0.99l0.62 0.46c0.18 0.9 0.69 1.54 1.5 1.41 1.12-1.01 1.4-3.05 1-3.51l-0.35-1.08c-1.32 0.27-3.95 0.96-5.19 1.73z" fill="#3D6B52" />
+  <path d="m28.07 29.75c0.9-0.2 3.61 0.56 5.26 2.69l0.76 3.36c-1.12 0.13-2.56 0.32-3.53 0.51-1.24 0.28-3.14-0.5-3.25-1.53-0.95-0.32-1.77-0.96-1.97-1.66-0.68-0.56-1.63-0.93-2.27-1.01-0.37-0.12-0.33-0.47-0.17-0.7 0.35-0.52 1.15-0.95 1.59-1.04 0.42-0.69 2.34-0.79 3.2-0.47l0.38-0.15z" fill="#3D6B52" />
+  <radialGradient id="paint11_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(28.08 33.16) rotate(11.11) scale(4.594 1.763)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#82AD64" offset="0" />
+    <stop stop-color="#5F8A47" offset="1" />
+  </radialGradient>
+  <path d="m33.21 35.7c-1.18-0.36-2.17 0.31-3.33 0.42-1.23 0.02-2.45-0.71-2.66-1.46-0.98-0.29-1.82-0.97-1.91-1.58-0.61-0.73-1.77-1.07-2.3-1.23 0.7-1.3 2.91-1.08 4.44-0.66 2.61 0.73 5.21 2.43 5.76 4.51z" fill="#3D6B52" />
+  <path d="m25.68 33.21c0.94-0.65 2.71-0.83 3.67-0.57l-0.86-1.06c-2.63-1.06-3.68 0.97-2.81 1.63z" fill="#9EBFA9" opacity=".5" />
+  <path d="m23.14 31.68c1.05-0.8 3.23-0.49 4.38-0.26l-0.13-0.77c-1.94-0.69-4.02-0.08-4.25 1.03z" fill="#9EBFA9" opacity=".5" />
+  <path d="m31.99 32.13-1.36-0.59c-0.83-0.97-2.14-1.56-2.92-1.55 1.54 2.63 3.51 4.24 5.26 5.46l0.22-0.58-1.2-2.74z" fill="#3D6B52" opacity=".5" />
+  <path d="m34.39 34.97 1.07 2.84" stroke="#22261F" stroke-width=".4027" />
+  <path d="m30.77 26.57c0.26 0.82 0.48 1.57 0.72 2.25" stroke="#22261F" stroke-width=".4456" />
+  <path d="m49.6 26.89c-0.98 2-2.32 5.12-3.27 7.04" stroke="#22261F" stroke-width=".5369" />
+  <path d="m31.54 28.61c1.45 0.92 2.08 2.9 2.73 4.96" stroke="#22261F" stroke-width=".484" />
+  <path d="m29.48 23.76c0.31 0.89 0.49 1.72 0.81 2.57" stroke="#22261F" stroke-width=".3613" />
+  <path d="m50.42 24.57c-0.28 0.66-0.75 1.33-0.8 2.02" stroke="#22261F" stroke-width=".3927" />
+  <linearGradient id="paint12_linear_2069_16366" x1="39.93" x2="39.93" y1="14.64" y2="22.74" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#B0A364" offset="0" />
+    <stop stop-color="#78682D" offset=".224" />
+    <stop stop-color="#938337" offset=".5365" />
+    <stop stop-color="#6F6227" offset=".7552" />
+    <stop stop-color="#968940" offset="1" />
+  </linearGradient>
+  <path d="m39.75 22.62v-6.37h0.61v6.37h-0.61z" fill="#3D6B52" />
+  <linearGradient id="paint13_linear_2069_16366" x1="39.89" x2="39.89" y1="18.84" y2="21.59" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#89793A" offset="0" />
+    <stop stop-color="#9C8E40" offset=".4948" />
+    <stop stop-color="#695D25" offset="1" />
+  </linearGradient>
+  <path d="m39.73 18.98v2.58h0.58v-2.58h-0.58z" fill="#3D6B52" />
+  <circle cx="39.93" cy="20.21" r=".5335" fill="#86663A" />
+  <circle cx="38.83" cy="19.39" r=".633" fill="#86663A" />
+  <circle cx="41.11" cy="19.39" r=".633" fill="#86663A" />
+  <circle cx="39.08" cy="17.43" r=".5206" fill="#86663A" />
+  <circle cx="40.8" cy="17.43" r=".543" fill="#86663A" />
+  <circle cx="39.34" cy="15.99" r=".4454" fill="#86663A" />
+  <circle cx="40.65" cy="15.95" r=".4523" fill="#86663A" />
+  <ellipse cx="40.03" cy="15.12" rx=".4757" ry=".6729" fill="#F1E8D8" />
+  <circle cx="39.95" cy="18.09" r=".5227" fill="#86663A" />
+  <circle cx="39.95" cy="20.28" r=".5227" fill="#86663A" />
+  <circle cx="39.75" cy="22.53" r=".7414" fill="#86663A" />
+  <circle cx="39.88" cy="25.29" r=".804" fill="#86663A" />
+  <circle cx="39.77" cy="19.23" r=".4427" fill="#F1E8D8" />
+  <circle cx="38.82" cy="19.37" r=".3226" fill="#F1E8D8" />
+  <circle cx="41.08" cy="19.37" r=".3226" fill="#F1E8D8" />
+  <circle cx="40.13" cy="19.05" r=".3529" fill="#F1E8D8" />
+  <circle cx="39.74" cy="17.12" r=".2931" fill="#86663A" />
+  <circle cx="40.42" cy="17.12" r=".3226" fill="#86663A" />
+  <circle cx="39.95" cy="15.65" r=".2941" fill="#86663A" />
+  <circle cx="39.8" cy="18.11" r=".2567" fill="#F1E8D8" />
+  <circle cx="39.47" cy="20.23" r=".3439" fill="#86663A" />
+  <circle cx="40.32" cy="20.23" r=".3439" fill="#86663A" />
+  <circle cx="39.84" cy="22.58" r=".424" fill="#86663A" />
+  <circle cx="39.84" cy="25.26" r=".5354" fill="#86663A" />
+  <path d="m39.1 22.38c-0.35 0.29-0.92 0.43-1.11 0.13" stroke="#22261F" stroke-width=".3138" />
+  <path d="m40.65 22.23c-0.14 0.32-0.53 0.57-0.85 0.55" stroke="#22261F" stroke-width=".3138" />
+  <path d="m39.28 24.55c0.28 0.35 0.39 0.57 0.5 0.96" stroke="#22261F" stroke-width=".4456" />
+  <path d="m40.45 24.45c-0.21 0.31-0.48 0.6-0.47 1.03" stroke="#22261F" stroke-width=".4456" />
+  <path d="m39.15 24.42 0.2 0.36c0.3 0.04 0.64 0.1 0.79 0.01" stroke="#22261F" stroke-width=".3277" />
+  <path d="m39.08 24.51c0.13 0.26 0.44 0.38 0.68 0.23" stroke="#22261F" stroke-width=".2183" />
+  <path d="m40.4 24.55-0.23 0.26c-0.27 0.13-0.54 0.13-0.73 0.03" stroke="#22261F" stroke-width=".2183" />
+  <path d="m39.73 20.69v1.04" stroke="#22261F" stroke-width=".3044" />
+  <linearGradient id="paint14_linear_2069_16366" x1="38.68" x2="37.31" y1="20.87" y2="22.29" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F6E7DA" offset="0" />
+    <stop stop-color="#E7BFA5" offset=".4688" />
+    <stop stop-color="#C58F6A" offset="1" />
+  </linearGradient>
+  <circle cx="37.75" cy="21.86" r=".5145" fill="#F4E3DB" />
+  <circle cx="38.15" cy="21.19" r=".4645" fill="#F4E3DB" />
+  <circle cx="38.43" cy="21.74" r=".4187" fill="#F4E3DB" />
+  <linearGradient id="paint15_linear_2069_16366" x1="39.58" x2="41.29" y1="23.35" y2="24.75" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#C89B70" offset="0" />
+    <stop stop-color="#D9AF76" offset=".3542" />
+    <stop stop-color="#B28254" offset="1" />
+  </linearGradient>
+  <circle cx="39.85" cy="24.12" r=".6169" fill="#F4E3DB" />
+  <circle cx="39.88" cy="23.85" r=".3875" fill="#F4E3DB" />
+  <linearGradient id="paint16_linear_2069_16366" x1="41.85" x2="41.52" y1="20.71" y2="22.33" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FDEEE2" offset="0" />
+    <stop stop-color="#F3D5C0" offset=".4896" />
+    <stop stop-color="#E5B89B" offset="1" />
+  </linearGradient>
+  <circle cx="41.7" cy="21.27" r=".5329" fill="#F4E3DB" />
+  <circle cx="42.1" cy="21.87" r=".455" fill="#F4E3DB" />
+  <linearGradient id="paint17_linear_2069_16366" x1="41.82" x2="41.89" y1="23.08" y2="24.86" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F9E8DB" offset="0" />
+    <stop stop-color="#EDCEB7" offset=".474" />
+    <stop stop-color="#D4A781" offset="1" />
+  </linearGradient>
+  <circle cx="41.71" cy="24.43" r=".6174" fill="#F4E3DB" />
+  <circle cx="42.08" cy="24.35" r=".4066" fill="#F4E3DB" />
+  <linearGradient id="paint18_linear_2069_16366" x1="38.24" x2="38.41" y1="23.21" y2="24.94" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F6E5D8" offset="0" />
+    <stop stop-color="#E5C4AA" offset=".4635" />
+    <stop stop-color="#C79770" offset="1" />
+  </linearGradient>
+  <circle cx="38.12" cy="23.77" r=".575" fill="#F4E3DB" />
+  <circle cx="38.36" cy="23.55" r=".3923" fill="#F4E3DB" />
+  <linearGradient id="paint19_linear_2069_16366" x1="37.96" x2="37.63" y1="23.84" y2="25.03" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F0D2B9" offset="0" />
+    <stop stop-color="#D8B292" offset=".4844" />
+    <stop stop-color="#C79D7D" offset="1" />
+  </linearGradient>
+  <circle cx="37.68" cy="24.5" r=".5369" fill="#F4E3DB" />
+  <circle cx="38.23" cy="24.34" r=".3377" fill="#F4E3DB" />
+  <linearGradient id="paint20_linear_2069_16366" x1="41.35" x2="41.85" y1="23.22" y2="24.43" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F7E8DC" offset="0" />
+    <stop stop-color="#F0D6C1" offset=".4635" />
+    <stop stop-color="#E1B89E" offset="1" />
+  </linearGradient>
+  <circle cx="41.45" cy="23.65" r=".4343" fill="#F4E3DB" />
+  <linearGradient id="paint21_linear_2069_16366" x1="41.47" x2="42.06" y1="23.92" y2="24.73" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F7E6D9" offset="0" />
+    <stop stop-color="#EBCDB6" offset=".5052" />
+    <stop stop-color="#D6B298" offset="1" />
+  </linearGradient>
+  <circle cx="41.99" cy="24.31" r=".4318" fill="#F4E3DB" />
+  <path d="m39.11 21.55c-0.22 0.18-0.49 0.38-0.8 0.47" stroke="#22261F" stroke-width=".2424" />
+  <path d="m40.35 21.32c0.18 0.26 0.43 0.53 0.74 0.65" stroke="#22261F" stroke-width=".2424" />
+  <path d="m32.25 26.49c-0.16 0.52-0.34 1.22-0.54 1.68" stroke="#22261F" stroke-width=".3613" />
+  <linearGradient id="paint22_linear_2069_16366" x1="31.75" x2="30.83" y1="24.75" y2="26.37" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#C29970" offset="0" />
+    <stop stop-color="#946B3E" offset=".4115" />
+    <stop stop-color="#8D6E37" offset="1" />
+  </linearGradient>
+  <path d="m31.28 24.88-0.8 1.41 0.63 0.96 1.15-1.48c0.36-0.8-0.51-1.32-0.98-0.89z" fill="#86663A" />
+  <circle cx="31.6" cy="25.18" r=".5295" fill="#86663A" />
+  <circle cx="30.72" cy="23.74" r=".4347" fill="#86663A" />
+  <ellipse transform="rotate(-30 29.7 23.03)" cx="29.7" cy="23.03" rx=".5285" ry=".637" fill="#86663A" />
+  <circle cx="29.53" cy="24.38" r=".4621" fill="#86663A" />
+  <circle cx="29.88" cy="26.24" r=".4865" fill="#86663A" />
+  <circle cx="30.54" cy="24.87" r=".4446" fill="#86663A" />
+  <linearGradient id="paint23_linear_2069_16366" x1="30.16" x2="30.52" y1="24.54" y2="26.11" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F9E8DB" offset="0" />
+    <stop stop-color="#E5C5AA" offset=".4635" />
+    <stop stop-color="#C99B76" offset="1" />
+  </linearGradient>
+  <circle cx="30.39" cy="24.94" r=".4816" fill="#86663A" />
+  <circle cx="29.89" cy="25.63" r=".4132" fill="#86663A" />
+  <linearGradient id="paint24_linear_2069_16366" x1="32.57" x2="32.81" y1="26.11" y2="27.88" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F5E1D2" offset="0" />
+    <stop stop-color="#EACDB3" offset=".4844" />
+    <stop stop-color="#DAB494" offset="1" />
+  </linearGradient>
+  <circle cx="32.81" cy="26.82" r=".5861" fill="#F4E3DB" />
+  <circle cx="32.52" cy="26.45" r=".3927" fill="#F4E3DB" />
+  <circle cx="30.82" cy="27.38" r=".424" fill="#86663A" />
+  <linearGradient id="paint25_linear_2069_16366" x1="30.52" x2="30.45" y1="27.62" y2="29.05" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F4DEC9" offset="0" />
+    <stop stop-color="#E7C8AE" offset=".4844" />
+    <stop stop-color="#D1A88A" offset="1" />
+  </linearGradient>
+  <circle cx="30.32" cy="28.46" r=".4445" fill="#F4E3DB" />
+  <linearGradient id="paint26_linear_2069_16366" x1="32.37" x2="32.76" y1="28.86" y2="30.58" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#E4C29A" offset="0" />
+    <stop stop-color="#C8A065" offset=".5104" />
+    <stop stop-color="#A98452" offset="1" />
+  </linearGradient>
+  <circle cx="32.48" cy="30.29" r=".6124" fill="#F4E3DB" />
+  <circle cx="33.72" cy="28.93" r=".463" fill="#F4E3DB" />
+  <linearGradient id="paint27_linear_2069_16366" x1="33.96" x2="34.32" y1="29.03" y2="29.86" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F8E8DA" offset="0" />
+    <stop stop-color="#F3E1D2" offset=".4844" />
+    <stop stop-color="#E6CAB5" offset="1" />
+  </linearGradient>
+  <circle cx="34.03" cy="29.52" r=".4542" fill="#F4E3DB" />
+  <linearGradient id="paint28_linear_2069_16366" x1="31.62" x2="31.61" y1="29.54" y2="31.24" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F2DCC8" offset="0" />
+    <stop stop-color="#DDC0A3" offset=".4844" />
+    <stop stop-color="#C6A080" offset="1" />
+  </linearGradient>
+  <circle cx="31.6" cy="30.3" r=".5939" fill="#F4E3DB" />
+  <circle cx="31.22" cy="30.82" r=".3927" fill="#F4E3DB" />
+  <linearGradient id="paint29_linear_2069_16366" x1="49.4" x2="50.21" y1="23.12" y2="25.05" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#B69D67" offset="0" />
+    <stop stop-color="#907A47" offset=".4635" />
+    <stop stop-color="#786A3F" offset="1" />
+  </linearGradient>
+  <circle cx="50.38" cy="23.68" r=".5617" fill="#F4E3DB" />
+  <circle cx="50.54" cy="24.74" r=".4024" fill="#86663A" />
+  <circle cx="50.26" cy="26.52" r=".5236" fill="#86663A" />
+  <circle cx="49.53" cy="24.52" r=".4483" fill="#86663A" />
+  <linearGradient id="paint30_linear_2069_16366" x1="49.03" x2="49.65" y1="25.21" y2="26.92" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#A6875B" offset="0" />
+    <stop stop-color="#866F3A" offset=".4531" />
+    <stop stop-color="#7F6A3A" offset="1" />
+  </linearGradient>
+  <path d="m48.82 25.19-0.4 0.4c-0.01 0.44 0.28 0.83 0.72 0.88 0.38 0.1 0.65-0.06 0.83-0.27l-0.31-0.84-0.84-0.17z" fill="#F4E3DB" />
+  <circle cx="48.88" cy="25.72" r=".486" fill="#86663A" />
+  <linearGradient id="paint31_linear_2069_16366" x1="47.98" x2="48.85" y1="26.52" y2="28.16" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#CCAF8B" offset="0" />
+    <stop stop-color="#947848" offset=".4375" />
+    <stop stop-color="#7E6738" offset="1" />
+  </linearGradient>
+  <path d="m47.91 26.5-0.44 0.87 0.65 1.49 1.07-0.97 0.03-1.1-1.31-0.29z" fill="#F4E3DB" />
+  <circle cx="47.82" cy="27.24" r=".5373" fill="#F1E8D8" />
+  <circle cx="48.68" cy="26.72" r=".4036" fill="#F1E8D8" />
+  <linearGradient id="paint32_linear_2069_16366" x1="48.94" x2="49.32" y1="27.66" y2="29.17" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#C2A276" offset="0" />
+    <stop stop-color="#927646" offset=".5156" />
+    <stop stop-color="#7B663C" offset="1" />
+  </linearGradient>
+  <path d="m49.18 27.56c-0.59 0.65-1.22 1.86-1.63 2.96l0.71 0.62 0.63-1.99 0.83-1.07c0.31-0.43-0.18-0.83-0.54-0.52z" fill="#F4E3DB" />
+  <circle cx="48.35" cy="28.53" r=".6242" fill="#86663A" />
+  <circle cx="47.61" cy="29.81" r=".7423" fill="#86663A" />
+  <linearGradient id="paint33_linear_2069_16366" x1="48.86" x2="49.23" y1="29.91" y2="31.41" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#D7B993" offset="0" />
+    <stop stop-color="#AD885D" offset=".5104" />
+    <stop stop-color="#836A45" offset="1" />
+  </linearGradient>
+  <circle cx="48.85" cy="30.82" r=".6038" fill="#F4E3DB" />
+  <circle cx="49.34" cy="30.96" r=".4152" fill="#F1E8D8" />
+  <circle cx="49.98" cy="28.43" r=".4641" fill="#F1E8D8" />
+  <linearGradient id="paint34_linear_2069_16366" x1="49.88" x2="50.29" y1="27.97" y2="29.07" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#EED9C5" offset="0" />
+    <stop stop-color="#EDD5BE" offset=".4948" />
+    <stop stop-color="#DAB99E" offset="1" />
+  </linearGradient>
+  <circle cx="50.14" cy="28.74" r=".423" fill="#F4E3DB" />
+  <linearGradient id="paint35_linear_2069_16366" x1="47.83" x2="48.13" y1="26.62" y2="27.84" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F7E9DC" offset="0" />
+    <stop stop-color="#E7C9B0" offset=".4948" />
+    <stop stop-color="#D5B092" offset="1" />
+  </linearGradient>
+  <circle cx="47.99" cy="27.1" r=".4201" fill="#F4E3DB" />
+  <linearGradient id="paint36_linear_2069_16366" x1="46.75" x2="46.65" y1="28.65" y2="30.33" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F2D9C4" offset="0" />
+    <stop stop-color="#E4C7AF" offset=".5052" />
+    <stop stop-color="#CDA88A" offset="1" />
+  </linearGradient>
+  <circle cx="46.8" cy="29.68" r=".5871" fill="#F4E3DB" />
+  <circle cx="46.35" cy="29.14" r=".4123" fill="#F4E3DB" />
+  <linearGradient id="paint37_linear_2069_16366" x1="49.15" x2="49.28" y1="29.83" y2="30.85" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F8E8DC" offset="0" />
+    <stop stop-color="#EED4BD" offset=".4948" />
+    <stop stop-color="#D9B89E" offset="1" />
+  </linearGradient>
+  <circle cx="49.18" cy="30.37" r=".4171" fill="#F4E3DB" />
+  <linearGradient id="paint38_linear_2069_16366" x1="48.91" x2="49.22" y1="26.45" y2="27.34" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F7E9DC" offset="0" />
+    <stop stop-color="#E9CEB7" offset=".4896" />
+    <stop stop-color="#D4B08F" offset="1" />
+  </linearGradient>
+  <circle cx="49.02" cy="26.85" r=".3801" fill="#F4E3DB" />
+  <path d="m34.62 30.78c0.55-0.47 1.69-0.46 2.01-0.04 0.99-0.27 1.76 0.76 1.76 1.86-0.04 1.03-1.4 2.04-2.56 2.26-0.92 0.47-2.09 0.91-2.65 0.66-0.7-1.31 0.01-3.59 1.53-4.05l-0.29-0.3c-0.07-0.13 0.08-0.3 0.2-0.39z" fill="#3D6B52" />
+  <radialGradient id="paint39_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(36.32 33.87) rotate(-18.7) scale(2.955 1.041)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#87BA4F" offset="0" />
+    <stop stop-color="#73A542" offset="1" />
+  </radialGradient>
+  <path d="m39.24 33.21c-0.54 0.1-1.01 0.77-1.68 1.26-0.34 0.27-0.82 0.23-1.04 0.06-1 0.69-2.32 1.03-3.08 0.83-0.42-1.82 3.52-3.88 5.51-2.93 0.24 0.23 0.37 0.52 0.29 0.78z" fill="#3D6B52" />
+  <path d="m33.54 34.66c0.13-1.9 2.4-3.08 4.3-2.49l0.61 0.39c-2-0.28-3.71 0.95-4.91 2.1z" fill="#9EBFA9" opacity=".5" />
+  <path d="m42.69 30.05c0.49-0.99 2.55-1.18 2.92-0.67 0.22 0.29-0.08 0.75-0.38 1.09-0.22 0.32-0.2 0.72-0.36 1.03-0.36 0.24-0.67 0.69-0.91 1.09-0.17 0.24-0.54 0.3-0.65 0.19 0.11 1-1.49 1.34-2.47 0.92-0.86-1-0.18-3.1 1.01-3.37 0.1-0.32 0.54-0.51 0.84-0.28z" fill="#3D6B52" />
+  <radialGradient id="paint40_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(43.47 31.35) rotate(155.9) scale(2.837 1.023)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#8ABD53" offset="0" />
+    <stop stop-color="#6A9B3E" offset="1" />
+  </radialGradient>
+  <path d="m40.77 33.48c-0.51-0.98 0.71-2.83 3.88-3.95 0.54-0.01 0.89 0.09 0.77 0.45-0.45 0.68-0.76 1.42-1.04 2.11-0.35 0.39-0.87 0.57-1.09 0.59-0.03 0.99-1.53 1.43-2.52 0.8z" fill="#3D6B52" />
+  <path d="m40.97 33.23c0.54-1.51 2.24-3.01 3.83-3.48l0.44 0.18c-1.73 0.85-3.1 2.26-4.12 3.49l-0.15-0.19z" fill="#9EBFA9" opacity=".5" />
+  <path d="m42.52 34.76c0.5-0.91 2.21-1.44 3.3-1.32 0.49 0.4 1.43 0.46 1.89 0.6 0.73 0.14 1.45 0.57 1.26 1.29 0.9 0.35 1.45 1.11 1.38 1.73 0.43 1.12 0.47 2.37 0.15 2.9-0.2 0.31-0.65 0.22-1 0.09-0.81-0.39-1.81-0.56-2.42-0.54-0.96 0.46-2.35-0.25-2.83-0.87-1.54 0.11-3.15-1.1-3.2-2.31l-0.08-0.17c0.22-0.59 0.88-1.18 1.55-1.4z" fill="#3D6B52" />
+  <radialGradient id="paint41_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(46.3 36.74) rotate(10.22) scale(4.635 2.113)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#86B952" offset="0" />
+    <stop stop-color="#679540" offset="1" />
+  </radialGradient>
+  <path d="m50.15 39.89c-0.76-0.31-1.9-0.65-2.78-0.67-1.16 0.63-2.36-0.09-3.01-0.69-1.25 0.05-2.27-1.03-2.8-1.88-0.53-0.37-0.62-0.44-0.48-0.5 0.51-0.47 1.85-0.64 3.05-0.62 1.23-0.57 3.35-0.7 4.39-0.31 0.74 0.16 1.3 0.88 1.36 1.48 0.38 1.18 0.74 2.5 0.63 2.99-0.02 0.11-0.21 0.2-0.36 0.2z" fill="#3D6B52" />
+  <path d="m48.16 34.84c-2.07-1.32-4.68-0.54-5.61 0.74l1.13 0.18c1.42-0.84 3.26-1.02 4.48-0.92z" fill="#9EBFA9" opacity=".5" />
+  <path d="m49.68 39.61c-0.98-1.84-3.4-3.69-6.09-3.9l-1.07 0.33c1.36 0.42 2.63 1.79 3.78 2.85 1.06 0.34 2.4 0.62 3.38 0.72z" fill="#9EBFA9" opacity=".5" />
+  <path d="m42.89 38.21c1.36 0.32 2.32 2.28 2.14 3.67-0.16 0.61-0.69 1.04-1.16 0.81l-0.47-0.44c-1.09-0.29-2.74-1.63-2.96-2.51-0.02-0.48 0.2-0.7 0.49-0.59 0.15-0.58 1.11-1.03 1.96-0.94z" fill="#3D6B52" />
+  <radialGradient id="paint42_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(42.97 40.29) rotate(54.22) scale(2.118 1.515)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#75A450" offset="0" />
+    <stop stop-color="#56813C" offset="1" />
+  </radialGradient>
+  <path d="m44.5 42.43c-0.73-0.67-1.45-0.82-2.12-1.08-0.99-0.41-1.66-1.39-1.65-2 0.35-0.46 2.41-0.86 3.35-0.34 0.88 1.05 1.21 2.71 0.42 3.42z" fill="#3D6B52" />
+  <path d="m41.37 40.99c-0.39 0.92 0.07 2 0.85 2.29 0.51-0.18 0.93-0.75 0.93-1.13l-1.78-1.16z" fill="#3D6B52" />
+  <path d="m44.32 39.14 0.76 1.52c0.76 0.54 1.43-0.15 1.25-0.79l-2.01-0.73z" fill="#22261F" />
+  <path d="m37.92 37.06c0.37-0.37 0.86-0.24 1.04 0.21 0.7 1.33 0.12 2.9-1.26 3.4-1.32-0.63-1.09-3.03-0.04-3.43l0.26-0.18z" fill="#3D6B52" />
+  <path d="m37.61 40.36c0.76-1.11 1.15-2.65 0.92-3.52l-0.32 0.12c-1.13 0.84-1.56 2.45-0.82 3.36l0.22 0.04z" fill="#9EBFA9" opacity=".5" />
+  <path d="m34.08 44.46c0.76-0.81 2.83-0.71 3.43 0.09 0.59 0.35 1.04 0.68 1.07 0.86l-0.41 0.24c-0.26 0.87-1.7 1.69-2.62 1.44l-0.52 0.04c-0.79 0.31-1.81 0.62-2.21 0.39-0.37-0.53-0.2-1.61 0.12-1.91-0.24-0.64 0.39-0.98 0.82-0.92l0.32-0.23z" fill="#3D6B52" />
+  <radialGradient id="paint43_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(35.77 45.98) rotate(-15.69) scale(2.682 .9339)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#84B555" offset="0" />
+    <stop stop-color="#6D9A47" offset="1" />
+  </radialGradient>
+  <path d="m32.96 47.52c-0.26-1.48 1.99-3.27 4.46-2.58l0.89 0.35c-0.15 0.75-1.66 1.6-2.66 1.53-0.75 0.26-1.95 0.66-2.69 0.7z" fill="#3D6B52" />
+  <path d="m33.18 46.97c0.61-1.27 2.2-1.88 3.61-1.86l-0.91-0.34c-1.64-0.31-3.12 1.03-2.88 2.14l0.18 0.06z" fill="#9EBFA9" opacity=".5" />
+  <path d="m45.25 46.7c0.68 0.04 1.72 0.55 1.58 1.48 0.63 0.52 0.75 1.58 0.51 2.11-0.26 0.42-1.02 0.22-1.68 0.16-0.62 0.15-0.82-0.53-1.23-0.26-0.5-0.14-1.46-0.27-1.91-0.58l-0.41 0.04c-0.71-0.17-1.6-1.03-1.77-1.3 0.12-0.18 0.87-0.57 1.22-0.84 0.69-1.19 3.07-1.56 3.64-0.97l0.05 0.16z" fill="#3D6B52" />
+  <radialGradient id="paint44_radial_2069_16366" cx="0" cy="0" r="1" gradientTransform="translate(44.23 48.71) rotate(13.2) scale(3.19 1.319)" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#80B253" offset="0" />
+    <stop stop-color="#629344" offset="1" />
+  </radialGradient>
+  <path d="m47.05 50.35c-0.76-0.11-2.07-0.21-2.76-0.33-0.76-0.11-1.4-1.1-1.99-0.51-0.79-0.24-1.42-0.81-1.54-1.42 1.57-1.12 6.04 0.17 6.5 1.72l-0.08 0.43-0.13 0.11z" fill="#3D6B52" />
+  <path d="m41.48 47.9c1.75-0.45 4.17 0.72 5.2 2.01l-0.66-0.6c-1.22-0.54-1.9-0.64-3.25-0.41 0.44 0.16-0.69-1.18-1.29-0.76v-0.24z" fill="#9EBFA9" opacity=".5" />
+  <path d="m29.47 22.69c0.57 0.51 0.83 1.01 0.86 1.53l-0.24 0.11-0.68-0.99-0.16-0.57 0.22-0.08z" fill="#86663A" />
+  <path d="m50.28 23.43-0.44 1.16 0.11 0.35 0.59-0.73 0.04-0.67-0.3-0.11z" fill="#86663A" />
+</svg>

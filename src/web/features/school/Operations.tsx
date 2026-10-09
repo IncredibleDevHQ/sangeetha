@@ -1,16 +1,30 @@
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { useRouteValue, navigate } from "../../routes";
 import {
-  ArrowLeft,
-  ArrowUpRight,
-  CalendarDays,
+  ChevronRight,
   MapPin,
+  Plus,
   Users,
   Wallet,
   Search,
 } from "lucide-react";
-import { Badge } from "../../components/ui";
-import { WorkflowDetails } from "../../components/WorkflowDetails";
+import {
+  Badge,
+  BackLink,
+  Initials,
+  StatusPill,
+  paymentMethod,
+  statusLabel,
+} from "../../components/ui";
+import { EmptyArt } from "../../components/Art";
+import {
+  WorkflowDetails,
+  WorkflowPanel,
+  openWorkflow,
+} from "../../components/WorkflowDetails";
+import { MoreMenu, PageActions } from "../../components/PageHeader";
+import { formatRange, formatWhen, schoolDay } from "../../lib/when";
+import { AttendanceSheet } from "./AttendanceSheet";
 import { useEffect, useRef, useState } from "react";
 import {
   text,
@@ -18,13 +32,12 @@ import {
   today,
   money,
   Select,
+  teacherName,
   type Row,
   type SchoolTools,
 } from "./common";
 import { type Roster } from "./Roster";
 export { RosterView, type Roster } from "./Roster";
-const ist = (v: string) =>
-  new Date(v).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 const localInput = (v: string) =>
   new Date(v)
     .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -42,10 +55,9 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
       staff: [],
     }),
     [selected, setSelected] = useState<Row | null>(null),
-    [att, setAtt] = useState<Record<string, string>>({}),
     [batch, setBatch] = useRouteValue("batch"),
     [teacher, setTeacher] = useState(""),
-    [range, setRange] = useRouteValue("range", "upcoming"),
+    [range, setRange] = useRouteValue("range", "week"),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState("");
   const requestId = useRef(0);
@@ -77,74 +89,75 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
   }, [t.read]);
   const [classId] = useRouteValue("class");
   useEffect(() => {
-    const row = data.classes.find((c) => c.id === classId);
-    if (row) {
-      setSelected(row);
-      setAtt(
-        Object.fromEntries(
-          data.attendance
-            .filter((a) => a.occurrence_id === row.id)
-            .map((a) => [text(a, "learner_id"), text(a, "status")]),
-        ),
-      );
-    } else setSelected(null);
+    setSelected(data.classes.find((c) => c.id === classId) || null);
   }, [classId, data]);
   useEffect(() => {
-    detailHeading.current?.focus();
+    if (selected) detailHeading.current?.focus();
   }, [selected?.id]);
-  function open(o: Row) {
-    navigate({ class: o.id, action: "", form: "" });
-    setSelected(o);
-    setAtt(
-      Object.fromEntries(
-        data.attendance
-          .filter((a) => a.occurrence_id === o.id)
-          .map((a) => [text(a, "learner_id"), text(a, "status")]),
-      ),
-    );
-  }
   const enrolled = selected
     ? roster.enrollments.filter(
         (e) =>
           e.batch_id === selected.batch_id &&
           text(e, "starts_on").slice(0, 10) <=
-            text(selected, "starts_at").slice(0, 10) &&
+            schoolDay(text(selected, "starts_at")) &&
           (!e.ends_on ||
             text(e, "ends_on").slice(0, 10) >=
-              text(selected, "starts_at").slice(0, 10)),
+              schoolDay(text(selected, "starts_at"))),
       )
     : [];
-  const currentDay = today();
-  const dayOf = (c: Row) =>
-    new Date(text(c, "starts_at")).toLocaleDateString("en-CA", {
-      timeZone: "Asia/Kolkata",
-    });
-  const timeOf = (value: string) =>
-    new Date(value).toLocaleTimeString("en-IN", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "Asia/Kolkata",
-    });
+  const currentDay = schoolDay();
+  const weekOf = (day: string) => {
+    const date = new Date(day + "T12:00:00Z");
+    date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+    return date.toISOString().slice(0, 10);
+  };
+  const thisWeek = weekOf(currentDay);
+  const dayOf = (c: Row) => schoolDay(text(c, "starts_at"));
   const visibleClasses = [...data.classes]
     .filter((c) =>
       range === "today"
         ? dayOf(c) === currentDay
-        : range === "upcoming"
-          ? new Date(text(c, "ends_at")) >= new Date() &&
-            c.status !== "cancelled"
-          : true,
+        : range === "week"
+          ? weekOf(dayOf(c)) === thisWeek
+          : range === "upcoming"
+            ? new Date(text(c, "ends_at")) >= new Date() &&
+              c.status !== "cancelled"
+            : true,
     )
     .sort((a, b) => text(a, "starts_at").localeCompare(text(b, "starts_at")));
-  const days = [...new Set(visibleClasses.map(dayOf))];
-  const markedCount = enrolled.filter((e) =>
-    Boolean(att[text(e, "learner_id")]),
-  ).length;
+  const weeks = [...new Set(visibleClasses.map((c) => weekOf(dayOf(c))))];
+  const weekTitle = (week: string) => {
+    const days = Math.round(
+      (Date.parse(week) - Date.parse(thisWeek)) / 86400000,
+    );
+    return days === 0
+      ? "This week"
+      : days === 7
+        ? "Next week"
+        : days === -7
+          ? "Last week"
+          : "Week of " + formatWhen(week, "date");
+  };
   const back = () => navigate({ class: "", action: "", form: "" });
+  const learnerName = (id: unknown) =>
+    text(roster.learners.find((l) => l.id === id) || {}, "name");
   return (
     <>
+      {!classId && (
+        <PageActions>
+          <button
+            className="button primary"
+            onClick={() => openWorkflow("Schedule classes")}
+          >
+            <Plus size={16} aria-hidden="true" /> Schedule classes
+          </button>
+        </PageActions>
+      )}
       <div hidden={Boolean(classId)}>
-        <WorkflowDetails className="task-disclosure">
-          <summary>Schedule classes · India time</summary>
+        <WorkflowPanel
+          title="Schedule classes"
+          description="Times are India time. A class can repeat weekly for up to a year."
+        >
           <WorkflowForm
             className="form-grid"
             onSubmit={async (e) => {
@@ -162,7 +175,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
                 makeupFor: f.get("makeup") || undefined,
               });
               if (result !== undefined) {
-                navigate({ action: "", form: "", range: "all" });
+                navigate({ action: "", form: "", range: "upcoming" });
                 await load();
               }
             }}
@@ -181,11 +194,11 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
               labelKey="display_name"
             />
             <label>
-              Starts · IST
+              Starts
               <input name="starts" required type="datetime-local" />
             </label>
             <label>
-              Ends · IST
+              Ends
               <input name="ends" required type="datetime-local" />
             </label>
             <label>
@@ -208,7 +221,8 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
                 <option value="">None</option>
                 {data.classes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {text(c, "batch_name")} · {ist(text(c, "starts_at"))}
+                    {text(c, "batch_name")} ·{" "}
+                    {formatWhen(text(c, "starts_at"), "dayTime", "school")}
                   </option>
                 ))}
               </select>
@@ -217,17 +231,15 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
               Schedule
             </button>
           </WorkflowForm>
-        </WorkflowDetails>
+        </WorkflowPanel>
         <div className="agenda-toolbar">
-          <div>
-            <h2>Your teaching calendar</h2>
-            <p>Class times are shown in India time · IST</p>
-          </div>
-          <div className="view-switch" aria-label="Class date range">
+          <h2>Class calendar</h2>
+          <div className="view-switch" aria-label="Classes to show">
             {[
-              ["upcoming", "Upcoming"],
               ["today", "Today"],
-              ["all", "All classes"],
+              ["week", "This week"],
+              ["upcoming", "Upcoming"],
+              ["all", "All"],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -251,93 +263,80 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
           </div>
         ) : !visibleClasses.length ? (
           <div className="schedule-empty">
-            <CalendarDays size={30} />
+            <EmptyArt name="no-classes" />
             <h3>
               {data.classes.length
                 ? range === "today"
                   ? "No classes today"
-                  : "No upcoming classes"
+                  : range === "week"
+                    ? "No classes this week"
+                    : "No upcoming classes"
                 : "Make room for your first class"}
             </h3>
             <p>
               {data.classes.length
-                ? "Explore the full calendar or schedule your next lesson."
+                ? "See what’s coming up, or schedule your next lesson."
                 : "Choose a batch, a teacher and a time. You can repeat a class each week."}
             </p>
             <button
               className="button primary"
-              onClick={() =>
-                navigate({ action: "schedule-classes-india-time", form: "" })
-              }
+              onClick={() => openWorkflow("Schedule classes")}
             >
-              Schedule a class
+              Schedule classes
             </button>
-            {data.classes.length > 0 && (
-              <button className="text-button" onClick={() => setRange("all")}>
-                View all classes
+            {data.classes.length > 0 && range !== "upcoming" && (
+              <button
+                className="text-button"
+                onClick={() => setRange("upcoming")}
+              >
+                Show upcoming classes
               </button>
             )}
           </div>
         ) : (
-          <div className="agenda">
-            <p className="fine">
-              {visibleClasses.length}{" "}
-              {visibleClasses.length === 1 ? "class" : "classes"}
-            </p>
-            {days.map((day) => (
-              <section className="agenda-day" key={day}>
-                <h3>
-                  {day === currentDay ? "Today · " : ""}
-                  {new Date(day + "T12:00:00+05:30").toLocaleDateString(
-                    "en-IN",
-                    {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      timeZone: "Asia/Kolkata",
-                    },
-                  )}
-                </h3>
-                <div className="agenda-day-list">
+          <div className="calendar">
+            {weeks.map((week) => (
+              <section className="calendar-week" key={week}>
+                <h3>{weekTitle(week)}</h3>
+                <ul>
                   {visibleClasses
-                    .filter((c) => dayOf(c) === day)
+                    .filter((c) => weekOf(dayOf(c)) === week)
                     .map((c) => (
-                      <button
-                        className="agenda-class"
-                        key={c.id}
-                        onClick={() => open(c)}
-                        aria-label={`Open ${text(c, "batch_name")} · ${ist(text(c, "starts_at"))}`}
-                      >
-                        <span className="agenda-time">
-                          <strong>{timeOf(text(c, "starts_at"))}</strong>
-                          <small>until {timeOf(text(c, "ends_at"))}</small>
-                        </span>
-                        <span className="agenda-description">
-                          <strong>{text(c, "batch_name")}</strong>
-                          <span>
-                            <Users size={14} />
-                            {text(c, "teacher") || "Teacher to be assigned"}
-                          </span>
-                          <span>
-                            <MapPin size={14} />
-                            {text(c, "location") || "Location to be confirmed"}
-                          </span>
-                        </span>
-                        <Badge
-                          tone={
-                            c.status === "cancelled"
-                              ? "attention"
-                              : c.status === "completed"
-                                ? "success"
-                                : "neutral"
+                      <li key={c.id}>
+                        <button
+                          className={`calendar-row ${dayOf(c) === currentDay ? "is-today" : ""}`}
+                          onClick={() =>
+                            navigate({ class: c.id, action: "", form: "" })
                           }
                         >
-                          {text(c, "status")}
-                        </Badge>
-                        <ArrowUpRight size={17} />
-                      </button>
+                          <span className="calendar-day">
+                            {dayOf(c) === currentDay
+                              ? "Today"
+                              : formatWhen(dayOf(c), "day")}
+                          </span>
+                          <span className="calendar-time">
+                            {formatRange(
+                              text(c, "starts_at"),
+                              text(c, "ends_at"),
+                              "school",
+                            ).split(" · ")[1] || ""}
+                          </span>
+                          <span className="calendar-class">
+                            <strong>{text(c, "batch_name")}</strong>
+                            <small>
+                              {teacherName(c) || "Teacher to be assigned"} ·{" "}
+                              {text(c, "location") || "Location to be confirmed"}
+                            </small>
+                          </span>
+                          <StatusPill
+                            status={text(c, "status")}
+                            usual="scheduled"
+                          />
+                          <ChevronRight size={17} aria-hidden="true" />
+                        </button>
+                      </li>
                     ))}
-                </div>
+                </ul>
               </section>
             ))}
           </div>
@@ -345,10 +344,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
       </div>
       {classId && !selected && (
         <div className="ui-empty">
-          <button className="back-link" onClick={back}>
-            <ArrowLeft size={16} />
-            All classes
-          </button>
+          <BackLink onClick={back}>All classes</BackLink>
           <h3>
             {loading
               ? "Loading class…"
@@ -366,45 +362,44 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
       )}
       {selected && (
         <section className="class-record" key={selected.id}>
-          <button className="back-link" onClick={back}>
-            <ArrowLeft size={16} />
-            All classes
-          </button>
+          <BackLink onClick={back}>All classes</BackLink>
           <div className="class-record-header">
             <div>
-              <span className="eyebrow">Class details</span>
               <h2 ref={detailHeading} tabIndex={-1}>
                 {text(selected, "batch_name")}
               </h2>
               <p>
-                {ist(text(selected, "starts_at"))} –{" "}
-                {timeOf(text(selected, "ends_at"))} · IST
+                {formatRange(
+                  text(selected, "starts_at"),
+                  text(selected, "ends_at"),
+                  "school",
+                )}
               </p>
             </div>
-            <Badge
-              tone={selected.status === "cancelled" ? "attention" : "neutral"}
-            >
-              {text(selected, "status")}
-            </Badge>
+            <div className="class-record-actions">
+              <StatusPill status={text(selected, "status")} usual="scheduled" />
+              <button
+                className="button secondary"
+                onClick={() => openWorkflow("Edit class")}
+              >
+                Edit class
+              </button>
+            </div>
           </div>
           <div className="class-context">
             <span>
-              <Users size={17} />
-              {text(selected, "teacher")}
+              <Users size={17} aria-hidden="true" />
+              {teacherName(selected) || "Teacher to be assigned"}
             </span>
             <span>
-              <MapPin size={17} />
+              <MapPin size={17} aria-hidden="true" />
               {text(selected, "location") || "Location to be confirmed"}
             </span>
           </div>
-          {selected.status === "cancelled" && (
-            <p className="record-notice">
-              This class is cancelled. Check its schedule before marking
-              attendance.
-            </p>
-          )}
-          <WorkflowDetails className="task-disclosure">
-            <summary>Change time, teacher or status</summary>
+          <WorkflowPanel
+            title="Edit class"
+            description="Only this class changes. Reminders already queued for it are cancelled."
+          >
             <WorkflowForm
               className="form-grid"
               key={String(selected.version) + selected.id}
@@ -431,7 +426,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
               }}
             >
               <label>
-                Starts · IST
+                Starts
                 <input
                   type="datetime-local"
                   name="starts"
@@ -439,7 +434,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
                 />
               </label>
               <label>
-                Ends · IST
+                Ends
                 <input
                   type="datetime-local"
                   name="ends"
@@ -447,7 +442,7 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
                 />
               </label>
               <label>
-                Teacher / substitute
+                Teacher or substitute
                 <select
                   name="teacher"
                   defaultValue={text(selected, "teacher_id")}
@@ -474,99 +469,28 @@ export function ScheduleView({ tools: t }: { tools: SchoolTools }) {
                   <option value="completed">Completed</option>
                 </select>
               </label>
-              <button className="button secondary" disabled={t.busy}>
-                Update this occurrence
+              <button className="button primary" disabled={t.busy}>
+                Save changes
               </button>
             </WorkflowForm>
-            <p className="fine">
-              Only this class occurrence changes. Old queued reminders are
-              cancelled.
-            </p>
-          </WorkflowDetails>
-          <div className="attendance-heading">
-            <div>
-              <h3>Attendance</h3>
-              <p>Record each learner’s presence and what you covered.</p>
-            </div>
-            <Badge
-              tone={
-                enrolled.length > 0 && markedCount === enrolled.length
-                  ? "success"
-                  : "neutral"
-              }
-            >
-              {markedCount} of {enrolled.length} marked
-            </Badge>
-          </div>
-          {enrolled.length === 0 && (
-            <p className="ui-empty">
-              No learners were enrolled for this class date.
-            </p>
-          )}
-          <WorkflowForm
-            key={selected.id + "-attendance"}
-            className="attendance-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              const saved = await t.command("class.attendance", {
-                id: selected.id,
-                entries: Object.entries(att)
-                  .filter(([, status]) => Boolean(status))
-                  .map(([learner, status]) => ({
-                    learner,
-                    status,
-                  })),
-                notes: f.get("notes"),
-              });
-              if (saved !== undefined) await load();
-            }}
-          >
-            {enrolled.map((e) => (
-              <label className="attendance-person" key={e.id}>
-                <span>
-                  {text(
-                    roster.learners.find((l) => l.id === e.learner_id) || {},
-                    "name",
-                  )}
-                </span>
-                <select
-                  disabled={selected.status === "cancelled"}
-                  value={att[text(e, "learner_id")] || ""}
-                  onChange={(event) =>
-                    setAtt((a) => ({
-                      ...a,
-                      [text(e, "learner_id")]: event.target.value,
-                    }))
-                  }
-                >
-                  <option
-                    value=""
-                    disabled={data.attendance.some(
-                      (a) =>
-                        a.occurrence_id === selected.id &&
-                        a.learner_id === e.learner_id,
-                    )}
-                  >
-                    Not marked
-                  </option>
-                  <option value="present">Present</option>
-                  <option value="absent">Absent</option>
-                  <option value="excused">Excused</option>
-                </select>
-              </label>
-            ))}
-            <label className="lesson-notes">
-              Lesson notes
-              <textarea name="notes" defaultValue={text(selected, "notes")} />
-            </label>
-            <button
-              className="button primary"
-              disabled={t.busy || selected.status === "cancelled"}
-            >
-              Save attendance
-            </button>
-          </WorkflowForm>
+          </WorkflowPanel>
+          <AttendanceSheet
+            key={selected.id + ":" + data.attendance.length}
+            tools={t}
+            occurrence={selected.id}
+            cancelled={selected.status === "cancelled"}
+            learners={enrolled.map((e) => ({
+              id: text(e, "learner_id"),
+              name: learnerName(e.learner_id),
+            }))}
+            saved={Object.fromEntries(
+              data.attendance
+                .filter((a) => a.occurrence_id === selected.id)
+                .map((a) => [text(a, "learner_id"), text(a, "status")]),
+            )}
+            notes={text(selected, "notes")}
+            onSaved={load}
+          />
         </section>
       )}
     </>
@@ -695,6 +619,197 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
     navigate({ household: "", payment: "", action: "", form: "" });
   return (
     <>
+      <PageActions>
+        <MoreMenu
+          items={[
+            {
+              label: "Fee plans and monthly billing",
+              onSelect: () => openWorkflow("Fee plans"),
+            },
+          ]}
+        />
+        <button
+          className="button primary"
+          onClick={() => openWorkflow("Create a charge")}
+        >
+          <Plus size={16} aria-hidden="true" /> Create a charge
+        </button>
+      </PageActions>
+      <WorkflowPanel
+        title="Create a charge"
+        description="Bill a household, or one learner in it. The family sees it on their statement."
+      >
+        <WorkflowForm
+          className="form-grid"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget),
+              r = await t.command("billing.charge", {
+                household: f.get("household"),
+                learner: f.get("learner") || undefined,
+                description: f.get("description"),
+                amount: Math.round(Number(f.get("amount")) * 100),
+                due: f.get("due"),
+                key: chargeKey,
+              });
+            if (r) {
+              setChargeKey(crypto.randomUUID());
+              navigate({ action: "", form: "" });
+            }
+            await load();
+          }}
+        >
+          <label>
+            Household
+            <select
+              required
+              name="household"
+              key={household}
+              defaultValue={household}
+            >
+              <option value="">Choose…</option>
+              {households.map((h) => (
+                <option value={h.id} key={h.id}>
+                  {text(h, "name")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Learner
+            <select name="learner">
+              <option value="">Household charge</option>
+              {roster.learners.map((l) => (
+                <option value={l.id} key={l.id}>
+                  {text(l, "name")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Description
+            <input
+              required
+              name="description"
+              placeholder="October tuition"
+            />
+          </label>
+          <label>
+            Amount · INR
+            <input
+              required
+              name="amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+            />
+          </label>
+          <label>
+            Due date
+            <input required name="due" type="date" defaultValue={today()} />
+          </label>
+          <button className="button primary" disabled={t.busy}>
+            Create charge
+          </button>
+        </WorkflowForm>
+      </WorkflowPanel>
+      <WorkflowPanel
+        title="Fee plans"
+        description="Set a monthly fee for an enrolment, then generate a month’s charges in one step."
+      >
+        <WorkflowForm
+          className="form-grid"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            await t.command("billing.plan", {
+              enrollment: f.get("enrollment"),
+              amount: Math.round(Number(f.get("amount")) * 100),
+              concession: Math.round(Number(f.get("concession")) * 100),
+              dueDay: Number(f.get("day")),
+            });
+            await load();
+          }}
+        >
+          <label>
+            Enrolment
+            <select required name="enrollment">
+              <option value="">Choose…</option>
+              {roster.enrollments.map((e) => (
+                <option value={e.id} key={e.id}>
+                  {text(
+                    roster.learners.find((l) => l.id === e.learner_id) ||
+                      {},
+                    "name",
+                  )}{" "}
+                  ·{" "}
+                  {text(
+                    roster.batches.find((b) => b.id === e.batch_id) || {},
+                    "name",
+                  )}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Monthly fee · INR
+            <input
+              required
+              name="amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+            />
+          </label>
+          <label>
+            Concession · INR
+            <input
+              name="concession"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue="0"
+            />
+          </label>
+          <label>
+            Due day (1–28)
+            <input
+              name="day"
+              type="number"
+              min="1"
+              max="28"
+              defaultValue="10"
+            />
+          </label>
+          <button className="button primary" disabled={t.busy}>
+            Save fee plan
+          </button>
+        </WorkflowForm>
+        <WorkflowForm
+          className="toolbar"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            await t.command("billing.generate", {
+              period: f.get("period"),
+            });
+            await load();
+          }}
+        >
+          <label>
+            Billing month
+            <input
+              name="period"
+              required
+              type="month"
+              defaultValue={today().slice(0, 7)}
+            />
+          </label>
+          <button className="button secondary" disabled={t.busy}>
+            Generate charges
+          </button>
+        </WorkflowForm>
+      </WorkflowPanel>
       {!household && (
         <div className="metrics billing-metrics">
           <div>
@@ -767,9 +882,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                     })
                   }
                 >
-                  <span className="balance-avatar">
-                    <Wallet size={19} />
-                  </span>
+                  <Initials name={text(h, "name")} />
                   <span className="balance-name">
                     <strong>{text(h, "name")}</strong>
                     <small>
@@ -789,13 +902,13 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                           : "No charges yet"}
                     </small>
                   </span>
-                  <ArrowUpRight size={16} />
+                  <ChevronRight size={16} aria-hidden="true" />
                 </button>
               ))}
             </div>
           ) : (
             <div className="ui-empty">
-              <Wallet size={28} />
+              <EmptyArt name="icon-fees" />
               <h3>
                 {query
                   ? "No matching families"
@@ -821,10 +934,7 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
       )}
       {household && (
         <section className="statement-record">
-          <button className="back-link" onClick={back}>
-            <ArrowLeft size={16} />
-            All family balances
-          </button>
+          <BackLink onClick={back}>All family balances</BackLink>
           {statementFor !== household || !statement ? (
             <div className="ui-empty" role={loadError ? "alert" : "status"}>
               <h3>
@@ -882,8 +992,8 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
               <h3>Charges</h3>
               {!statement.charges.length && (
                 <p className="ui-empty">
-                  No charges for this household yet. Use Create learner charge
-                  below to add one.
+                  No charges for this household yet. Use Create a charge at the
+                  top of Fees to add one.
                 </p>
               )}
               <div className="table-wrap statement-table">
@@ -904,11 +1014,13 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                           <small>{text(ch, "description")}</small>
                         </td>
                         <td>
-                          <Badge>{text(ch, "category")}</Badge>
+                          <Badge>{statusLabel(text(ch, "category"))}</Badge>
                         </td>
                         <td data-label="Amount">{money(num(ch, "amount"))}</td>
                         <td data-label="Outstanding">
-                          {money(num(ch, "due"))}
+                          {num(ch, "due") === 0 && num(ch, "amount") > 0
+                            ? "Paid"
+                            : money(num(ch, "due"))}
                         </td>
                       </tr>
                     ))}
@@ -993,32 +1105,17 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
                   <div className="row-detail">
                     <strong>
                       {money(num(p, "amount"))}{" "}
-                      <Badge
-                        tone={
-                          p.status === "verified"
-                            ? "success"
-                            : p.status === "claim"
-                              ? "attention"
-                              : "neutral"
-                        }
-                      >
-                        {p.status === "claim"
-                          ? "Needs verification"
-                          : text(p, "status")}
-                      </Badge>
+                      <StatusPill status={text(p, "status")} />
                     </strong>
                     <small>
-                      {text(p, "method").toUpperCase()} ·{" "}
+                      {paymentMethod(text(p, "method"))} ·{" "}
                       {text(p, "reference") || "No reference"} ·{" "}
                       {p.status === "verified"
                         ? "Credit " + money(num(p, "credit"))
                         : ""}
                     </small>
                     <small>
-                      {new Date(text(p, "created_at")).toLocaleDateString(
-                        "en-IN",
-                        { day: "numeric", month: "short", year: "numeric" },
-                      )}
+                      {formatWhen(text(p, "created_at"), "date")}
                       {p.receipt
                         ? " · Receipt " + text(p, "receipt")
                         : " · Check your bank, UPI or cash record before verifying."}
@@ -1278,180 +1375,6 @@ export function BillingView({ tools: t }: { tools: SchoolTools }) {
           )}
         </section>
       )}
-      <div className="billing-setup">
-        <div className="section-heading">
-          <h3>Charges & fee plans</h3>
-          <p className="fine">Create a charge or set up monthly billing.</p>
-        </div>
-        <div className="form-grid">
-          <WorkflowDetails className="task-disclosure">
-            <summary>Create learner charge</summary>
-            <WorkflowForm
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget),
-                  r = await t.command("billing.charge", {
-                    household: f.get("household"),
-                    learner: f.get("learner") || undefined,
-                    description: f.get("description"),
-                    amount: Math.round(Number(f.get("amount")) * 100),
-                    due: f.get("due"),
-                    key: chargeKey,
-                  });
-                if (r) setChargeKey(crypto.randomUUID());
-                await load();
-              }}
-            >
-              <label>
-                Household
-                <select
-                  required
-                  name="household"
-                  key={household}
-                  defaultValue={household}
-                >
-                  <option value="">Choose…</option>
-                  {households.map((h) => (
-                    <option value={h.id} key={h.id}>
-                      {text(h, "name")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Learner
-                <select name="learner">
-                  <option value="">Household charge</option>
-                  {roster.learners.map((l) => (
-                    <option value={l.id} key={l.id}>
-                      {text(l, "name")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Description
-                <input
-                  required
-                  name="description"
-                  placeholder="October tuition"
-                />
-              </label>
-              <label>
-                Amount · INR
-                <input
-                  required
-                  name="amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                />
-              </label>
-              <label>
-                Due date
-                <input required name="due" type="date" defaultValue={today()} />
-              </label>
-              <button className="button primary" disabled={t.busy}>
-                Create charge
-              </button>
-            </WorkflowForm>
-          </WorkflowDetails>
-          <WorkflowDetails className="task-disclosure">
-            <summary>Recurring fee plan</summary>
-            <WorkflowForm
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                await t.command("billing.plan", {
-                  enrollment: f.get("enrollment"),
-                  amount: Math.round(Number(f.get("amount")) * 100),
-                  concession: Math.round(Number(f.get("concession")) * 100),
-                  dueDay: Number(f.get("day")),
-                });
-                await load();
-              }}
-            >
-              <label>
-                Enrollment
-                <select required name="enrollment">
-                  <option value="">Choose…</option>
-                  {roster.enrollments.map((e) => (
-                    <option value={e.id} key={e.id}>
-                      {text(
-                        roster.learners.find((l) => l.id === e.learner_id) ||
-                          {},
-                        "name",
-                      )}{" "}
-                      ·{" "}
-                      {text(
-                        roster.batches.find((b) => b.id === e.batch_id) || {},
-                        "name",
-                      )}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Monthly fee · INR
-                <input
-                  required
-                  name="amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                />
-              </label>
-              <label>
-                Concession · INR
-                <input
-                  name="concession"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  defaultValue="0"
-                />
-              </label>
-              <label>
-                Due day (1–28)
-                <input
-                  name="day"
-                  type="number"
-                  min="1"
-                  max="28"
-                  defaultValue="10"
-                />
-              </label>
-              <button className="button primary" disabled={t.busy}>
-                Save fee plan
-              </button>
-            </WorkflowForm>
-            <WorkflowForm
-              className="toolbar"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                await t.command("billing.generate", {
-                  period: f.get("period"),
-                });
-                await load();
-              }}
-            >
-              <label>
-                Billing month
-                <input
-                  name="period"
-                  required
-                  type="month"
-                  defaultValue={today().slice(0, 7)}
-                />
-              </label>
-              <button className="button secondary" disabled={t.busy}>
-                Generate charges
-              </button>
-            </WorkflowForm>
-          </WorkflowDetails>
-        </div>
-      </div>
     </>
   );
 }

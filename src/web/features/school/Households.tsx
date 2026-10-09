@@ -1,12 +1,34 @@
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { ArrowLeft, ArrowUpRight, Users, Search, Plus } from "lucide-react";
-import { Badge } from "../../components/ui";
+import { ChevronRight, Search, Plus } from "lucide-react";
+import {
+  Badge,
+  BackLink,
+  Initials,
+  StatusPill,
+  statusLabel,
+} from "../../components/ui";
+import { formatWhen } from "../../lib/when";
+import { EmptyArt } from "../../components/Art";
 import { useRouteValue, navigate } from "../../routes";
-import { WorkflowDetails } from "../../components/WorkflowDetails";
+import {
+  WorkflowDetails,
+  WorkflowPanel,
+  openWorkflow,
+} from "../../components/WorkflowDetails";
+import { PageActions } from "../../components/PageHeader";
 import PhoneInput from "../auth/PhoneInput";
 import { useEffect, useRef, useState } from "react";
 import { parseCsv, csvExport } from "../../../core/csv";
-import { text, num, today, Select, type Row, type SchoolTools } from "./common";
+import {
+  text,
+  num,
+  phone,
+  plural,
+  today,
+  Select,
+  type Row,
+  type SchoolTools,
+} from "./common";
 type Person = {
   name: string;
   phone: string;
@@ -230,21 +252,11 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
     <>
       {!create && !householdId && (
         <>
-          <div className="section-heading">
-            <h2>Households & students</h2>
-            <button
-              className="button primary"
-              onClick={() => {
-                setCreate(true);
-              }}
-            >
-              <Plus size={16} /> New household
+          <PageActions>
+            <button className="button primary" onClick={() => setCreate(true)}>
+              <Plus size={16} aria-hidden="true" /> New household
             </button>
-          </div>
-          <p className="fine">
-            One family contact, separate learners. Shared phone numbers never
-            merge students.
-          </p>
+          </PageActions>
           <div className="toolbar household-search">
             <label className="search-field">
               <Search size={18} aria-hidden="true" />
@@ -300,19 +312,14 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
       )}
       {create && (
         <section className="panel household-create">
-          <button
-            type="button"
-            className="text-button record-back"
-            onClick={back}
-          >
-            <ArrowLeft size={16} /> All households
-          </button>
+          <BackLink onClick={back}>All households</BackLink>
           <h2 ref={recordHeading} tabIndex={-1}>
             New household
           </h2>
           <p className="fine">
             Add everyone learning with your school. Choose one person for school
-            updates and one for billing.
+            updates and one for billing. Learners who share a phone number stay
+            separate.
           </p>
           <WorkflowForm
             onSubmit={async (e) => {
@@ -486,7 +493,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 ? "Finding households…"
                 : `${rows.length} household${rows.length === 1 ? "" : "s"}`}
             </strong>
-            <span>{query ? "Search results" : "Your school community"}</span>
+            {query && <span>Search results</span>}
           </div>
           {listError ? (
             <div className="directory-empty" role="alert">
@@ -512,9 +519,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                     aria-label={`Open ${text(h, "name")}`}
                   >
                     <span className="family-identity">
-                      <span className="family-avatar">
-                        <Users size={20} />
-                      </span>
+                      <Initials name={text(h, "name")} />
                       <strong>{text(h, "name")}</strong>
                     </span>
                     <span className="family-contact">
@@ -522,25 +527,29 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                         {text(h, "contact_name") || "No primary contact"}
                       </span>
                       <small>
-                        {text(h, "phone") ||
+                        {phone(text(h, "phone")) ||
                           text(h, "email") ||
                           "Contact details not provided"}
                       </small>
                     </span>
                     <span className="family-count">
-                      {num(h, "learner_count")} <span>learners</span>
+                      {num(h, "learner_count")}{" "}
+                      <span>
+                        {num(h, "learner_count") === 1 ? "learner" : "learners"}
+                      </span>
                     </span>
                     <span className="family-status">
-                      <Badge tone={h.archived_at ? "neutral" : "success"}>
-                        {h.archived_at ? "Archived" : "Active"}
-                      </Badge>
-                      <ArrowUpRight size={16} />
+                      <StatusPill
+                        status={h.archived_at ? "archived" : "active"}
+                        usual="active"
+                      />
+                      <ChevronRight size={16} aria-hidden="true" />
                     </span>
                   </button>
                 ))}
               {!listLoading && !rows.length && (
                 <div className="directory-empty">
-                  <Users size={28} />
+                  <EmptyArt name="welcome" />
                   <h3>
                     {query
                       ? "No families match your search"
@@ -570,9 +579,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
       )}
       {!create && householdId && !detail && (
         <section className="panel">
-          <button className="text-button record-back" onClick={back}>
-            <ArrowLeft size={16} /> All households
-          </button>
+          <BackLink onClick={back}>All households</BackLink>
           {detailError ? (
             <div role="alert">
               <p>{detailError}</p>
@@ -590,26 +597,35 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
           className="household-record"
           data-route-resource={detail.household.id}
         >
-          <button className="text-button record-back" onClick={back}>
-            <ArrowLeft size={16} /> All households
-          </button>
+          <BackLink onClick={back}>All households</BackLink>
           <header className="family-header">
-            <span className="family-avatar">
-              <Users size={26} />
-            </span>
+            <Initials name={text(detail.household, "name")} />
             <div>
-              <span className="eyebrow">Household</span>
               <h2 ref={recordHeading} tabIndex={-1}>
                 {text(detail.household, "name")}
               </h2>
               <p>
-                {detail.people.filter((p) => p.learner_id).length} learners ·{" "}
-                {detail.people.length} family members
+                {plural(
+                  detail.people.filter((p) => p.learner_id).length,
+                  "learner",
+                )}{" "}
+                · {plural(detail.people.length, "family member")}
               </p>
             </div>
-            <Badge tone={detail.household.archived_at ? "neutral" : "success"}>
-              {detail.household.archived_at ? "Archived" : "Active"}
-            </Badge>
+            <div className="class-record-actions">
+              <StatusPill
+                status={detail.household.archived_at ? "archived" : "active"}
+                usual="active"
+              />
+              <button
+                className="button secondary"
+                onClick={() =>
+                  openWorkflow("Edit household details", { section: "summary" })
+                }
+              >
+                Edit details
+              </button>
+            </div>
           </header>
           <nav className="record-nav" aria-label="Household sections">
             {[
@@ -643,7 +659,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                     <h3>{person ? text(person, "name") : "Not assigned"}</h3>
                     <p>
                       {person
-                        ? text(person, "phone") ||
+                        ? phone(text(person, "phone")) ||
                           text(person, "email") ||
                           "No contact details"
                         : "Choose a family member below."}
@@ -655,8 +671,10 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                 );
               })}
             </div>
-            <WorkflowDetails className="task-disclosure">
-              <summary>Edit household details</summary>
+            <WorkflowPanel
+              title="Edit household details"
+              context={{ section: "summary" }}
+            >
               <WorkflowForm
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -734,7 +752,7 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
                   </button>
                 </div>
               </WorkflowForm>
-            </WorkflowDetails>
+            </WorkflowPanel>
             <p className="record-help">
               One contact can receive updates for the family. Each learner keeps
               their own lessons, attendance and feedback.
@@ -982,8 +1000,8 @@ export default function Households({ tools: t }: { tools: SchoolTools }) {
             <h3>Activity</h3>
             {detail.activity.map((a, i) => (
               <p className="fine" key={i}>
-                {text(a, "action")} ·{" "}
-                {new Date(text(a, "created_at")).toLocaleString("en-IN")}
+                {statusLabel(text(a, "action").replace(/[._]+/g, " "))} ·{" "}
+                {formatWhen(text(a, "created_at"), "dayTime")}
               </p>
             ))}
           </div>

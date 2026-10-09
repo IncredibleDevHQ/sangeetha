@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowUpRight,
   CalendarCheck,
+  ChevronRight,
   ClipboardCheck,
   Download,
   ListChecks,
@@ -13,6 +12,9 @@ import {
 } from "lucide-react";
 import { csvExport } from "../../../core/csv";
 import { navigate, useRouteValue } from "../../routes";
+import { BackLink } from "../../components/ui";
+import { PageActions, focusPageHeading } from "../../components/PageHeader";
+import { formatWhen } from "../../lib/when";
 import { text, num, money, type Row, type SchoolTools } from "./common";
 
 const reports = [
@@ -32,7 +34,7 @@ const reports = [
     empty: "Learning records will appear here once learners join the school.",
     columns: [
       "Learner",
-      "Submitted versions",
+      "Attempts sent",
       "Published reviews",
       "Awaiting publication",
     ],
@@ -74,14 +76,7 @@ type ReportId = (typeof reports)[number]["id"];
 type ReportData = Record<ReportId, Row[]>;
 const dateText = (value: string) => {
   const day = value.slice(0, 10);
-  return day
-    ? new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : "No due date";
+  return day ? formatWhen(day, "date") : "No due date";
 };
 const timing = (row: Row) => {
   const due = text(row, "due_on").slice(0, 10);
@@ -183,7 +178,9 @@ export function ReportsView({
     };
   }, [tools.read]);
   useEffect(() => {
-    if (!loading) heading.current?.focus();
+    if (loading) return;
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [report, loading]);
   const available = reports.filter(
     (r) => r.id !== "collections" || capabilities.includes("finance.manage"),
@@ -269,7 +266,7 @@ export function ReportsView({
     id === "attendance"
       ? `${present} present / ${marked} marked records`
       : id === "learning"
-        ? `versions awaiting publication · ${published} published`
+        ? `attempts waiting for feedback · ${published} published`
         : id === "collections"
           ? `${outstanding.length} unpaid ${outstanding.length === 1 ? "charge" : "charges"} · INR`
           : id === "tasks"
@@ -311,7 +308,7 @@ export function ReportsView({
     current?.id === "attendance"
       ? "Present ÷ marked attendance records. Absent, late and excused marks remain in the denominator; unmarked classes are excluded. This is not a scheduled-class completion rate."
       : current?.id === "learning"
-        ? "Counts recording submission versions, including resubmissions. Reviewed means feedback is published; saved drafts still await publication."
+        ? "Counts every attempt, including resubmissions. Reviewed means feedback is published; saved drafts still wait for publication."
         : current?.id === "collections"
           ? "Only positive charge balances are shown, after allocations and adjustments. Includes tuition and event charges, whether or not their due date has passed. Unallocated credit is shown in the household statement."
           : current?.id === "tasks"
@@ -319,41 +316,36 @@ export function ReportsView({
             : "Failed and uncertain delivery outcomes only. Confirm the provider's result before retrying an uncertain message.";
   return (
     <section className="reports-workspace" aria-busy={loading}>
-      {current && (
-        <button
-          className="back-link"
-          onClick={() => navigate({ report: "", q: "", sort: "" })}
-        >
-          <ArrowLeft size={16} /> All reports
-        </button>
-      )}
-      <div className="report-heading">
-        <div>
-          <span className="eyebrow">
-            {current ? "School report" : "A clearer picture"}
-          </span>
-          <h2 ref={heading} tabIndex={-1}>
-            {current?.title || "See what needs your attention"}
-          </h2>
-          <p>
-            {current?.description ||
-              "Explore attendance, feedback and the follow-ups that keep your school moving."}
-          </p>
-        </div>
+      <PageActions>
         <button
           className="button secondary"
           disabled={loading}
           onClick={() => void load()}
         >
-          <RefreshCw size={15} />
-          {loading ? "Refreshing…" : "Refresh reports"}
+          <RefreshCw size={15} aria-hidden="true" />
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
-      </div>
+      </PageActions>
+      {current && (
+        <>
+          <BackLink onClick={() => navigate({ report: "", q: "", sort: "" })}>
+            All reports
+          </BackLink>
+          <div className="report-heading">
+            <div>
+              <h2 ref={heading} tabIndex={-1}>
+                {current.title}
+              </h2>
+              <p>{current.description}</p>
+            </div>
+          </div>
+        </>
+      )}
       <p className="report-freshness" role="status">
         All recorded history ·{" "}
         {loading
           ? "Refreshing records…"
-          : `Updated ${updated?.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+          : `Updated ${formatWhen(updated, "time")}`}
       </p>
       {!current ? (
         <div className="report-directory">
@@ -367,7 +359,7 @@ export function ReportsView({
                 <span className="report-icon">
                   <Icon size={20} />
                 </span>
-                <ArrowUpRight size={18} />
+                <ChevronRight size={18} aria-hidden="true" />
               </span>
               <h3>{title}</h3>
               <strong className="report-metric">{metric(id)}</strong>
@@ -493,7 +485,7 @@ export function ReportsView({
                                 onClick={() => navigate(action.route)}
                               >
                                 {action.label}
-                                <ArrowUpRight size={14} />
+                                <ChevronRight size={14} aria-hidden="true" />
                               </button>
                             )}
                           </td>

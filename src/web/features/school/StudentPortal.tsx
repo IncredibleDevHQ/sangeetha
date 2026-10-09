@@ -2,27 +2,37 @@ import { useRouteValue, navigate } from "../../routes";
 import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
-  CalendarDays,
   Check,
   ChevronRight,
   ClipboardList,
   FileAudio,
   MessageSquare,
-  Play,
-  Settings2,
-  Users,
   ArrowUpRight,
 } from "lucide-react";
 import { type Row, type SchoolTools, text, num } from "./common";
 import {
   Action,
+  BackLink,
   Badge,
   SectionTitle,
   EmptyState,
+  StatusPill,
   dateLabel,
 } from "../../components/ui";
+import { PageActions, PageHeader } from "../../components/PageHeader";
+import {
+  differentZone,
+  formatRange,
+  formatWhen,
+  schoolDay,
+  zoneName,
+} from "../../lib/when";
+import { AttendanceSheet } from "./AttendanceSheet";
+import { FamilyBalance } from "./FamilyStatement";
+import { Art } from "../../components/Art";
+import { PracticeGrowth } from "../../components/Growth";
 import { Upload, Review, LibraryView } from "./Learning";
-import { Statement, TeacherAttendance, FamilyEvents } from "./Community";
+import { Statement, FamilyEvents } from "./Community";
 export function PortalView({ tools }: { tools: SchoolTools }) {
   const [data, setData] = useState<Record<string, Row[]>>({});
   const [ready, setReady] = useState(false);
@@ -108,33 +118,82 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   );
   const selectedAssets = assets[selectedTest + ":" + id] || [];
   const pendingPractice = practice.filter((p) => !p.completed_at);
-  const nav = [
-    { id: "overview", label: "Overview", icon: BookOpen, show: true },
-    {
-      id: "curriculum",
-      label: "Curriculum",
-      icon: Play,
-      show: !!learner || teaching.length > 0,
-    },
-    {
-      id: "assignments",
-      label: "Assignments",
-      icon: ClipboardList,
-      show: !!learner,
-    },
-    { id: "feedback", label: "Feedback", icon: MessageSquare, show: !!learner },
-    {
-      id: "classes",
-      label: "Classes",
-      icon: CalendarDays,
-      show: !!learner || teaching.length > 0,
-    },
-    { id: "family", label: "Family", icon: Users, show: households.length > 0 },
-    { id: "settings", label: "Settings", icon: Settings2, show: !!learner },
-  ].filter((n) => n.show);
+  const roles = {
+    learns: learners.length > 0,
+    teaches: teaching.length > 0,
+    billing: households.length > 0,
+  };
+  const firstName = (row?: Row) => text(row || {}, "name").split(" ")[0];
+  // A family account follows its children; the header speaks about them.
+  const forFamily = roles.billing && roles.learns;
+  const owner = forFamily ? firstName(learner) + "’s" : "Your";
+  const titles: Record<string, string> = {
+    overview: forFamily
+      ? learners.length > 1
+        ? "Your family’s learning"
+        : `${firstName(learner)}’s learning`
+      : roles.learns
+        ? roles.teaches
+          ? "Learning & teaching"
+          : "My learning"
+        : roles.teaches
+          ? "Teaching"
+          : "Family",
+    curriculum: "Lessons",
+    assignments: "Assignments",
+    feedback: "Feedback",
+    classes: "Classes",
+    family: "Fees & events",
+    settings: "Learning privacy",
+  };
+  const zone = differentZone();
+  const descriptions: Record<string, string> = {
+    overview: forFamily
+      ? "Fees, classes and practice, together."
+      : roles.learns
+        ? "A little practice, every day."
+        : roles.teaches
+          ? "Your classes, attendance and lessons."
+          : "Your family’s fees and school events.",
+    curriculum: roles.learns
+      ? "Listen, watch and practise, one lesson at a time."
+      : "Lessons for the batches you teach.",
+    assignments: "Record an attempt and share it with your teacher.",
+    feedback: "Your teacher’s notes, at the moment they’re about.",
+    classes: zone ? `Times are ${zoneName(zone)}.` : "",
+    family: "Statements, payments and event participation.",
+    settings: learner
+      ? `Optional permissions for ${text(learner, "name")}. Class access doesn’t depend on them.`
+      : "",
+  };
+  const done = (who: string) =>
+    (data.practice || []).filter(
+      (p) => p.learner_id === who && p.completed_at,
+    ).length +
+    (data.lessonProgress || []).filter((p) => p.learner_id === who).length +
+    (data.practiceLog || []).filter((p) => p.learner_id === who).length;
+  const practisedToday = (data.practiceLog || []).some(
+    (p) =>
+      p.learner_id === id && text(p, "practised_on").slice(0, 10) === schoolDay(),
+  );
+  const teachingClasses = classes.filter((c) =>
+    teaching.some((b) => b.id === c.batch_id),
+  );
+  const nextTeaching =
+    teachingClasses.find(
+      (c) =>
+        c.status !== "cancelled" &&
+        schoolDay(text(c, "starts_at")) === schoolDay() &&
+        new Date(text(c, "ends_at")).getTime() > Date.now() - 6 * 3600000,
+    ) ||
+    teachingClasses.find(
+      (c) =>
+        c.status !== "cancelled" &&
+        new Date(text(c, "ends_at")).getTime() > Date.now(),
+    );
   const go = (next: string) => {
     navigate({
-      section: next,
+      section: next === "overview" ? "" : next,
       test: "",
       review: "",
       lesson: "",
@@ -145,51 +204,35 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
   const openTest = (test: string) => {
     navigate({ section: "assignments", test, review: "" });
   };
+  const takeAttendance = (c: Row) =>
+    navigate({ section: "classes", occurrence: c.id, action: "", form: "" });
   const classRow = (c: Row, attendance = false) => (
     <article key={c.id} className="learning-class-row">
       <div className="class-date">
-        <strong>{new Date(text(c, "starts_at")).getDate()}</strong>
-        <span>
-          {new Date(text(c, "starts_at")).toLocaleString("en", {
-            month: "short",
-          })}
-        </span>
+        <strong>{formatWhen(text(c, "starts_at"), "date").split(" ")[0]}</strong>
+        <span>{formatWhen(text(c, "starts_at"), "date").split(" ")[1]}</span>
       </div>
       <div className="row-main">
         <strong>{text(c, "batch_name")}</strong>
-        <p>{dateLabel(text(c, "starts_at"), true)}</p>
+        <p>{formatRange(text(c, "starts_at"), text(c, "ends_at"))}</p>
         {text(c, "location") && (
           <p>
             {/^https?:\/\//i.test(text(c, "location")) ? (
               <a href={text(c, "location")} target="_blank" rel="noreferrer">
-                Open class meeting <ArrowUpRight size={13} />
+                Open class meeting <ArrowUpRight size={13} aria-hidden="true" />
               </a>
             ) : (
               text(c, "location")
             )}
           </p>
         )}
-        {attendance &&
-          c.status !== "cancelled" &&
-          teaching.some((b) => b.id === c.batch_id) && (
-            <Action
-              variant="quiet"
-              onClick={() =>
-                navigate({
-                  section: "classes",
-                  occurrence: c.id,
-                  action: "",
-                  form: "",
-                })
-              }
-            >
-              Take attendance <ChevronRight size={14} />
-            </Action>
-          )}
       </div>
-      <Badge tone={c.status === "cancelled" ? "attention" : "neutral"}>
-        {text(c, "status")}
-      </Badge>
+      <StatusPill status={text(c, "status")} usual="scheduled" />
+      {attendance &&
+        c.status !== "cancelled" &&
+        teaching.some((b) => b.id === c.batch_id) && (
+          <Action onClick={() => takeAttendance(c)}>Take attendance</Action>
+        )}
     </article>
   );
   const assignmentRow = (t: Row) => {
@@ -199,25 +242,25 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
     return (
       <div className="learning-row" key={t.id}>
         <span className="row-icon">
-          <FileAudio size={18} />
+          <FileAudio size={18} aria-hidden="true" />
         </span>
         <div className="row-main">
           <strong>{text(t, "title")}</strong>
           <p>
             Due {dateLabel(text(t, "due_at"), true)}
             {versions.length
-              ? ` · ${versions.length} submitted version${versions.length === 1 ? "" : "s"}`
+              ? ` · ${versions.length} ${versions.length === 1 ? "attempt" : "attempts"} sent`
               : ""}
           </p>
         </div>
         <Badge tone={versions.length ? "success" : "attention"}>
-          {versions.length ? "Submitted" : overdue ? "Past due" : "To do"}
+          {versions.length ? "Sent" : overdue ? "Past due" : "To do"}
         </Badge>
         <Action
           onClick={() => openTest(t.id)}
           aria-label={`Open ${text(t, "title")}`}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={16} aria-hidden="true" />
         </Action>
       </div>
     );
@@ -232,120 +275,154 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       </section>
     );
   return (
+    <PageHeader
+      title={titles[page] || titles.overview}
+      description={descriptions[page] || ""}
+    >
+      {learners.length > 1 && page !== "family" && (
+        <PageActions>
+          <label className="learner-picker">
+            Showing
+            <select
+              value={id}
+              onChange={(e) => {
+                navigate({
+                  learner: e.target.value,
+                  test: "",
+                  review: "",
+                  lesson: "",
+                  asset: "",
+                  action: "",
+                  form: "",
+                });
+                setSubmitted("");
+              }}
+            >
+              {learners.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {text(l, "name")}
+                </option>
+              ))}
+            </select>
+          </label>
+        </PageActions>
+      )}
     <div className="learning-space">
-      <div className="learning-page-title">
-        <div>
-          <span className="eyebrow">
-            {teaching.length ? "LEARNING & TEACHING" : "STUDENT WORKSPACE"}
-          </span>
-          <h1>{teaching.length && !learner ? "Teaching" : "My learning"}</h1>
-          <p>A little practice, every day.</p>
-        </div>
-        {learner && (
-          <div className="learner-switch">
-            <span className="learner-monogram">
-              {text(learner, "name")
-                .split(" ")
-                .map((s) => s[0])
-                .slice(-2)
-                .join("")}
-            </span>
-            {learners.length > 1 ? (
-              <label>
-                Learning as
-                <select
-                  aria-label="Learning as"
-                  value={id}
-                  onChange={(e) => {
-                    navigate({
-                      learner: e.target.value,
-                      test: "",
-                      review: "",
-                      lesson: "",
-                      asset: "",
-                      action: "",
-                      form: "",
-                    });
-                    setSubmitted("");
-                  }}
-                >
-                  {learners.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {text(l, "name")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <div>
-                <strong>{text(learner, "name")}</strong>
-                <span>{text(learner, "level")}</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      <div
-        className="learning-tabs"
-        role="navigation"
-        aria-label="Learning sections"
-      >
-        {nav.map((n) => (
-          <Action
-            key={n.id}
-            variant="quiet"
-            aria-current={page === n.id ? "page" : undefined}
-            onClick={() => go(n.id)}
-          >
-            <n.icon size={15} />
-            {n.label}
-          </Action>
-        ))}
-      </div>
       {page === "overview" && (
         <>
-          {(learner || teaching.length > 0) && (
-            <section className="learning-continue">
-              <div className="continue-symbol">
-                <BookOpen size={28} />
-              </div>
+          {roles.teaches && (
+            <section className="teaching-focus">
               <div>
                 <span className="eyebrow">
-                  {learner ? "YOUR CURRICULUM" : "YOUR TEACHING MATERIAL"}
+                  {nextTeaching &&
+                  schoolDay(text(nextTeaching, "starts_at")) === schoolDay()
+                    ? "Today"
+                    : "Next class"}
                 </span>
                 <h2>
-                  {learner
-                    ? "Make room for music."
-                    : "Prepare your next class."}
+                  {nextTeaching
+                    ? text(nextTeaching, "batch_name")
+                    : "No classes coming up"}
                 </h2>
-                <p>Lessons, recordings and music notes, together.</p>
+                <p>
+                  {nextTeaching
+                    ? formatRange(
+                        text(nextTeaching, "starts_at"),
+                        text(nextTeaching, "ends_at"),
+                      ) +
+                      (text(nextTeaching, "location")
+                        ? " · " + text(nextTeaching, "location")
+                        : "")
+                    : "When the office schedules your batch, it will appear here."}
+                </p>
+                <div className="teaching-focus-actions">
+                  {nextTeaching && (
+                    <Action
+                      variant="primary"
+                      onClick={() => takeAttendance(nextTeaching)}
+                    >
+                      Take attendance
+                    </Action>
+                  )}
+                  <Action onClick={() => go("curriculum")}>Open lessons</Action>
+                </div>
               </div>
-              <Action variant="primary" onClick={() => go("curriculum")}>
-                {learner ? "Continue learning" : "Open curriculum"}
-                <ChevronRight size={16} />
-              </Action>
+              <Art name="tala-ring" size={160} className="teaching-focus-art" />
             </section>
           )}
-          <div className="learning-columns">
+          {roles.billing &&
+            households.map((h) => (
+              <FamilyBalance key={h.id} tools={tools} household={h} />
+            ))}
+          {learner && (
+            <section className="learning-continue">
+              <div className="learning-continue-copy">
+                <span className="eyebrow">
+                  {forFamily ? `${firstName(learner)}’s lessons` : "Your lessons"}
+                </span>
+                <h2>Make room for the music.</h2>
+                <p>Lessons, recordings and music notes, together.</p>
+                <Action variant="primary" onClick={() => go("curriculum")}>
+                  Continue learning
+                  <ChevronRight size={16} aria-hidden="true" />
+                </Action>
+              </div>
+              <PracticeGrowth
+                done={done(id)}
+                owner={owner}
+                practisedToday={practisedToday}
+                onPractised={async () => {
+                  if (await tools.command("practice.log", { learner: id }))
+                    await load();
+                }}
+              />
+            </section>
+          )}
+          {!learner && roles.teaches && (
             <section className="learning-panel">
               <SectionTitle
                 title="Upcoming classes"
                 action={
                   <Action variant="quiet" onClick={() => go("classes")}>
-                    View all
-                    <ChevronRight size={14} />
+                    All classes
+                    <ChevronRight size={14} aria-hidden="true" />
                   </Action>
                 }
               />
-              {upcoming.slice(0, 2).map((c) => classRow(c))}
+              {upcoming.slice(0, 4).map((c) => classRow(c, true))}
               {!upcoming.length && (
-                <EmptyState>No classes scheduled yet.</EmptyState>
+                <EmptyState art="no-classes">
+                  No classes scheduled yet.
+                </EmptyState>
               )}
             </section>
-            {learner && (
-              <section className="learning-panel">
+          )}
+          {learner && (
+          <div className="learning-columns">
+            <section className="learning-panel">
+              <SectionTitle
+                title={
+                  forFamily
+                    ? `${firstName(learner)}’s classes`
+                    : "Upcoming classes"
+                }
+                action={
+                  <Action variant="quiet" onClick={() => go("classes")}>
+                    All classes
+                    <ChevronRight size={14} aria-hidden="true" />
+                  </Action>
+                }
+              />
+              {upcoming.slice(0, 2).map((c) => classRow(c, true))}
+              {!upcoming.length && (
+                <EmptyState art="no-classes">
+                  No classes scheduled yet.
+                </EmptyState>
+              )}
+            </section>
+            <section className="learning-panel">
                 <SectionTitle
-                  title="Your practice"
+                  title={forFamily ? "Practice to do" : "Your practice"}
                   detail={`${pendingPractice.length} to do`}
                 />
                 {practice.slice(0, 3).map((p) => (
@@ -382,25 +459,31 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   </div>
                 ))}
                 {!practice.length && (
-                  <EmptyState>Your teacher will add practice here.</EmptyState>
+                  <EmptyState art="practice-corner">
+                    Nothing assigned yet. A day of your own practice still
+                    counts: tap “I practised today”.
+                  </EmptyState>
                 )}
               </section>
-            )}
           </div>
+          )}
           {learner && (
             <section className="learning-panel">
               <SectionTitle
                 title="Assignments"
-                detail="Record your progress and share it with your teacher."
                 action={
                   <Action variant="quiet" onClick={() => go("assignments")}>
-                    View all
-                    <ChevronRight size={14} />
+                    All assignments
+                    <ChevronRight size={14} aria-hidden="true" />
                   </Action>
                 }
               />
               {tests.slice(0, 3).map(assignmentRow)}
-              {!tests.length && <EmptyState>You’re all caught up.</EmptyState>}
+              {!tests.length && (
+                <EmptyState art="all-caught-up">
+                  You’re all caught up.
+                </EmptyState>
+              )}
             </section>
           )}
           {published.length > 0 && (
@@ -413,8 +496,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                 <div className="row-main">
                   <strong>{text(published[0], "title")}</strong>
                   <p>
-                    Your teacher’s feedback is ready · version{" "}
-                    {num(published[0], "version")}
+                    Feedback is ready · attempt {num(published[0], "version")}
                   </p>
                 </div>
                 <Action
@@ -446,10 +528,6 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       )}
       {page === "assignments" && (
         <>
-          <SectionTitle
-            title="Assignments"
-            detail="Each submission keeps its own recording and feedback."
-          />
           {!selected ? (
             <>
               {selectedTest && (
@@ -489,7 +567,9 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
               <section className="learning-panel">
                 {visibleTests.map(assignmentRow)}
                 {!visibleTests.length && (
-                  <EmptyState>
+                  <EmptyState
+                    art={tests.length ? "icon-record" : "all-caught-up"}
+                  >
                     {tests.length
                       ? "No assignments in this view."
                       : "Your teacher hasn’t assigned a test yet. When one is ready, the instructions and due date will appear here."}
@@ -499,9 +579,9 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
             </>
           ) : (
             <article className="assessment-detail">
-              <Action variant="quiet" onClick={() => setSelectedTest("")}>
-                ← All assignments
-              </Action>
+              <BackLink onClick={() => setSelectedTest("")}>
+                All assignments
+              </BackLink>
               <div className="assessment-title">
                 <span className="row-icon">
                   <FileAudio size={22} />
@@ -539,7 +619,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                     <strong>Your recording is submitted</strong>
                     <p>
                       {text(learner!, "name")} · {text(selected, "title")}. Your
-                      teacher can now review this version.
+                      teacher can now listen and reply.
                     </p>
                   </div>
                 </div>
@@ -610,7 +690,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   <small>
                     Submitting for {text(learner!, "name")}
                     {assignmentVersions.length
-                      ? " · creates a new version"
+                      ? ` · this will be attempt ${assignmentVersions.length + 1}`
                       : ""}
                   </small>
                 </span>
@@ -635,17 +715,17 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   }}
                 >
                   {assignmentVersions.length
-                    ? "Submit new version"
-                    : "Submit recording"}
+                    ? "Send another attempt"
+                    : "Send recording"}
                 </Action>
               </div>
-              <h3>Submission history</h3>
+              <h3>Your attempts</h3>
               {submissions
                 .filter((s) => s.assessment_id === selected.id)
                 .map((s) => (
                   <div className="learning-row" key={s.id}>
                     <div className="row-main">
-                      <strong>Version {num(s, "version")}</strong>
+                      <strong>Attempt {num(s, "version")}</strong>
                       <p>{dateLabel(text(s, "created_at"), true)}</p>
                     </div>
                     <Badge tone={s.review_published_at ? "success" : "neutral"}>
@@ -661,15 +741,11 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       )}
       {page === "feedback" && (
         <>
-          <SectionTitle
-            title="Teacher feedback"
-            detail="Listen again with feedback at the exact moment in your recording."
-          />
           {review ? (
             <>
-              <Action variant="quiet" onClick={() => setSelectedReview("")}>
-                ← All feedback
-              </Action>
+              <BackLink onClick={() => setSelectedReview("")}>
+                All feedback
+              </BackLink>
               <Review
                 key={review.id}
                 tools={tools}
@@ -695,7 +771,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                   <div className="row-main">
                     <strong>{text(s, "title")}</strong>
                     <p>
-                      Version {num(s, "version")} ·{" "}
+                      Attempt {num(s, "version")} ·{" "}
                       {dateLabel(text(s, "review_published_at"))}
                     </p>
                   </div>
@@ -706,7 +782,7 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                 </div>
               ))}
               {!published.length && (
-                <EmptyState>
+                <EmptyState art="icon-feedback">
                   Published feedback will appear here.{" "}
                   {submissions.length > 0
                     ? "Your recordings are awaiting review."
@@ -719,27 +795,23 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       )}
       {page === "classes" && (
         <>
-          <SectionTitle
-            title="Classes"
-            detail={`Times shown in ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`}
-          />
           {teachingClass ? (
             <>
-              <Action
-                variant="quiet"
+              <BackLink
                 onClick={() =>
                   navigate({ occurrence: "", action: "", form: "" })
                 }
               >
-                ← All classes
-              </Action>
+                All classes
+              </BackLink>
               <section className="learning-panel">
                 {classRow(teachingClass)}
               </section>
-              <TeacherAttendance
+              <AttendanceSheet
                 key={teachingClass.id}
                 tools={tools}
-                occurrence={teachingClass}
+                occurrence={teachingClass.id}
+                cancelled={teachingClass.status === "cancelled"}
                 learners={[
                   ...new Map(
                     (data.teachingEnrollments || [])
@@ -747,21 +819,21 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
                         (l) =>
                           l.batch_id === teachingClass.batch_id &&
                           text(l, "starts_on").slice(0, 10) <=
-                            new Date(text(teachingClass, "starts_at"))
-                              .toISOString()
-                              .slice(0, 10) &&
+                            schoolDay(text(teachingClass, "starts_at")) &&
                           (!l.ends_on ||
                             text(l, "ends_on").slice(0, 10) >=
-                              new Date(text(teachingClass, "starts_at"))
-                                .toISOString()
-                                .slice(0, 10)),
+                              schoolDay(text(teachingClass, "starts_at"))),
                       )
-                      .map((l) => [l.id, l]),
+                      .map((l) => [l.id, { id: l.id, name: text(l, "name") }]),
                   ).values(),
                 ]}
-                marks={(data.teachingAttendance || []).filter(
-                  (a) => a.occurrence_id === teachingClass.id,
+                saved={Object.fromEntries(
+                  (data.teachingAttendance || [])
+                    .filter((a) => a.occurrence_id === teachingClass.id)
+                    .map((a) => [text(a, "learner_id"), text(a, "status")]),
                 )}
+                notes={text(teachingClass, "teaching_notes")}
+                notesHint="Lesson notes are for staff on this class. Share instructions for learners through lessons or practice."
                 onSaved={load}
               />
             </>
@@ -776,7 +848,9 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
               <section className="learning-panel">
                 {classes.map((c) => classRow(c, true))}
                 {!classes.length && (
-                  <EmptyState>No classes scheduled.</EmptyState>
+                  <EmptyState art="no-classes">
+                    No classes scheduled.
+                  </EmptyState>
                 )}
               </section>
             </>
@@ -786,10 +860,12 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
               Attendance:{" "}
               {
                 (data.attendance || []).filter(
-                  (a) => a.learner_id === id && a.status === "present",
+                  (a) =>
+                    a.learner_id === id &&
+                    (a.status === "present" || a.status === "late"),
                 ).length
               }{" "}
-              present out of{" "}
+              attended out of{" "}
               {
                 (data.attendance || []).filter((a) => a.learner_id === id)
                   .length
@@ -801,10 +877,6 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       )}
       {page === "family" && (
         <>
-          <SectionTitle
-            title="Family"
-            detail="Shared statements and events for your household."
-          />
           <div
             className="family-view-nav"
             role="group"
@@ -873,10 +945,6 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
       )}
       {page === "settings" && learner && (
         <>
-          <SectionTitle
-            title="Learning privacy"
-            detail={`Optional permissions for ${text(learner, "name")}. Your class access does not depend on these choices.`}
-          />
           <section className="learning-panel">
             {["recording-reuse", "label-export"].map((purpose) => (
               <label className="consent-row" key={purpose}>
@@ -920,5 +988,6 @@ export function PortalView({ tools }: { tools: SchoolTools }) {
         </>
       )}
     </div>
+    </PageHeader>
   );
 }

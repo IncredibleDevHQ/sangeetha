@@ -378,7 +378,10 @@ export async function createApp() {
       if (production)
         reply.header(
           "Content-Security-Policy",
-          "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+          // Brand artwork is self-contained SVG whose motion lives in an inline <style>; it loads nothing and runs no script.
+          req.url.startsWith("/art/") && req.url.split("?")[0].endsWith(".svg")
+            ? "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+            : "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         );
       if (
         !["GET", "HEAD", "OPTIONS"].includes(req.method) &&

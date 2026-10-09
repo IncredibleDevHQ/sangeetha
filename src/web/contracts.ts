@@ -17,7 +17,13 @@ export type Me = {
   }[];
 };
 export type Team = {
-  members: { id: string; display_name: string; role: string }[];
+  members: {
+    id: string;
+    display_name: string;
+    role: string;
+    /** The sign-in email or phone, for people who haven't shared a name. */
+    identity?: string | null;
+  }[];
   invitations: {
     id: string;
     channel: string;

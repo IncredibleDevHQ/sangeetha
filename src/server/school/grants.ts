@@ -18,7 +18,7 @@ export class GrantService extends SchoolAccess {
     return {
       grants: (
         await this.db.query(
-          "SELECT g.*,a.display_name FROM school_grants g JOIN accounts a ON a.id=g.account_id WHERE g.school_id=$1 AND revoked_at IS NULL",
+          "SELECT g.*,a.display_name,(SELECT i.label FROM auth_identities i WHERE i.account_id=a.id ORDER BY i.provider LIMIT 1) AS identity FROM school_grants g JOIN accounts a ON a.id=g.account_id WHERE g.school_id=$1 AND revoked_at IS NULL",
           [c.schoolId],
         )
       ).rows,

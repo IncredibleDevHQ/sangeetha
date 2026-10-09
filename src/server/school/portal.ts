@@ -74,6 +74,18 @@ export class PortalService extends SchoolAccess {
           [c.schoolId, ids],
         )
       ).rows,
+      practiceLog: (
+        await this.db.query(
+          "SELECT learner_id,practised_on FROM practice_log WHERE school_id=$1 AND learner_id=ANY($2::uuid[]) ORDER BY practised_on DESC",
+          [c.schoolId, ids],
+        )
+      ).rows,
+      lessonProgress: (
+        await this.db.query(
+          "SELECT learner_id,lesson_id,completed_at FROM lesson_progress WHERE school_id=$1 AND learner_id=ANY($2::uuid[])",
+          [c.schoolId, ids],
+        )
+      ).rows,
       consents: (
         await this.db.query(
           "SELECT * FROM dataset_consents WHERE school_id=$1 AND learner_id=ANY($2::uuid[])",

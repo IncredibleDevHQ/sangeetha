@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowUpRight,
-  MessageCircle,
+  ChevronRight,
   Plus,
-  RefreshCw,
   Search,
   Users,
 } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { Badge, dateLabel } from "../../components/ui";
+import { Badge, BackLink, Initials, dateLabel } from "../../components/ui";
+import {
+  MoreMenu,
+  PageActions,
+  focusPageHeading,
+} from "../../components/PageHeader";
+import { EmptyArt } from "../../components/Art";
 import { navigate, useRouteValue } from "../../routes";
-import { text, num, type Row, type SchoolTools } from "./common";
+import { text, num, phone, type Row, type SchoolTools } from "./common";
 
 const kinds: Record<string, string> = {
   class: "Class reminder",
@@ -119,7 +123,8 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
   useEffect(() => {
     setPreview(null);
     setPreviewNotice("");
-    heading.current?.focus();
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [messageId, composing, loading, stage]);
   const belongs = (m: Row, f: string) =>
     f === "all" ||
@@ -163,10 +168,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
   if (composing)
     return (
       <section className="message-composer">
-        <button className="back-link" onClick={close}>
-          <ArrowLeft size={16} />
-          Back to messages
-        </button>
+        <BackLink onClick={close}>Back to messages</BackLink>
         <div className="message-heading">
           <div>
             <span className="eyebrow">Household announcement</span>
@@ -342,10 +344,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
   if (messageId)
     return (
       <>
-        <button className="back-link" onClick={close}>
-          <ArrowLeft size={16} />
-          Back to messages
-        </button>
+        <BackLink onClick={close}>Back to messages</BackLink>
         {!current ? (
           <p className="ui-empty" role="alert">
             This notice is not available in the recent message queue.
@@ -439,7 +438,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
                   rel="noreferrer"
                 >
                   Open WhatsApp with this message
-                  <ArrowUpRight size={15} />
+                  <ArrowUpRight size={15} aria-hidden="true" />
                 </a>
                 <small>
                   Opening the link does not mark the notice as delivered.
@@ -533,16 +532,17 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
     );
   return (
     <>
-      <div className="message-heading">
-        <div>
-          <span className="eyebrow">School communications</span>
-          <h2 ref={heading} tabIndex={-1}>
-            Every notice, accounted for
-          </h2>
-          <p>
-            Find what needs attention, preview a message and check its outcome.
-          </p>
-        </div>
+      <PageActions>
+        <MoreMenu
+          items={[
+            {
+              label: "Check for due reminders",
+              onSelect: async () => {
+                if (await tools.command("messages.refresh", {})) await load();
+              },
+            },
+          ]}
+        />
         <button
           className="button primary"
           onClick={() => {
@@ -553,10 +553,10 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
             });
           }}
         >
-          <Plus size={16} />
+          <Plus size={16} aria-hidden="true" />
           New announcement
         </button>
-      </div>
+      </PageActions>
       <div className="message-queue-tools">
         <div className="segmented message-filters" aria-label="Message status">
           {[
@@ -588,16 +588,6 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <button
-          className="button secondary"
-          disabled={tools.busy}
-          onClick={async () => {
-            if (await tools.command("messages.refresh", {})) await load();
-          }}
-        >
-          <RefreshCw size={15} />
-          Refresh current reminders
-        </button>
       </div>
       <div className="message-list">
         {shown.map((m) => (
@@ -606,9 +596,7 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
             key={m.id}
             onClick={() => navigate({ message: m.id, action: "", form: "" })}
           >
-            <span className="message-row-icon">
-              <MessageCircle size={19} />
-            </span>
+            <Initials name={family(m)} />
             <span className="message-row-content">
               <strong>{family(m)}</strong>
               <span>
@@ -616,19 +604,20 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
                 {text(m, "message")}
               </span>
               <small>
-                {text(m, "destination")} · {dateLabel(text(m, "due_at"), true)}
+                {phone(text(m, "destination"))} ·{" "}
+                {dateLabel(text(m, "due_at"), true)}
               </small>
             </span>
             <Badge tone={tone(text(m, "status"))}>
               {statuses[text(m, "status")] || text(m, "status")}
             </Badge>
-            <ArrowUpRight size={17} />
+            <ChevronRight size={17} aria-hidden="true" />
           </button>
         ))}
       </div>
       {!shown.length && (
         <div className="ui-empty">
-          <MessageCircle size={28} />
+          <EmptyArt name="icon-feedback" />
           <h3>
             {query
               ? "No matching messages"
@@ -639,15 +628,14 @@ export function MessagesView({ tools }: { tools: SchoolTools }) {
           <p>
             {query
               ? "Try a family name, phone number or part of the message."
-              : "Choose another status, create an announcement, or refresh eligible reminders."}
+              : "Choose another status, or send a new announcement."}
           </p>
           {query && <button onClick={() => setQuery("")}>Clear search</button>}
         </div>
       )}
       <p className="fine message-queue-note">
-        Showing recent notices (up to 500). Manual sharing does not confirm
-        delivery. Class-specific reminders name the relevant learner; common
-        announcements use household contact routing.
+        Shows the latest 500 notices. A notice shared by hand isn’t confirmed as
+        delivered.
       </p>
     </>
   );

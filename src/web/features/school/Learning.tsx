@@ -1,11 +1,18 @@
 export { TestsView } from "./TestsView";
 export { Review } from "./Review";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { WorkflowDetails } from "../../components/WorkflowDetails";
+import {
+  WorkflowDetails,
+  WorkflowPanel,
+  openWorkflow,
+} from "../../components/WorkflowDetails";
 import { useRouteValue, navigate, resourceLink } from "../../routes";
 import { MusicPlayer } from "../../components/MusicPlayer";
-import { UploadCloud, BookOpen, ArrowLeft, Plus, Users } from "lucide-react";
-import { Badge } from "../../components/ui";
+import { UploadCloud, Plus, Users } from "lucide-react";
+import { Badge, BackLink, CopyLink } from "../../components/ui";
+import { PageActions } from "../../components/PageHeader";
+import { EmptyArt } from "../../components/Art";
+import { RagaCover } from "../../components/RagaCover";
 import { LessonFields } from "./LessonFields";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type Row, type SchoolTools, text, num, Select } from "./common";
@@ -151,17 +158,27 @@ export function Audio({ tools, asset }: { tools: SchoolTools; asset: string }) {
     />
   );
 }
+/** What a piece of lesson material is, in a learner's words. */
+export function materialTitle(mime: string) {
+  if (mime.startsWith("audio/")) return "Listen and practise";
+  if (mime.startsWith("video/")) return "Watch";
+  if (mime.startsWith("image/")) return "Notation";
+  if (mime === "application/pdf") return "Notation to print";
+  return "Notes";
+}
 export function LessonMaterial({
   tools,
   asset,
   lesson,
   editable,
+  staff = false,
   onSaved,
 }: {
   tools: SchoolTools;
   asset: Row;
   lesson: Row;
   editable: boolean;
+  staff?: boolean;
   onSaved: () => void;
 }) {
   const src = `/api/schools/${tools.school.id}/media/${asset.id}`;
@@ -169,16 +186,19 @@ export function LessonMaterial({
   return (
     <div className="lesson-material">
       <div className="toolbar">
-        <p>{text(asset, "filename")}</p>
-        <a
-          href={resourceLink(tools.school.id, {
-            page: "lesson",
-            lesson: lesson.id,
-            asset: asset.id,
-          })}
-        >
-          Asset permalink
-        </a>
+        <p>
+          <strong>{materialTitle(mime)}</strong>
+          {staff && <small> · {text(asset, "filename")}</small>}
+        </p>
+        {staff && (
+          <CopyLink
+            href={resourceLink(tools.school.id, {
+              page: "lesson",
+              lesson: lesson.id,
+              asset: asset.id,
+            })}
+          />
+        )}
       </div>
       {mime.startsWith("audio/") ? (
         <MusicPlayer
@@ -196,7 +216,7 @@ export function LessonMaterial({
         </a>
       ) : (
         <a href={src} target="_blank" rel="noreferrer">
-          Open {mime === "application/pdf" ? "PDF music notes" : "text notes"}
+          {mime === "application/pdf" ? "Open the notation" : "Open the notes"}
         </a>
       )}
     </div>
@@ -251,6 +271,7 @@ export function LibraryView({
     if (creating) composerHeading.current?.focus();
   }, [creating]);
   const [batch, setBatch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [practiceLesson, setPracticeLesson] = useState("");
   const [learner, setLearner] = useState("");
   const [viewLearner, setViewLearner] = useRouteValue("learner");
@@ -324,6 +345,14 @@ export function LibraryView({
   useEffect(() => {
     if (selected) reader.current?.scrollIntoView({ block: "start" });
   }, [current?.id]);
+  const scoredRecording = (lesson: string) =>
+    data.assets.some(
+      (a) =>
+        a.lesson_id === lesson &&
+        text(a, "mime").startsWith("audio/") &&
+        Array.isArray(a.note_cues) &&
+        a.note_cues.length > 0,
+    );
   const completed = (id: string) =>
     data.progress.some(
       (p) => p.lesson_id === id && p.learner_id === activeLearner,
@@ -389,22 +418,8 @@ export function LibraryView({
   }
   return (
     <>
-      <div className="library-heading">
-        <div>
-          <h2 ref={composerHeading} tabIndex={-1}>
-            {canWrite && creating
-              ? "Create a lesson"
-              : "Curriculum and lessons"}
-          </h2>
-          <p>
-            {canWrite && creating
-              ? "Start with a draft. Add material and publish when you’re ready."
-              : canWrite
-                ? "Build a clear path through your school’s music."
-                : "Explore your lessons, then listen, watch and practise."}
-          </p>
-        </div>
-        {canWrite && !creating && (
+      {canWrite && !creating && (
+        <PageActions>
           <button
             className="button primary"
             onClick={() =>
@@ -415,20 +430,28 @@ export function LibraryView({
               })
             }
           >
-            <Plus size={16} />
+            <Plus size={16} aria-hidden="true" />
             Add lesson
           </button>
-        )}
-      </div>
+        </PageActions>
+      )}
+      {canWrite && creating && (
+        <div className="library-heading">
+          <div>
+            <h2 ref={composerHeading} tabIndex={-1}>
+              Create a lesson
+            </h2>
+            <p>
+              Start with a draft. Add material and publish when you’re ready.
+            </p>
+          </div>
+        </div>
+      )}
       {canWrite && creating && (
         <section className="lesson-composer">
-          <button
-            className="back-link"
-            onClick={() => navigate({ action: "", form: "" })}
-          >
-            <ArrowLeft size={16} />
+          <BackLink onClick={() => navigate({ action: "", form: "" })}>
             Back to curriculum
-          </button>
+          </BackLink>
           <WorkflowForm className="form-grid" onSubmit={create}>
             <LessonFields
               creating
@@ -475,7 +498,17 @@ export function LibraryView({
             <button onClick={() => void load()}>Try again</button>
           </div>
         )}
-        <div className="curriculum-filters">
+        {curricula.length > 0 && (
+          <button
+            type="button"
+            className="button secondary filters-toggle"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+          >
+            {filtersOpen ? "Hide filters" : "Filter lessons"}
+          </button>
+        )}
+        <div className="curriculum-filters" data-open={filtersOpen}>
           {portalLearners.length > 1 && (
             <Select
               label="Learning as"
@@ -584,7 +617,7 @@ export function LibraryView({
         </div>
         {ready && !loadError && !selected && !current && (
           <div className="library-empty">
-            <BookOpen size={28} />
+            <EmptyArt name="icon-learn" />
             <h3>
               {visibleLessons.length
                 ? "No lessons in this selection"
@@ -645,11 +678,17 @@ export function LibraryView({
                         .map((l) => (
                           <button
                             key={l.id}
+                            className="lesson-track"
                             aria-current={
                               current.id === l.id ? "step" : undefined
                             }
                             onClick={() => setSelected(l.id)}
                           >
+                            <RagaCover
+                              raga={text(l, "raga")}
+                              tala={text(l, "tala")}
+                              size={36}
+                            />
                             <span>{text(l, "title")}</span>
                             <small>
                               {completed(l.id)
@@ -670,20 +709,56 @@ export function LibraryView({
               key={current.id}
               ref={reader}
             >
-              <small>
-                Lesson {index + 1} of {lessons.length} ·{" "}
-                {text(current, "level")}
-              </small>
-              <div className="toolbar">
-                <h3>{text(current, "title")}</h3>
-                <a
-                  href={resourceLink(tools.school.id, {
-                    page: "lesson",
-                    lesson: current.id,
-                  })}
-                >
-                  Lesson permalink
-                </a>
+              <div className="lesson-hero">
+                <RagaCover
+                  raga={text(current, "raga")}
+                  tala={text(current, "tala")}
+                  size={96}
+                />
+                <div>
+                  <small>
+                    Lesson {index + 1} of {lessons.length} ·{" "}
+                    {text(current, "level")}
+                  </small>
+                  <h3>{text(current, "title")}</h3>
+                  {(text(current, "raga") || text(current, "tala")) && (
+                    <p className="lesson-facts">
+                      {text(current, "raga") && (
+                        <span>
+                          Raga <strong>{text(current, "raga")}</strong>
+                        </span>
+                      )}
+                      {text(current, "tala") && (
+                        <span>
+                          Tala <strong>{text(current, "tala")}</strong>
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+                {editable ? (
+                  <span className="lesson-hero-actions">
+                    {canWrite && (
+                      <button
+                        className="button secondary"
+                        onClick={() => {
+                          setPracticeLesson(current.id);
+                          openWorkflow("Assign practice");
+                        }}
+                      >
+                        Assign practice
+                      </button>
+                    )}
+                  <CopyLink
+                    href={resourceLink(tools.school.id, {
+                      page: "lesson",
+                      lesson: current.id,
+                    })}
+                  />
+                  </span>
+                ) : (
+                  <span />
+                )}
               </div>
               {editable && (
                 <>
@@ -746,26 +821,25 @@ export function LibraryView({
                   {activeCurriculum} / {text(current, "category")} /{" "}
                   {text(current, "module")}
                 </p>
-                <p>
-                  {[
-                    text(current, "module"),
-                    text(current, "raga"),
-                    text(current, "tala"),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
                 <p className="lesson-instructions">
                   {text(current, "instructions")}
                 </p>
-                {text(current, "music_notes") && (
-                  <section>
-                    <h4>Music notes</h4>
-                    <pre className="music-notes">
-                      {text(current, "music_notes")}
-                    </pre>
-                  </section>
-                )}
+                {text(current, "music_notes") &&
+                  (scoredRecording(current.id) ? (
+                    <details className="written-notes">
+                      <summary>Notes as text</summary>
+                      <pre className="music-notes">
+                        {text(current, "music_notes")}
+                      </pre>
+                    </details>
+                  ) : (
+                    <section>
+                      <h4>Music notes</h4>
+                      <pre className="music-notes">
+                        {text(current, "music_notes")}
+                      </pre>
+                    </section>
+                  ))}
                 {assetId && (
                   <>
                     <button onClick={() => setAssetId("")}>
@@ -809,7 +883,12 @@ export function LibraryView({
                   .filter(
                     (a) =>
                       a.lesson_id === current.id &&
-                      (!assetId || a.id === assetId),
+                      (!assetId || a.id === assetId) &&
+                      // A learner already reads the lesson's notes above; the
+                      // same notes as a text file would be a third copy.
+                      (!!editable ||
+                        !text(current, "music_notes") ||
+                        text(a, "mime") !== "text/plain"),
                   )
                   .map((a) => (
                     <LessonMaterial
@@ -818,6 +897,7 @@ export function LibraryView({
                       asset={a}
                       lesson={current}
                       editable={!!editable && authorMode === "materials"}
+                      staff={!!editable}
                       onSaved={() => void load()}
                     />
                   ))}
@@ -898,8 +978,8 @@ export function LibraryView({
                     }}
                   >
                     {completed(current.id)
-                      ? "Mark as still practising"
-                      : "Mark lesson complete"}
+                      ? "Still practising this one"
+                      : "I’ve learned this lesson"}
                   </button>
                 )}
               <div className="lesson-navigation">
@@ -920,19 +1000,24 @@ export function LibraryView({
           </div>
         )}
         {canWrite && (
-          <WorkflowDetails className="record-card">
-            <summary>Assign practice</summary>
+          <WorkflowPanel
+            title="Assign practice"
+            description="A small, specific exercise with a due day. It appears on the learner’s home and grows their tulsi when done."
+          >
             <WorkflowForm
               className="form-grid"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
-                await tools.command("practice.create", {
-                  lesson: practiceLesson,
-                  learner,
-                  text: f.get("text"),
-                  due: f.get("due"),
-                });
+                if (
+                  await tools.command("practice.create", {
+                    lesson: practiceLesson || current?.id,
+                    learner,
+                    text: f.get("text"),
+                    due: f.get("due"),
+                  })
+                )
+                  navigate({ action: "", form: "" });
               }}
             >
               <Select
@@ -960,9 +1045,9 @@ export function LibraryView({
                 Exercise
                 <textarea name="text" required />
               </label>
-              <button>Assign practice</button>
+              <button className="button primary">Assign practice</button>
             </WorkflowForm>
-          </WorkflowDetails>
+          </WorkflowPanel>
         )}
       </div>
     </>

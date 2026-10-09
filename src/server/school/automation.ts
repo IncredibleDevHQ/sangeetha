@@ -486,7 +486,7 @@ export class AutomationService extends SchoolAccess {
     return {
       attendance: (
         await this.db.query(
-          "SELECT l.id,p.name,count(a.occurrence_id)::int AS marked,count(a.occurrence_id) FILTER(WHERE a.status='present')::int AS present FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN attendance a ON a.school_id=l.school_id AND a.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name",
+          "SELECT l.id,p.name,count(a.occurrence_id)::int AS marked,count(a.occurrence_id) FILTER(WHERE a.status IN ('present','late'))::int AS present FROM learners l JOIN people p ON p.school_id=l.school_id AND p.id=l.person_id LEFT JOIN attendance a ON a.school_id=l.school_id AND a.learner_id=l.id WHERE l.school_id=$1 GROUP BY l.id,p.name ORDER BY p.name",
           [c.schoolId],
         )
       ).rows,

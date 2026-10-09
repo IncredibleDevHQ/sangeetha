@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 86 88" width="86" height="88">
+  
+  <defs>
+    <linearGradient id="paint0_linear_2381_94692" x1="21.83" x2="64.35" y1="15.83" y2="67.22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0E9D9" offset="0"/>
+      <stop stop-color="#C9D6C3" offset=".4923"/>
+      <stop stop-color="#C9D6C3" offset=".7681"/>
+      <stop stop-color="#A1B29A" offset="1"/>
+    </linearGradient>
+    <radialGradient id="paint1_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(27.38 26.82) rotate(90) scale(7.616)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint2_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(20.82 41.37) rotate(90) scale(7.616)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint3_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(25.46 55.34) rotate(90) scale(7.95)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint4_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(39.27 63.99) rotate(90) scale(7.691)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint5_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(55.26 59.45) rotate(90) scale(7.95)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint6_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(64.49 43.54) rotate(90) scale(7.95)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint7_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(59.36 26.82) rotate(90) scale(8.476)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+    <radialGradient id="paint8_radial_2381_94692" cx="0" cy="0" r="1" gradientTransform="translate(43.19 19.33) rotate(90) scale(9.271)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#677D63" offset="0"/>
+      <stop stop-color="#677D63" stop-opacity="0" offset="1"/>
+    </radialGradient>
+  </defs>
+  <style type="text/css">@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } } @keyframes top-bead-pulse { 0%, 12.5%, 100% { transform: translateY(0); filter: brightness(1) drop-shadow(0 0 0 rgba(240,177,98,0)); } 6.25% { transform: translateY(-3px); filter: brightness(1.25) drop-shadow(0 -1px 4px rgba(240,177,98,0.75)); } } @keyframes bead-pulse { 0%, 12.5%, 100% { transform: translateY(0); filter: brightness(1) drop-shadow(0 0 0 rgba(162,194,173,0)); } 6.25% { transform: translateY(-2px); filter: brightness(1.2) drop-shadow(0 -1px 3px rgba(162,194,173,0.7)); } } .anim-bead-top { animation: top-bead-pulse 6s ease-in-out 3; } .anim-bead { animation: bead-pulse 6s ease-in-out 3; } .anim-delay-1 { animation-delay: 0.75s; } .anim-delay-2 { animation-delay: 1.50s; } .anim-delay-3 { animation-delay: 2.25s; } .anim-delay-4 { animation-delay: 3.00s; } .anim-delay-5 { animation-delay: 3.75s; } .anim-delay-6 { animation-delay: 4.50s; } .anim-delay-7 { animation-delay: 5.25s; }</style>
+  
+  <ellipse cx="42.27" cy="40.41" rx="32.17" ry="33.53" fill="url(#paint0_linear_2381_94692)"/>
+  <circle cx="42.05" cy="40.41" r="30.25" fill="#D9E2D2" opacity=".2"/>
+  <circle cx="27.38" cy="26.82" r="7.035" fill="url(#paint1_radial_2381_94692)" fill-opacity=".6"/>
+  <circle cx="20.82" cy="41.37" r="7.616" fill="url(#paint2_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="25.46" cy="55.34" r="7.616" fill="url(#paint3_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="39.27" cy="63.99" r="7.427" fill="url(#paint4_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="55.26" cy="59.45" r="7.616" fill="url(#paint5_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="64.49" cy="43.54" r="7.827" fill="url(#paint6_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="59.36" cy="26.82" r="8.476" fill="url(#paint7_radial_2381_94692)" fill-opacity=".5"/>
+  <circle cx="43.19" cy="19.33" r="8.944" fill="url(#paint8_radial_2381_94692)" fill-opacity=".6"/>
+  <g class="anim-bead anim-delay-7" id="bead-top-left--part-1">
+    <circle cx="26.08" cy="25.12" r="7.086" fill="#476D58"/>
+    <path d="m31.58 21.3c0.24 0.71 0.36 1.4 0.36 2.24 0 4.11-3.44 7.65-7.26 7.65-1.19 0-2.27-0.31-3.2-0.86 1.28 1.29 2.97 2.07 4.6 2.07 3.76 0 6.95-3.09 6.95-7.28 0-1.58-0.5-2.84-1.45-3.82z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 24.9 23.63)" cx="24.9" cy="23.63" rx="5.935" ry="4.666" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint3_linear_2381_94692" x1="23.42" x2="23.42" y1="19.4" y2="24.33" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-7" id="bead-top-left--part-2">
+    <path d="m25.61 19.72c-0.52-0.57-2-0.4-3.36 0.85-1.28 1.24-1.76 2.75-1.21 3.38 0.51 0.59 1.38 0.31 2.11-0.51 0.54-0.62 1.38-1.4 2.06-2.01 0.6-0.55 0.8-1.26 0.4-1.71z" fill="url(#paint3_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-6" id="bead-left--part-1">
+    <circle cx="20.27" cy="39.85" r="7.086" fill="#476D58"/>
+    <path d="m25.77 35.54c0.25 0.77 0.42 1.58 0.42 2.53 0 4.28-3.6 7.86-7.11 7.86-1.54 0-2.88-0.5-3.97-1.3 1.28 1.57 3.18 2.45 5.16 2.45 3.88 0 7.08-3.09 7.08-7.23 0-1.76-0.51-3.16-1.58-4.31z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 19.33 38.53)" cx="19.33" cy="38.53" rx="5.623" ry="4.546" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint5_linear_2381_94692" x1="17.64" x2="17.64" y1="34.01" y2="38.95" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-6" id="bead-left--part-2">
+    <path d="m19.92 34.37c-0.52-0.61-2.13-0.47-3.5 0.82-1.34 1.31-1.68 2.8-1.08 3.39 0.55 0.59 1.46 0.22 2.21-0.56 0.64-0.67 1.6-1.52 2.15-2.18 0.49-0.55 0.57-1.09 0.22-1.47z" fill="url(#paint5_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-5" id="bead-bottom-left--part-1">
+    <circle cx="24.75" cy="54.85" r="6.759" fill="#476D58"/>
+    <path d="m29.28 50.26c0.66 0.94 1.01 1.97 1.01 3.27 0 3.92-3.34 7.19-6.51 7.19-1.61 0-3.02-0.61-4.09-1.56 1.21 1.66 3.09 2.6 5.06 2.6 3.59 0 6.77-3.01 6.77-6.91 0-1.91-0.85-3.43-2.24-4.59z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 23.74 53.63)" cx="23.74" cy="53.63" rx="5.461" ry="4.517" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint7_linear_2381_94692" x1="22.34" x2="22.34" y1="49.38" y2="54" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-5" id="bead-bottom-left--part-2">
+    <path d="m24.52 49.72c-0.52-0.58-2.03-0.43-3.35 0.79-1.34 1.25-1.6 2.68-1.07 3.18 0.56 0.57 1.44 0.21 2.11-0.54 0.56-0.62 1.49-1.37 2.07-1.94 0.49-0.57 0.56-1.12 0.24-1.49z" fill="url(#paint7_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-4" id="bead-bottom--part-1">
+    <circle cx="37.45" cy="62.73" r="6.984" fill="#476D58"/>
+    <path d="m42.78 58.76c0.39 0.79 0.59 1.59 0.59 2.62 0 4-3.5 7.48-6.93 7.48-1.79 0-3.35-0.73-4.46-1.8 1.22 1.81 3.29 2.91 5.47 2.91 3.77 0 6.96-3.09 6.96-7.24 0-1.74-0.54-2.95-1.63-3.97z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 36.49 61.52)" cx="36.49" cy="61.52" rx="5.511" ry="4.517" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint9_linear_2381_94692" x1="34.94" x2="34.94" y1="57.15" y2="61.87" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-4" id="bead-bottom--part-2">
+    <path d="m37.24 57.52c-0.57-0.61-2.16-0.45-3.55 0.84-1.34 1.29-1.58 2.73-1.07 3.25 0.57 0.56 1.47 0.16 2.16-0.56 0.61-0.68 1.65-1.5 2.2-2.08 0.53-0.55 0.6-1.09 0.26-1.45z" fill="url(#paint9_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-3" id="bead-bottom-right--part-1">
+    <circle cx="55.44" cy="59.21" r="7.135" fill="#476D58"/>
+    <path d="m60.39 54.33c0.58 0.92 0.89 1.84 0.89 3.12 0 4.14-3.59 7.84-7.09 7.84-1.71 0-3.24-0.67-4.34-1.65 1.22 1.79 3.28 2.78 5.32 2.78 3.71 0 7.12-3.2 7.12-7.36 0-2.02-0.6-3.52-1.9-4.73z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 54.41 58.04)" cx="54.41" cy="58.04" rx="5.711" ry="4.546" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint11_linear_2381_94692" x1="52.86" x2="52.86" y1="53.52" y2="58.38" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-3" id="bead-bottom-right--part-2">
+    <path d="m55.13 53.86c-0.57-0.6-2.17-0.43-3.62 0.89-1.43 1.34-1.68 2.75-1.16 3.33 0.57 0.6 1.44 0.24 2.16-0.5 0.68-0.71 1.8-1.55 2.36-2.14 0.58-0.63 0.64-1.19 0.26-1.58z" fill="url(#paint11_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-2" id="bead-right--part-1">
+    <circle cx="63.87" cy="42.33" r="7.135" fill="#476D58"/>
+    <path d="m69.11 37.61c0.49 0.88 0.73 1.81 0.73 3.04 0 4.22-3.64 7.85-7.15 7.85-1.71 0-3.25-0.69-4.35-1.63 1.23 1.8 3.36 2.84 5.28 2.84 3.81 0 7.32-3.2 7.32-7.58 0-2.05-0.62-3.52-1.83-4.52z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 62.78 41.14)" cx="62.78" cy="41.14" rx="5.791" ry="4.546" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint13_linear_2381_94692" x1="61.27" x2="61.27" y1="36.58" y2="41.51" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-2" id="bead-right--part-2">
+    <path d="m63.6 36.86c-0.57-0.58-2.18-0.41-3.63 0.95-1.42 1.41-1.6 2.81-1.1 3.37 0.58 0.59 1.47 0.25 2.18-0.48 0.65-0.7 1.74-1.55 2.31-2.14 0.58-0.66 0.63-1.3 0.24-1.7z" fill="url(#paint13_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead anim-delay-1" id="bead-top-right--part-1">
+    <circle cx="58.97" cy="26.02" r="7.292" fill="#476D58"/>
+    <path d="m64.22 21.18c0.43 0.86 0.69 1.7 0.69 2.96 0 4.36-3.7 8.28-7.37 8.28-1.67 0-3.19-0.68-4.29-1.64 1.26 1.82 3.36 2.84 5.42 2.84 3.8 0 7.38-3.28 7.38-7.72 0-2.01-0.58-3.55-1.83-4.72z" fill="#183024" opacity=".25"/>
+    <ellipse transform="rotate(-36.75 57.74 24.45)" cx="57.74" cy="24.45" rx="5.935" ry="4.783" fill="#A2C2AD" opacity=".1"/>
+  </g>
+  <linearGradient id="paint15_linear_2381_94692" x1="56.16" x2="56.16" y1="20.36" y2="25.22" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".3" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead anim-delay-1" id="bead-top-right--part-2">
+    <path d="m58.53 20.74c-0.59-0.61-2.24-0.43-3.69 0.9-1.45 1.41-1.6 2.8-1.1 3.27 0.58 0.61 1.5 0.23 2.27-0.44 0.75-0.65 1.83-1.52 2.32-2.14 0.55-0.65 0.56-1.22 0.2-1.59z" fill="url(#paint15_linear_2381_94692)"/>
+  </g>
+  <g class="anim-bead-top" id="bead-top--part-1">
+    <circle cx="42.34" cy="18.08" r="8.653" fill="#E29A47"/>
+    <path d="m47.6 10.86c1.05 1.18 1.61 2.59 1.61 4.48 0 5.16-4.42 10.03-8.65 10.03-2.19 0-4.19-0.98-5.51-2.33 1.53 2.39 4.34 3.89 7.23 3.89 4.6 0 8.65-3.95 8.65-9.05 0-3.03-1.26-5.48-3.33-7.02z" fill="#A55D25" opacity=".5"/>
+    <ellipse transform="rotate(47.27 41.1 16.12)" cx="41.1" cy="16.12" rx="6.427" ry="7.052" fill="#F0B162" opacity=".1"/>
+  </g>
+  <linearGradient id="paint17_linear_2381_94692" x1="39.03" x2="39.03" y1="10.82" y2="16.88" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fff" stop-opacity=".25" offset="0"/>
+    <stop stop-color="#fff" stop-opacity=".15" offset="1"/>
+  </linearGradient>
+  <g class="anim-bead-top" id="bead-top--part-2">
+    <path d="m41.88 11.35c-0.67-0.73-2.54-0.57-4.34 1.07-1.79 1.77-2.04 3.46-1.42 4.12 0.67 0.71 1.75 0.24 2.67-0.7 0.82-0.85 2.12-1.99 2.77-2.72 0.61-0.71 0.69-1.37 0.32-1.77z" fill="url(#paint17_linear_2381_94692)"/>
+  </g>
+</svg>

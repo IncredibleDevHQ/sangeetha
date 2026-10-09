@@ -18,7 +18,7 @@ export class ScheduleService extends SchoolAccess {
     return {
       classes: (
         await this.db.query(
-          "SELECT o.*,b.name AS batch_name,a.display_name AS teacher FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id JOIN accounts a ON a.id=o.teacher_id WHERE o.school_id=$1 ORDER BY starts_at",
+          "SELECT o.*,b.name AS batch_name,a.display_name AS teacher,(SELECT i.label FROM auth_identities i WHERE i.account_id=a.id ORDER BY i.provider LIMIT 1) AS teacher_identity FROM class_occurrences o JOIN batches b ON b.school_id=o.school_id AND b.id=o.batch_id JOIN accounts a ON a.id=o.teacher_id WHERE o.school_id=$1 ORDER BY starts_at",
           [c.schoolId],
         )
       ).rows,
@@ -179,7 +179,7 @@ export class ScheduleService extends SchoolAccess {
           .array(
             z.object({
               learner: z.string().uuid(),
-              status: z.enum(["present", "absent", "excused"]),
+              status: z.enum(["present", "late", "absent", "excused"]),
             }),
           )
           .max(500),

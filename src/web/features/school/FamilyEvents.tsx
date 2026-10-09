@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import { dateLabel } from "../../components/ui";
+import { EmptyArt } from "../../components/Art";
 import { navigate, useRouteValue } from "../../routes";
 import { Select, text, num, money, type Row, type SchoolTools } from "./common";
 type Data = {
@@ -60,7 +61,7 @@ export function FamilyEvents({ tools }: { tools: SchoolTools }) {
   if (!data.events.length)
     return (
       <div className="ui-empty">
-        <CalendarDays size={26} />
+        <EmptyArt name="icon-events" />
         <h3>No upcoming events</h3>
         <p>
           The school’s next gathering will appear here when registration opens.

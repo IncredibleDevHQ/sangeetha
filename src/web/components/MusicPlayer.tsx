@@ -1,6 +1,8 @@
 import { WorkflowDetails } from "./WorkflowDetails";
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Music2 } from "lucide-react";
+import { Play, Pause, RotateCcw } from "lucide-react";
+import { RagaCover } from "./RagaCover";
+import { PracticeRoom } from "./PracticeRoom";
 import { activeCue, groupCues, type NoteCue } from "../../shared/score";
 import { type Row, type SchoolTools, text } from "../features/school/common";
 const stamp = (n: number) =>
@@ -28,7 +30,10 @@ export function MusicPlayer({
   const [draft, setDraft] = useState<NoteCue[]>(cues),
     [editing, setEditing] = useState(false),
     [loop, setLoop] = useState(false);
-  const active = activeCue(cues, time);
+  // While the practice tala keeps time and the recording is paused, the tala leads the swaras.
+  const [practice, setPractice] = useState({ swara: -1, beat: -1 });
+  const active =
+    practice.swara >= 0 && !playing ? practice.swara : activeCue(cues, time);
   useEffect(() => {
     setDraft(cues);
   }, [asset.note_cues]);
@@ -64,27 +69,37 @@ export function MusicPlayer({
   return (
     <section
       className="music-player"
-      aria-label={`Music player: ${text(asset, "filename")}`}
+      aria-label={`Recording for ${text(lesson, "title")}`}
     >
       <header className="music-player-heading">
-        <Music2 size={20} />
+        <RagaCover
+          raga={text(lesson, "raga")}
+          tala={text(lesson, "tala")}
+          size={52}
+        />
         <div>
-          <span className="eyebrow">LISTEN & PRACTISE</span>
-          <h4>{text(asset, "filename")}</h4>
+          <span className="eyebrow">Recording</span>
+          <h4>{text(lesson, "title")}</h4>
         </div>
       </header>
       <div className="music-context">
         <div>
-          <span>Raagam</span>
-          <strong>{text(lesson, "raga") || "Not specified"}</strong>
+          <span>Raga</span>
+          <strong>{text(lesson, "raga") || "—"}</strong>
         </div>
         <div>
-          <span>Thaalam</span>
-          <strong>{text(lesson, "tala") || "Not specified"}</strong>
+          <span>Tala</span>
+          <strong>{text(lesson, "tala") || "—"}</strong>
         </div>
         <div>
           <span>Current beat</span>
-          <strong>{active >= 0 ? cues[active].beat || "—" : "—"}</strong>
+          <strong>
+            {practice.beat >= 0 && !playing
+              ? practice.beat + 1
+              : active >= 0
+                ? cues[active].beat || "—"
+                : "—"}
+          </strong>
         </div>
       </div>
       <audio
@@ -205,6 +220,12 @@ export function MusicPlayer({
         onChange={(e) => seek(Number(e.target.value))}
       />
       {error && <p role="alert">{error}</p>}
+      <PracticeRoom
+        raga={text(lesson, "raga")}
+        tala={text(lesson, "tala")}
+        swaras={cues.length}
+        onPosition={(swara, beat) => setPractice({ swara, beat })}
+      />
       {editable && (
         <WorkflowDetails
           context={{ lesson: lesson.id, asset: asset.id, mode: "materials" }}

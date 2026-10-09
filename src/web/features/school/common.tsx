@@ -1,6 +1,8 @@
 import { useRouteValue } from "../../routes";
 import { useCallback, useEffect, useState } from "react";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { api } from "../../lib/api";
+import { personalName } from "../../../core/account";
 export type Row = Record<string, unknown> & { id: string };
 export type School = { id: string; name: string; role: string };
 export const text = (r: Record<string, unknown>, key: string) =>
@@ -11,6 +13,14 @@ export const money = (paise: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
     paise / 100,
   );
+/** "+919876500123" → "+91 98765 00123". Anything that isn't a phone number is returned as is. */
+export const phone = (value: string) =>
+  (value && parsePhoneNumberFromString(value)?.formatInternational()) || value;
+/** A class teacher as staff know them: their name, or their sign-in when they haven’t shared one. */
+export const teacherName = (row: Record<string, unknown>) =>
+  personalName(text(row, "teacher")) || phone(text(row, "teacher_identity"));
+export const plural = (count: number, one: string, many = one + "s") =>
+  `${count} ${count === 1 ? one : many}`;
 export const today = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 export function useSchool(school: School) {

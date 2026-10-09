@@ -250,6 +250,8 @@ export class SchoolApi {
         return d.learning.practice(c, b);
       case "practice.complete":
         return d.learning.completePractice(c, id());
+      case "practice.log":
+        return d.learning.logPractice(c, b);
       case "media.score":
         return d.learning.saveScore(c, id(), b);
       case "media.reserve":
