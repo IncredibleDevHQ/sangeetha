@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AccessError, type VerifiedIdentity } from "./admin-service";
 import type { Database } from "./db";
 import { normalizeDestination } from "../core/access";
+import { PLACEHOLDER_DISPLAY_NAME } from "../core/account";
 
 export const localMode = () =>
   process.env.AUTH_MODE === "local" && process.env.NODE_ENV !== "production";
@@ -55,7 +56,7 @@ export function fromClaims(claims: unknown, issuer: string): VerifiedIdentity {
   const uid = issuer + "|" + method.provider + "|" + c.sub;
   return {
     uid,
-    name: c.name || "School administrator",
+    name: c.name || PLACEHOLDER_DISPLAY_NAME,
     authTime: c.auth_time,
     email: c.email,
     emailVerified:
@@ -235,7 +236,7 @@ export class IdentityAdapter {
     const uid = "local|" + p.channel + ":" + p.destination;
     return {
       uid,
-      name: "School administrator",
+      name: PLACEHOLDER_DISPLAY_NAME,
       authTime: Math.floor(Date.now() / 1000),
       email: p.channel === "email" ? p.destination : undefined,
       emailVerified: p.channel === "email",

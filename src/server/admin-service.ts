@@ -8,6 +8,7 @@ import {
   type Capability,
   type Role,
 } from "../core/access";
+import { PLACEHOLDER_DISPLAY_NAME } from "../core/account";
 
 export class AccessError extends Error {
   constructor(
@@ -78,7 +79,7 @@ export class AdminService {
         const newId = randomUUID();
         await tx.query("INSERT INTO accounts(id,display_name) VALUES($1,$2)", [
           newId,
-          identity.name || "School administrator",
+          identity.name || PLACEHOLDER_DISPLAY_NAME,
         ]);
         await tx.query(
           "INSERT INTO principal_aliases(principal_key,account_id) VALUES($1,$2)",
@@ -333,7 +334,7 @@ export class AdminService {
   async team(session: Session, schoolId: string) {
     await this.authorize(session, schoolId, "team.manage");
     const members = await this.db.query(
-      "SELECT a.id,a.display_name,m.role FROM memberships m JOIN accounts a ON a.id=m.account_id WHERE m.school_id=$1 AND m.revoked_at IS NULL ORDER BY m.created_at",
+      "SELECT a.id,a.display_name,m.role,(SELECT i.label FROM auth_identities i WHERE i.account_id=a.id ORDER BY i.provider LIMIT 1) AS identity FROM memberships m JOIN accounts a ON a.id=m.account_id WHERE m.school_id=$1 AND m.revoked_at IS NULL ORDER BY m.created_at",
       [schoolId],
     );
     const invitations = await this.db.query(

@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Headphones, MessageSquare, CheckCircle2, Link2 } from "lucide-react";
+import { Headphones, MessageSquare, CheckCircle2 } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { Badge } from "../../components/ui";
+import { Badge, CopyLink } from "../../components/ui";
 import { resourceLink } from "../../routes";
+import { personalName } from "../../../core/account";
 import { type Row, type SchoolTools, text, num } from "./common";
+
+/** "0:02", the way the recording's own player shows time. */
+const clock = (ms: number) =>
+  `${Math.floor(ms / 60000)}:${String(Math.floor((ms / 1000) % 60)).padStart(2, "0")}`;
 
 export function Review({
   tools,
@@ -95,30 +100,34 @@ export function Review({
         <div>
           <span className="eyebrow">
             {reviewer ? "Recording review" : "Your teacher’s feedback"} ·
-            Version {num(submission, "version")}
+            Attempt {num(submission, "version")}
           </span>
           <h2 ref={title} tabIndex={-1}>
-            {text(submission, "learner_name") || "Your submission"}
+            {reviewer
+              ? text(submission, "learner_name") || "Submission"
+              : text(submission, "title")}
           </h2>
-          <p>{text(submission, "title")}</p>
+          <p>
+            {reviewer
+              ? text(submission, "title")
+              : text(submission, "learner_name")}
+          </p>
         </div>
-        <div className="review-heading-meta">
-          <Badge tone={publishedAt ? "success" : "attention"}>
-            {publishedAt ? "Published" : "Private draft"}
-          </Badge>
-          <a
-            href={resourceLink(tools.school.id, {
-              page: reviewer ? "review" : "learning",
-              module: "tests",
-              section: "feedback",
-              test: text(submission, "assessment_id"),
-              review: submission.id,
-            })}
-          >
-            <Link2 size={13} />
-            Review permalink
-          </a>
-        </div>
+        {reviewer && (
+          <div className="review-heading-meta">
+            <Badge tone={publishedAt ? "success" : "attention"}>
+              {publishedAt ? "Published" : "Private draft"}
+            </Badge>
+            <CopyLink
+              href={resourceLink(tools.school.id, {
+                page: "review",
+                module: "tests",
+                test: text(submission, "assessment_id"),
+                review: submission.id,
+              })}
+            />
+          </div>
+        )}
       </header>
       <div className="review-layout">
         <section
@@ -130,26 +139,28 @@ export function Review({
               <Headphones size={16} />
               Listen closely
             </span>
-            <label>
-              Recording
-              <select
-                value={asset}
-                disabled={annotationDirty}
-                onChange={(e) => {
-                  setAsset(e.target.value);
-                  setDuration(0);
-                  setMediaError(false);
-                  setStart(0);
-                  setEnd(1);
-                }}
-              >
-                {assets.map((a, i) => (
-                  <option value={a} key={a}>
-                    Recording {i + 1}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {assets.length > 1 && (
+              <label>
+                Recording
+                <select
+                  value={asset}
+                  disabled={annotationDirty}
+                  onChange={(e) => {
+                    setAsset(e.target.value);
+                    setDuration(0);
+                    setMediaError(false);
+                    setStart(0);
+                    setEnd(1);
+                  }}
+                >
+                  {assets.map((a, i) => (
+                    <option value={a} key={a}>
+                      Recording {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {annotationDirty && assets.length > 1 && (
               <p role="status">
                 Save or clear your listening note before changing recordings.
@@ -169,9 +180,9 @@ export function Review({
                 This recording couldn’t load. Refresh the page to try again.
               </p>
             )}
-            <p>
-              Feedback stays attached to this recording and submission version.
-            </p>
+            {reviewer && (
+              <p>Notes stay attached to this recording and attempt.</p>
+            )}
           </div>
           <div className="annotation-heading">
             <h3>Passage feedback</h3>
@@ -219,9 +230,15 @@ export function Review({
                         }
                       }}
                     >
-                      {(num(a, "start_ms") / 1000).toFixed(2)}s
+                      <span className="visually-hidden">Play from </span>
+                      {reviewer
+                        ? (num(a, "start_ms") / 1000).toFixed(2) + "s"
+                        : clock(num(a, "start_ms"))}
                       {a.end_ms != null
-                        ? "–" + (num(a, "end_ms") / 1000).toFixed(2) + "s"
+                        ? "–" +
+                          (reviewer
+                            ? (num(a, "end_ms") / 1000).toFixed(2) + "s"
+                            : clock(num(a, "end_ms")))
                         : ""}
                     </button>
                     <Badge>{text(a, "label")}</Badge>
@@ -234,8 +251,10 @@ export function Review({
                     </div>
                   )}
                   <small>
-                    {text(a, "reviewer")}
-                    {a.verified_at ? " · Verified" : " · Draft"}
+                    {reviewer
+                      ? text(a, "reviewer") +
+                        (a.verified_at ? " · Verified" : " · Draft")
+                      : personalName(text(a, "reviewer")) || "Your teacher"}
                   </small>
                 </li>
               ))}
@@ -285,13 +304,13 @@ export function Review({
                 }}
               >
                 <label>
-                  Kind
+                  Note about
                   <select
                     value={kind}
                     onChange={(e) => setKind(e.target.value)}
                   >
-                    <option value="point">Point</option>
-                    <option value="interval">Passage</option>
+                    <option value="point">One moment</option>
+                    <option value="interval">A passage</option>
                   </select>
                 </label>
                 <label>
@@ -461,6 +480,7 @@ export function Review({
               )}
             </section>
           )}
+          {reviewer && (
           <section
             className={`review-publication ${publishedAt ? "is-published" : ""}`}
           >
@@ -509,6 +529,7 @@ export function Review({
               </button>
             )}
           </section>
+          )}
         </div>
       </div>
     </article>

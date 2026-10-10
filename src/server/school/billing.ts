@@ -4,6 +4,13 @@ import type { Executor } from "../db";
 import { SchoolAccess, activity, positiveAmount, type Context } from "./shared";
 import { AccessError } from "../admin-service";
 const keyInput = z.string().min(8).max(120);
+/** "2026-10" → "October 2026 tuition": what a family reads on its statement. */
+export const tuitionLabel = (period: string) =>
+  new Date(period + "-15T00:00:00Z").toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }) + " tuition";
 export class BillingService extends SchoolAccess {
   async balances(tx: Executor, c: Context, household?: string) {
     return (
@@ -214,7 +221,7 @@ export class BillingService extends SchoolAccess {
             p.household_id,
             p.learner_id,
             p.enrollment_id,
-            "Tuition · " + period,
+            tuitionLabel(period),
             p.amount - p.concession,
             period + "-" + String(p.due_day).padStart(2, "0"),
             period,

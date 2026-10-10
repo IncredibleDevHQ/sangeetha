@@ -1,31 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowUpRight,
-  Mail,
+  ChevronRight,
   Plus,
   Search,
   ShieldCheck,
-  UserRound,
 } from "lucide-react";
 import PhoneInput from "../auth/PhoneInput";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { Badge, dateLabel } from "../../components/ui";
+import { Badge, BackLink, Initials, dateLabel } from "../../components/ui";
+import { PageActions, focusPageHeading } from "../../components/PageHeader";
+import TeamSettings from "../settings/TeamSettings";
+import { EmptyArt } from "../../components/Art";
 import { navigate, useRouteValue } from "../../routes";
-import { Select, text, type Row, type SchoolTools } from "./common";
+import { Select, phone, text, type Row, type SchoolTools } from "./common";
+import { personalName } from "../../../core/account";
 
 const roles = [
   {
     id: "classes.teach",
-    name: "Assigned teacher",
+    name: "Teach a batch",
     scope: "Batch",
-    description: "Conduct classes and mark attendance for the selected batch.",
+    description: "Take this batch’s classes, mark attendance and assign practice.",
     boundary:
       "Does not grant school-wide scheduling, finance or administrator access.",
   },
   {
     id: "assessments.review",
-    name: "Test Reviewer",
+    name: "Review recordings for a test",
     scope: "Test",
     description:
       "Listen to submissions and prepare scores and passage feedback for one test.",
@@ -34,7 +35,7 @@ const roles = [
   },
   {
     id: "portal.learn",
-    name: "Learner / guardian",
+    name: "Follow a learner’s lessons (learner or guardian)",
     scope: "Learner",
     description:
       "Open published lessons, practice and tests for the selected learner.",
@@ -43,7 +44,7 @@ const roles = [
   },
   {
     id: "household.billing",
-    name: "Household billing",
+    name: "See and pay a family’s fees",
     scope: "Household",
     description:
       "View this family's statement, report payments and register family event participation.",
@@ -52,7 +53,7 @@ const roles = [
   },
   {
     id: "curriculum.manage",
-    name: "Curriculum Creator",
+    name: "Create the curriculum",
     scope: "School",
     description:
       "Create, organise and publish lessons and teaching materials across the school curriculum.",
@@ -61,7 +62,7 @@ const roles = [
   },
   {
     id: "finance.manage",
-    name: "Finance operator",
+    name: "Manage the school’s finances",
     scope: "School",
     description:
       "Manage school charges, verify payments, allocate receipts and handle financial corrections.",
@@ -89,6 +90,14 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
     [selected] = useRouteValue("grant");
   const request = useRef(0),
     heading = useRef<HTMLHeadingElement>(null);
+  const owner = tools.school.role === "owner";
+  /** A person's name, or the sign-in they were invited with until they share one. */
+  const who = (r: Row) =>
+    r.destination
+      ? phone(text(r, "destination"))
+      : personalName(text(r, "display_name")) ||
+        phone(text(r, "identity")) ||
+        "School member";
   const composing =
     action === "invite-access" || form === "create-access-invitation";
   async function load() {
@@ -121,7 +130,9 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
     };
   }, [tools.read]);
   useEffect(() => {
-    if (!loading) heading.current?.focus();
+    if (loading) return;
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [loading, composing, selected]);
   const rowsFor = (capability: string) =>
     capability === "classes.teach"
@@ -153,7 +164,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
   );
   const records = view === "pending" ? invitations : data.grants;
   const shown = records.filter((r) =>
-    `${text(r, "display_name")} ${text(r, "destination")} ${roleFor(text(r, "capability"))?.name || text(r, "capability")} ${scopeName(r)}`
+    `${text(r, "display_name")} ${text(r, "identity")} ${text(r, "destination")} ${roleFor(text(r, "capability"))?.name || text(r, "capability")} ${scopeName(r)}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
@@ -175,18 +186,15 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
   if (composing)
     return (
       <section className="access-workspace">
-        <button className="back-link" onClick={close}>
-          <ArrowLeft size={16} /> Back to roles
-        </button>
+        <BackLink onClick={close}>All people</BackLink>
         <div className="access-heading">
           <div>
-            <span className="eyebrow">Invite someone to help</span>
             <h2 ref={heading} tabIndex={-1}>
-              The right role, for the right person
+              Invite someone
             </h2>
             <p>
-              Choose their work and scope, then the identity they use to sign
-              in.
+              Choose what they’ll do, then the sign-in they’ll use. Each role
+              covers only what it names.
             </p>
           </div>
         </div>
@@ -218,13 +226,23 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
           }}
         >
           <div className="access-fields">
-            <h3>1. Choose the work</h3>
+            <h3>1. What will they do?</h3>
             <label>
-              Role
+              Their role
               <select
                 value={cap}
                 onChange={(e) => {
                   const next = e.target.value;
+                  if (next === "admin") {
+                    // Administrators are invited by the owner, from the same place.
+                    navigate({
+                      status: "admins",
+                      teamView: "members",
+                      action: "invite-administrator",
+                      form: "",
+                    });
+                    return;
+                  }
                   setCap(next);
                   setResource(
                     ["finance.manage", "curriculum.manage"].includes(next)
@@ -238,6 +256,11 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
                     {r.name}
                   </option>
                 ))}
+                {owner && (
+                  <option value="admin">
+                    Help run the school (administrator)
+                  </option>
+                )}
               </select>
             </label>
             <div className="access-role-explanation">
@@ -270,7 +293,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
             )}
           </div>
           <div className="access-fields">
-            <h3>2. Identify the person</h3>
+            <h3>2. How do they sign in?</h3>
             <label>
               Sign-in method
               <select
@@ -309,7 +332,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
                 !resource || !availableScopes.some((r) => r.id === resource)
               }
             >
-              Create access invitation
+              Send invitation
             </button>
             <button type="button" className="button secondary" onClick={close}>
               Cancel
@@ -321,9 +344,7 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
   if (selected)
     return (
       <section className="access-workspace">
-        <button className="back-link" onClick={close}>
-          <ArrowLeft size={16} /> All access records
-        </button>
+        <BackLink onClick={close}>All people</BackLink>
         {!current ? (
           <div className="ui-empty">
             <h2 ref={heading} tabIndex={-1}>
@@ -411,40 +432,40 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
     );
   return (
     <section className="access-workspace">
-      <div className="access-heading">
-        <div>
-          <span className="eyebrow">Everyone has a part to play</span>
-          <h2 ref={heading} tabIndex={-1}>
-            Roles, with clear boundaries
-          </h2>
-          <p>
-            Manage teachers, reviewers, curriculum creators and family access.
-          </p>
-        </div>
+      <PageActions>
         <button
           className="button primary"
           onClick={() =>
             navigate({ action: "invite-access", form: "", grant: "" })
           }
         >
-          <Plus size={16} /> Invite a person
+          <Plus size={16} aria-hidden="true" /> Invite someone
         </button>
-      </div>
+      </PageActions>
       <div className="access-toolbar">
-        <div className="segmented" role="group" aria-label="Access status">
+        <div className="segmented" role="group" aria-label="People to show">
           <button
-            aria-pressed={view !== "pending"}
+            aria-pressed={view === "active"}
             onClick={() => setView("active")}
           >
-            Active roles · {data.grants.length}
+            People · {data.grants.length}
           </button>
           <button
             aria-pressed={view === "pending"}
             onClick={() => setView("pending")}
           >
-            Pending invitations · {invitations.length}
+            Invitations · {invitations.length}
           </button>
+          {owner && (
+            <button
+              aria-pressed={view === "admins"}
+              onClick={() => setView("admins")}
+            >
+              Administrators
+            </button>
+          )}
         </div>
+        {view !== "admins" && (
         <label className="access-search">
           <Search size={17} />
           <input
@@ -455,10 +476,13 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
             placeholder="Search people, roles or scopes"
           />
         </label>
+        )}
       </div>
-      {!shown.length ? (
+      {view === "admins" ? (
+        <TeamSettings embedded school={tools.school} />
+      ) : !shown.length ? (
         <div className="ui-empty">
-          <ShieldCheck size={28} />
+          <EmptyArt name="icon-families" />
           <h3>
             {query.trim()
               ? "No matching access records"
@@ -485,52 +509,25 @@ export function AccessView({ tools }: { tools: SchoolTools }) {
               className="access-record"
               onClick={() => navigate({ grant: r.id, action: "", form: "" })}
             >
-              <span className="access-avatar">
-                {view === "pending" ? (
-                  <Mail size={20} />
-                ) : (
-                  <UserRound size={20} />
-                )}
-              </span>
+              <Initials name={who(r)} />
               <span className="access-record-person">
-                <strong>
-                  {text(
-                    r,
-                    view === "pending" ? "destination" : "display_name",
-                  ) || "School member"}
-                </strong>
+                <strong>{who(r)}</strong>
                 <span>
                   {roleFor(text(r, "capability"))?.name ||
                     text(r, "capability")}
                 </span>
                 <small>{scopeName(r)}</small>
               </span>
-              <span className="access-record-state">
-                {view === "pending"
-                  ? `Expires ${dateLabel(text(r, "expires_at"))}`
-                  : "Active"}
-              </span>
-              <ArrowUpRight size={17} />
+              {view === "pending" && (
+                <span className="access-record-state">
+                  Expires {dateLabel(text(r, "expires_at"))}
+                </span>
+              )}
+              <ChevronRight size={17} aria-hidden="true" />
             </button>
           ))}
         </div>
       )}
-      <aside className="access-admin-note">
-        <ShieldCheck size={19} />
-        <div>
-          <strong>Adding an administrator?</strong>
-          <p>
-            School administrators have broader operational access. Manage them
-            separately in Team & access.
-          </p>
-          <button
-            className="button secondary"
-            onClick={() => navigate({ page: "team" })}
-          >
-            Open admin team <ArrowUpRight size={14} />
-          </button>
-        </div>
-      </aside>
     </section>
   );
 }

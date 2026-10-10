@@ -1,16 +1,17 @@
 import "./Integrations.css";
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowUpRight,
   Check,
+  ChevronRight,
   CreditCard,
   MessageCircle,
   Plus,
   RefreshCw,
 } from "lucide-react";
 import { WorkflowForm } from "../../components/WorkflowForm";
-import { Badge, dateLabel } from "../../components/ui";
+import { Badge, BackLink, dateLabel, statusLabel } from "../../components/ui";
+import { PageActions, focusPageHeading } from "../../components/PageHeader";
 import { navigate, useRouteValue } from "../../routes";
 import { Select, text, num, money, type Row, type SchoolTools } from "./common";
 type Settings = {
@@ -68,7 +69,9 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
     };
   }, [tools.read]);
   useEffect(() => {
-    if (!loading) heading.current?.focus();
+    if (loading) return;
+    if (heading.current) heading.current.focus();
+    else focusPageHeading();
   }, [mode, link, creating, loading]);
   if (error)
     return (
@@ -89,49 +92,45 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
     text(houses.find((h) => h.id === id) || {}, "name") || "Household";
   return (
     <section className="integration-workspace" aria-busy={loading}>
-      {mode && (
-        <button
-          className="back-link"
-          onClick={() =>
-            navigate({
-              integration: "",
-              link: "",
-              action: "",
-              form: "",
-              household: "",
-            })
-          }
-        >
-          <ArrowLeft size={16} /> All integrations
-        </button>
-      )}
-      <div className="integration-heading">
-        <div>
-          <span className="eyebrow">Connected school operations</span>
-          <h2 ref={heading} tabIndex={-1}>
-            {mode === "whatsapp"
-              ? "WhatsApp delivery"
-              : mode === "payments"
-                ? "Payment links"
-                : "Connect the everyday details"}
-          </h2>
-          <p>
-            {mode === "whatsapp"
-              ? "Control how eligible school notices are sent."
-              : mode === "payments"
-                ? "Create a link for selected household charges and follow its outcome."
-                : "Check provider setup and choose what your school automates."}
-          </p>
-        </div>
+      <PageActions>
         <button
           className="button secondary"
           disabled={loading}
           onClick={() => void load()}
         >
-          <RefreshCw size={15} />
-          {loading ? "Refreshing…" : "Refresh status"}
+          <RefreshCw size={15} aria-hidden="true" />
+          {loading ? "Checking…" : "Check status"}
         </button>
-      </div>
+      </PageActions>
+      {mode && (
+        <>
+          <BackLink
+            onClick={() =>
+              navigate({
+                integration: "",
+                link: "",
+                action: "",
+                form: "",
+                household: "",
+              })
+            }
+          >
+            All integrations
+          </BackLink>
+          <div className="integration-heading">
+            <div>
+              <h2 ref={heading} tabIndex={-1}>
+                {mode === "whatsapp" ? "WhatsApp delivery" : "Payment links"}
+              </h2>
+              <p>
+                {mode === "whatsapp"
+                  ? "Choose which school notices go out on WhatsApp."
+                  : "Send a family one link for the charges you choose, then follow it to payment."}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
       {!mode ? (
         <>
           <div className="integration-directory">
@@ -158,7 +157,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                   : "Manual sharing available"}
               </span>
               <strong>
-                Manage delivery <ArrowUpRight size={15} />
+                Manage delivery <ChevronRight size={15} aria-hidden="true" />
               </strong>
             </button>
             <button
@@ -183,13 +182,13 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                 recorded
               </span>
               <strong>
-                Manage payment links <ArrowUpRight size={15} />
+                Manage payment links <ChevronRight size={15} aria-hidden="true" />
               </strong>
             </button>
           </div>
           <p className="integration-help">
-            Provider configuration is detected on the server. It does not
-            confirm live delivery, settlement or worker health.
+            “Connected” means the account details are in place. Delivery and
+            payments are confirmed message by message, and payment by payment.
           </p>
         </>
       ) : mode === "whatsapp" ? (
@@ -215,7 +214,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                   className="button secondary"
                   onClick={() => navigate({ module: "billing" })}
                 >
-                  Open Fees <ArrowUpRight size={14} />
+                  Open Fees <ChevronRight size={14} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -242,12 +241,7 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                 className="integration-link-detail"
                 data-route-resource={selected.id}
               >
-                <button
-                  className="back-link"
-                  onClick={() => navigate({ link: "", action: "", form: "" })}
-                >
-                  <ArrowLeft size={15} /> All payment links
-                </button>
+                <BackLink onClick={() => navigate({ link: "", action: "", form: "" })}>All payment links</BackLink>
                 <h3>{family(text(selected, "household_id"))}</h3>
                 <strong className="integration-link-amount">
                   {money(num(selected, "amount"))}
@@ -279,7 +273,8 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open provider link <ArrowUpRight size={14} />
+                    Open provider link{" "}
+                    <ArrowUpRight size={14} aria-hidden="true" />
                   </a>
                 )}
                 <button
@@ -394,9 +389,9 @@ export function IntegrationsView({ tools }: { tools: SchoolTools }) {
                             : "neutral"
                         }
                       >
-                        {text(l, "status")}
+                        {statusLabel(text(l, "status"))}
                       </Badge>
-                      <ArrowUpRight size={16} />
+                      <ChevronRight size={16} aria-hidden="true" />
                     </button>
                   ))}
                 </div>
@@ -540,7 +535,7 @@ function WhatsAppSettings({
           className="button secondary"
           onClick={() => navigate({ module: "messages" })}
         >
-          Open Messages <ArrowUpRight size={14} />
+          Open Messages <ChevronRight size={14} aria-hidden="true" />
         </button>
       </aside>
     </div>
@@ -605,13 +600,7 @@ function PaymentLinkComposer({
         if (result) await onSaved(result.id);
       }}
     >
-      <button
-        type="button"
-        className="back-link"
-        onClick={() => navigate({ action: "", form: "", household: "" })}
-      >
-        <ArrowLeft size={15} /> Cancel new link
-      </button>
+      <BackLink onClick={() => navigate({ action: "", form: "", household: "" })}>Cancel new link</BackLink>
       <h3>Choose the charges to collect</h3>
       <Select
         label="Household"

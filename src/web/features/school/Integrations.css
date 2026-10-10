@@ -44,7 +44,7 @@
 .workbench .integration-card:hover {
   background: white;
   border-color: var(--sg-accent);
-  box-shadow: 0 4px 18px #24273508;
+  box-shadow: 0 4px 18px #22261F08;
 }
 .integration-icon {
   width: 48px;
@@ -311,12 +311,12 @@
 .integration-link-total strong {
   font-size: 25px;
 }
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .integration-settings-grid {
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 640px) {
   .integration-heading,
   .integration-list-heading {
     flex-direction: column;

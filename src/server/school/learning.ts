@@ -640,6 +640,16 @@ export class LearningService extends SchoolAccess {
       [c.schoolId, randomUUID(), b.learner, b.lesson, b.text, b.due],
     );
   }
+  /** "I practised today": one entry per learner per school day, India time. */
+  async logPractice(c: Context, input: unknown) {
+    const b = z.object({ learner: z.string().uuid() }).parse(input);
+    await this.learnerAccess(c, b.learner);
+    await this.db.query(
+      "INSERT INTO practice_log(school_id,learner_id,practised_on,logged_by) VALUES($1,$2,(now() AT TIME ZONE 'Asia/Kolkata')::date,$3) ON CONFLICT DO NOTHING",
+      [c.schoolId, b.learner, c.session.accountId],
+    );
+    return { ok: true };
+  }
   async completePractice(c: Context, id: string) {
     const row = await this.db.query<{ learner_id: string }>(
       "SELECT learner_id FROM practice_tasks WHERE school_id=$1 AND id=$2",

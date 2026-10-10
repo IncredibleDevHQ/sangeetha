@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LibraryView } from "../features/school/Learning";
+import { PageHeader } from "./PageHeader";
 import {
   useSchool,
   Alerts,
@@ -25,7 +26,10 @@ export function DirectLesson({
       .catch((e) => tools.setError(e.message));
   }, [tools.read]);
   return (
-    <>
+    <PageHeader
+      title="Lessons"
+      description="Listen, watch and practise, one lesson at a time."
+    >
       <Alerts tools={tools} />
       <fieldset className="workbench" disabled={tools.busy}>
         <LibraryView
@@ -35,6 +39,6 @@ export function DirectLesson({
           portalLearners={portal.learners}
         />
       </fieldset>
-    </>
+    </PageHeader>
   );
 }

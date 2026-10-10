@@ -2,6 +2,7 @@ import { availableModules } from "./navigation";
 import { useRouteValue, navigate } from "../../routes";
 import { lazy, useEffect } from "react";
 import { FeatureBoundary } from "../../components/FeatureBoundary";
+import { PageHeader } from "../../components/PageHeader";
 import { useSchool, Alerts, type School } from "./common";
 
 const Households = lazy(() => import("./Households"));
@@ -69,18 +70,25 @@ export default function SchoolWorkspace({
     if (active && !page && experience !== "learning")
       navigate({ module: active }, true);
   }, [active, page, experience]);
-  return (
+  const settings =
+    experience === "admin"
+      ? availableModules(caps).filter((m) => m.group === "Workspace")
+      : [];
+  const body = (
     <>
-      {experience !== "learning" && (
-        <div className="workspace-context">
-          <h1>
-            {tabs.find((t) => t.id === active)?.name || "School workspace"}
-          </h1>
-          <p>
-            {availableModules(caps).find((m) => m.id === active)?.description ||
-              "Listen to assigned recordings and prepare feedback."}
-          </p>
-        </div>
+      {settings.length > 1 && settings.some((m) => m.id === active) && (
+        <nav className="settings-nav" aria-label="Settings">
+          {settings.map((m) => (
+            <button
+              key={m.id}
+              aria-current={m.id === active ? "page" : undefined}
+              onClick={() => navigate({ module: m.id })}
+            >
+              <m.icon size={16} aria-hidden="true" />
+              {m.name}
+            </button>
+          ))}
+        </nav>
       )}
       <Alerts tools={tools} />
       <FeatureBoundary
@@ -125,5 +133,17 @@ export default function SchoolWorkspace({
         </fieldset>
       </FeatureBoundary>
     </>
+  );
+  if (experience === "learning") return body;
+  return (
+    <PageHeader
+      title={tabs.find((t) => t.id === active)?.name || "School workspace"}
+      description={
+        availableModules(caps).find((m) => m.id === active)?.summary ||
+        "Listen to assigned recordings and prepare feedback."
+      }
+    >
+      {body}
+    </PageHeader>
   );
 }

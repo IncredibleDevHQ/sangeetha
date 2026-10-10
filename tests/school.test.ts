@@ -1160,3 +1160,39 @@ it("lets curriculum creators organize content without CRM, finance or review pub
     false,
   );
 });
+it("logs a day of practice once, only for the learner's own family, and keeps late marks", async () => {
+  const h = await crm.create(c, family());
+  const batch = await crm.batch(c, {
+    name: "Juniors",
+    course: "Vocal",
+    capacity: 10,
+  });
+  await crm.enroll(c, {
+    learner: h.learners[0],
+    batch: batch.id,
+    household: h.id,
+    starts: "2026-01-01",
+  });
+  const student = await account("practice-student@example.test", [
+    { capability: "portal.learn", resource: h.learners[0] },
+  ]);
+  const learning = new LearningService(db);
+  await learning.logPractice(student, { learner: h.learners[0] });
+  await learning.logPractice(student, { learner: h.learners[0] });
+  await expect(
+    learning.logPractice(student, { learner: h.learners[1] }),
+  ).rejects.toThrow();
+  const lesson = await schedule.create(c, {
+    batch: batch.id,
+    teacher: c.session.accountId,
+    starts: "2026-10-05T10:00:00+05:30",
+    ends: "2026-10-05T11:00:00+05:30",
+  });
+  await schedule.mark(c, lesson.ids[0], {
+    entries: [{ learner: h.learners[0], status: "late" }],
+  });
+  const portal = await new PortalService(db).view(student);
+  expect(portal.practiceLog).toHaveLength(1);
+  expect(portal.attendance[0].status).toBe("late");
+});
+

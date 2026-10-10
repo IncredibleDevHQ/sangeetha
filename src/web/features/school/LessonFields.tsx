@@ -154,7 +154,7 @@ export function LessonFields({
         </div>
       </div>
       <label>
-        Raagam
+        Raga
         <input
           name="raga"
           maxLength={100}
@@ -163,7 +163,7 @@ export function LessonFields({
         />
       </label>
       <label>
-        Thaalam
+        Tala
         <input
           name="tala"
           maxLength={100}

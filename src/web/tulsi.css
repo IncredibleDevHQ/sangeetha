@@ -1,0 +1,2356 @@
+/*
+ * Tulsi design layer — loaded after design-system.css and workspaces.css.
+ * Sage on warm ivory, saffron only as a spark, Anek Latin for display,
+ * soft pastel stages where music happens, and motion that does the delighting.
+ */
+
+/* ---------- Type ---------- */
+body {
+  background: var(--sg-page);
+  color: var(--sg-ink);
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+.home-heading h1,
+.page-heading h1,
+.learning-page-title h1,
+.workspace-access-state h1 {
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+}
+h2,
+.workbench > h2,
+.workbench > .section-heading h2,
+.section-heading h2,
+.ui-section-title h2 {
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+h3 {
+  letter-spacing: -0.005em;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+}
+.fine,
+.subtitle {
+  color: var(--sg-muted);
+}
+::selection {
+  background: var(--sg-accent-soft);
+}
+:focus-visible {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Brand ---------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .tulsi-mark {
+  flex: none;
+  filter: drop-shadow(0 6px 10px rgba(34, 38, 31, 0.16));
+}
+.tulsi-wordmark {
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 750;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--sg-ink);
+}
+.tulsi-wordmark small {
+  display: block;
+  margin-top: 4px;
+  font-family: "Instrument Sans", sans-serif;
+  font-variation-settings: normal;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+}
+
+/* ---------- Controls ---------- */
+.button,
+.ui-action,
+.workbench .ui-action {
+  border-radius: 999px;
+  min-height: var(--sg-control);
+  padding: 0 20px;
+  font-weight: 650;
+  font-size: 14px;
+  transition:
+    background-color 0.22s var(--sg-ease),
+    color 0.22s var(--sg-ease),
+    border-color 0.22s var(--sg-ease),
+    box-shadow 0.32s var(--sg-ease),
+    transform 0.32s var(--sg-spring);
+}
+.button.primary,
+.primary,
+.ui-action-primary,
+.workbench .ui-action-primary:not(.text-button) {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+  border-color: transparent;
+}
+.button.primary:hover,
+.ui-action-primary:hover {
+  background: var(--sg-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--sg-shadow-sm);
+}
+.button.secondary,
+.secondary,
+.ui-action-secondary,
+.workbench .ui-action-secondary,
+.google {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  border: 1px solid var(--sg-edge-strong);
+}
+.button.secondary:hover,
+.ui-action-secondary:hover,
+.workbench .ui-action-secondary:hover,
+.google:hover {
+  background: var(--sg-hover);
+  transform: translateY(-1px);
+}
+.ui-action-quiet {
+  background: transparent;
+  color: var(--sg-ink-2);
+}
+.ui-action-quiet:hover {
+  background: var(--sg-hover);
+}
+.button:active,
+.ui-action:active,
+.workbench button:active {
+  transform: translateY(0) scale(0.97);
+}
+.text-button {
+  color: var(--sg-accent-text);
+  font-weight: 650;
+}
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border: 1px solid var(--sg-edge-strong);
+  border-radius: 999px;
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.22s var(--sg-ease);
+}
+.file-button:hover {
+  background: var(--sg-hover);
+}
+.file-button:has(input:focus-visible) {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+}
+.workbench button:where(:not(.button, .text-button, .ui-action)) {
+  border-radius: 999px;
+  transition:
+    background-color 0.22s var(--sg-ease),
+    border-color 0.22s var(--sg-ease),
+    transform 0.32s var(--sg-spring);
+}
+input,
+select,
+textarea {
+  border-radius: 12px;
+  border: 1px solid var(--sg-field-edge);
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  font-size: 14px;
+  transition:
+    border-color 0.22s var(--sg-ease),
+    box-shadow 0.22s var(--sg-ease);
+}
+:where(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea):focus {
+  border-color: var(--sg-accent);
+}
+/* Keyboard focus is always a clear 2px sage outline, on every control. */
+:where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+}
+/* Headings receive focus from script on navigation; they are not controls. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--sg-accent);
+}
+input[type="range"] {
+  accent-color: var(--sg-accent);
+}
+
+/* One search field everywhere: the icon sits inside a soft, rounded field. */
+.app-layout :is(.billing-search, .batch-search, .event-search, .access-search, .message-search, .report-search, .settings-search) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sg-edge-strong);
+  border-radius: 14px;
+  background: var(--sg-panel);
+  color: var(--sg-muted);
+  transition:
+    border-color 0.22s var(--sg-ease),
+    box-shadow 0.22s var(--sg-ease);
+}
+.app-layout :is(.billing-search, .batch-search, .event-search, .access-search, .message-search, .report-search, .settings-search):focus-within {
+  border-color: var(--sg-accent);
+  box-shadow: var(--sg-focus);
+}
+.app-layout :is(.billing-search, .batch-search, .event-search, .access-search, .message-search, .report-search, .settings-search) input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app-layout :is(.billing-search, .batch-search, .event-search, .access-search, .message-search, .report-search, .settings-search) input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--sg-chip);
+}
+.tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sg-ink-2);
+  font-weight: 600;
+  padding: 8px 16px;
+}
+.tabs .selected,
+.tabs button[aria-selected="true"] {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  box-shadow: 0 1px 3px rgba(34, 38, 31, 0.14);
+}
+.pill,
+.ui-badge {
+  border-radius: 999px;
+  background: var(--sg-chip);
+  color: var(--sg-ink-2);
+  font-weight: 600;
+}
+.ui-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  text-transform: none;
+}
+.ui-badge-success {
+  background: var(--sg-success-soft);
+  color: var(--sg-success);
+}
+.ui-badge-attention {
+  background: var(--sg-warning-soft);
+  color: var(--sg-warning);
+}
+.status-dot {
+  background: var(--sg-warm);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-warm) 25%, transparent);
+}
+.alert {
+  border-radius: 16px;
+  background: var(--sg-danger-soft);
+  border: 1px solid #efcec7;
+  color: var(--sg-danger);
+}
+.success {
+  border-radius: 16px;
+  background: var(--sg-success-soft);
+  border: 1px solid #cfe5d4;
+  color: var(--sg-success);
+}
+.notice {
+  border-radius: 22px;
+  background: var(--sg-warning-soft);
+  border-color: #efdab8;
+}
+table th {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+}
+table tbody tr {
+  transition: background-color 0.2s var(--sg-ease);
+}
+table tbody tr:hover {
+  background: var(--sg-inset);
+}
+
+/* ---------- Surfaces ---------- */
+.panel,
+.workbench .panel,
+.record-card {
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  border-radius: 22px;
+  box-shadow: none;
+}
+.ui-empty {
+  color: var(--sg-muted);
+}
+details > summary {
+  cursor: pointer;
+}
+
+/* ---------- Shell ---------- */
+.app-layout {
+  background: var(--sg-page);
+}
+.app-layout > aside {
+  background: var(--sg-page);
+  border-right: 0;
+  padding: 22px 14px 18px 18px;
+  gap: 6px;
+}
+.app-layout > aside .brand {
+  padding: 2px 6px 14px;
+}
+.school-label {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--sg-muted);
+  padding: 0 8px;
+  margin: 6px 0 6px;
+}
+.school-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  font-weight: 650;
+  color: var(--sg-ink);
+}
+.school-name span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sg-muted);
+  text-transform: capitalize;
+}
+.app-layout > aside select {
+  border-radius: 18px;
+  font-weight: 650;
+}
+.app-layout > aside nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 14px;
+}
+.app-layout > aside nav button {
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 14px;
+  color: var(--sg-ink-2);
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+  transition:
+    background-color 0.2s var(--sg-ease),
+    color 0.2s var(--sg-ease),
+    box-shadow 0.2s var(--sg-ease);
+}
+.app-layout > aside nav button svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--sg-muted);
+  transition: transform 0.32s var(--sg-spring), color 0.2s var(--sg-ease);
+}
+.app-layout > aside nav button:hover {
+  background: var(--sg-hover);
+  color: var(--sg-ink);
+}
+.app-layout > aside nav button:hover svg {
+  transform: translateX(1px) scale(1.06);
+}
+.app-layout > aside nav button.active,
+.app-layout > aside nav button[aria-current="page"] {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  font-weight: 650;
+  box-shadow:
+    0 0 0 1px var(--sg-edge),
+    0 6px 14px -12px rgba(34, 38, 31, 0.4);
+}
+.app-layout > aside nav button.active svg,
+.app-layout > aside nav button[aria-current="page"] svg {
+  color: var(--sg-accent);
+}
+.nav-group {
+  margin-top: 14px;
+}
+.nav-group-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+  padding: 0 12px 6px;
+}
+.sidebar-bottom {
+  margin-top: 14px;
+  padding: 12px;
+  border-top: 0;
+  border-radius: 18px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  font-weight: 650;
+  font-size: 13.5px;
+}
+.sidebar-bottom small {
+  font-weight: 500;
+  color: var(--sg-muted);
+}
+.avatar {
+  background: var(--sg-warm-soft);
+  color: var(--sg-warm-ink);
+  font-weight: 700;
+}
+.sidebar-bottom button {
+  border-radius: 999px;
+  color: var(--sg-muted);
+}
+.sidebar-bottom button:hover {
+  background: var(--sg-hover);
+  color: var(--sg-ink);
+}
+.workspace {
+  background: var(--sg-page);
+}
+/* Short pages start at the top; the footer still settles at the bottom. */
+.workspace > .content {
+  margin: 0 auto auto;
+}
+.workspace > header {
+  border-bottom: 0;
+  background: var(--sg-page);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--sg-muted);
+}
+.workspace > footer {
+  border-top: 0;
+  background: var(--sg-page);
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.workspace > header .pill {
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  color: var(--sg-ink-2);
+}
+.navigation-toggle {
+  border-radius: 999px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+}
+footer {
+  border-top: 0;
+  color: var(--sg-muted);
+}
+.skip-link {
+  border-radius: 999px;
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+
+/* ---------- Access & loading states ---------- */
+.loading {
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 18px;
+  color: var(--sg-muted);
+}
+.workspace-access-state {
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: 28px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+}
+.workspace-access-icon {
+  border-radius: 16px;
+  background: var(--sg-stage);
+  color: var(--sg-accent);
+}
+
+/* ---------- Raga covers ---------- */
+:root {
+  --cv-sage: #e2ece1;
+  --cv-sage-ink: #3d6b52;
+  --cv-sand: #f1e8d8;
+  --cv-sand-ink: #86663a;
+  --cv-clay: #f4e3db;
+  --cv-clay-ink: #a0503a;
+  --cv-moss: #e6ead6;
+  --cv-moss-ink: #5d6a31;
+  --cv-haldi: #f9ebd0;
+  --cv-haldi-ink: #a8680f;
+  --cv-stone: #eceae3;
+  --cv-stone-ink: #4f5549;
+}
+.raga-cover {
+  display: block;
+  flex: none;
+}
+
+/* Lessons read like a playlist: each one carries its raga's cover. */
+.workbench .curriculum-outline .lesson-track {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 11px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 14px;
+}
+.lesson-track .raga-cover {
+  grid-row: span 2;
+}
+.lesson-track > span {
+  align-self: end;
+  font-weight: 600;
+}
+.lesson-track > small {
+  align-self: start;
+}
+.workbench .curriculum-outline .lesson-track[aria-current="step"] {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  box-shadow: 0 1px 2px rgba(34, 38, 31, 0.08), 0 6px 16px -10px rgba(34, 38, 31, 0.3);
+}
+.lesson-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.lesson-hero .raga-cover {
+  border-radius: 14px;
+  box-shadow: 0 10px 24px -14px rgba(34, 38, 31, 0.45);
+}
+.lesson-hero small {
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.lesson-reader .lesson-hero h3 {
+  margin: 4px 0 8px;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+.lesson-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+.lesson-facts span {
+  display: inline-flex;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sg-chip);
+  color: var(--sg-ink-2);
+  font-size: 12px;
+}
+.lesson-facts strong {
+  color: var(--sg-ink);
+  font-weight: 650;
+}
+.lesson-hero > a {
+  align-self: start;
+  font-size: 12px;
+}
+.music-player-heading .raga-cover {
+  border-radius: 10px;
+}
+@media (max-width: 640px) {
+  .lesson-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .lesson-hero .raga-cover {
+    width: 72px;
+    height: 72px;
+  }
+  .lesson-hero > a {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- Art ---------- */
+.tulsi-art {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.art-state {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px 14px 12px;
+  border-radius: 22px;
+  background: var(--sg-inset);
+}
+.art-state .tulsi-art {
+  flex: none;
+}
+.art-state h3 {
+  margin: 0 0 3px;
+  font-size: 15px;
+}
+.art-state p {
+  margin: 0;
+  color: var(--sg-muted);
+  font-size: 13.5px;
+}
+
+/* Empty lists lead with artwork: a calm, sage-washed stage instead of a dashed box. */
+.empty-art {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 2px;
+}
+:is(.ui-empty, .directory-empty, .schedule-empty, .library-empty, .review-empty):has(> .empty-art) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 24px 28px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--sg-stage-2);
+  color: var(--sg-muted);
+  text-align: center;
+}
+:is(.ui-empty, .directory-empty, .schedule-empty, .library-empty, .review-empty):has(> .empty-art) h3 {
+  margin: 8px 0 6px;
+  color: var(--sg-ink);
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+:is(.ui-empty, .directory-empty, .schedule-empty, .library-empty, .review-empty):has(> .empty-art) p {
+  max-width: 420px;
+  margin: 0 auto 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+/* ---------- Sign in ---------- */
+.tulsi-login {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  background: var(--sg-page);
+}
+.tulsi-login-story {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: clamp(28px, 4vw, 56px);
+  background: var(--sg-stage);
+  color: var(--sg-ink);
+}
+.tulsi-login-story .brand .tulsi-mark {
+  filter: none;
+}
+.tulsi-login-story h1 {
+  margin: 0;
+  max-width: 560px;
+  font-size: clamp(38px, 3.7vw, 56px);
+  line-height: 1;
+}
+.tulsi-login-story p {
+  margin: 22px 0 0;
+  max-width: 400px;
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--sg-ink-2);
+}
+.tulsi-login-art {
+  position: absolute;
+  right: -40px;
+  bottom: -30px;
+  width: min(480px, 56%);
+  pointer-events: none;
+}
+.tulsi-features {
+  position: relative;
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.tulsi-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--sg-panel) 62%, transparent);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tulsi-login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(28px, 4vw, 56px) 20px;
+}
+.tulsi-login-panel .login-card {
+  width: 100%;
+  max-width: 410px;
+}
+.tulsi-login-panel h2 {
+  margin: 14px 0 8px;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+.login-card .tabs {
+  display: flex;
+}
+.login-card .tabs button {
+  flex: 1;
+}
+.access-note {
+  color: var(--sg-muted);
+}
+@media (max-width: 900px) {
+  .tulsi-login {
+    grid-template-columns: 1fr;
+  }
+  .tulsi-login-story {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+  .tulsi-login-art {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    align-self: flex-end;
+    width: min(260px, 72%);
+    margin: -12px -8px -6px 0;
+  }
+  .tulsi-features {
+    display: none;
+  }
+}
+
+/* ---------- Home (Today) ---------- */
+.school-home .home-heading h1 {
+  font-size: clamp(36px, 3.6vw, 50px);
+  margin: 8px 0 8px;
+}
+.school-home .home-heading p {
+  font-size: 16px;
+  color: var(--sg-ink-2);
+}
+.home-date {
+  width: fit-content;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  color: var(--sg-ink-2);
+}
+.home-focus {
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+  border-radius: 28px;
+  background: var(--sg-stage);
+  color: var(--sg-ink);
+  min-height: 300px;
+}
+.home-focus h2 {
+  position: relative;
+  max-width: 64%;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  /* Sized so a typical class name ("Saturday juniors · Varnams") fits in two lines beside the art. */
+  font-size: clamp(24px, 2.1vw, 30px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.home-focus p {
+  position: relative;
+  max-width: 58%;
+  color: var(--sg-ink-2);
+}
+.home-focus .eyebrow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sg-accent) 14%, transparent);
+  color: var(--sg-accent-text);
+  letter-spacing: 0.04em;
+}
+.home-focus .eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sg-warm);
+  animation: tulsiPulse 2s 3;
+}
+.home-focus .focus-art {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: min(220px, 34%);
+  pointer-events: none;
+}
+.home-focus-actions {
+  position: relative;
+}
+.home-attention {
+  border-radius: 28px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+}
+.home-attention .section-heading h2 {
+  font-size: 22px;
+}
+.home-live {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sg-chip);
+  color: var(--sg-ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.attention-row {
+  border-radius: 16px;
+  transition: background-color 0.2s var(--sg-ease), box-shadow 0.2s var(--sg-ease);
+}
+.attention-row:hover {
+  background: var(--sg-hover);
+  box-shadow: 0 0 0 6px var(--sg-hover);
+}
+.attention-row strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+.home-attention .home-calm {
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 22px;
+  text-align: center;
+}
+.home-attention .home-calm .tulsi-art {
+  width: 112px;
+  height: 112px;
+}
+.home-attention .home-calm p {
+  max-width: 300px;
+  margin-inline: auto;
+}
+.home-balance {
+  border-radius: 18px;
+  background: var(--sg-inset);
+  border: 1px solid var(--sg-edge-soft);
+}
+.home-balance:hover {
+  background: var(--sg-hover);
+}
+.destination-card {
+  border-radius: 24px;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-edge);
+  transition:
+    transform 0.4s var(--sg-spring),
+    box-shadow 0.4s var(--sg-ease),
+    border-color 0.2s var(--sg-ease);
+}
+.destination-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sg-shadow-lg);
+  border-color: transparent;
+}
+.destination-icon {
+  border-radius: 16px;
+  background: var(--sg-stage);
+  color: var(--sg-accent);
+}
+.destination-icon .tulsi-art {
+  width: 46px;
+  height: 46px;
+}
+.destination-card:hover .destination-arrow {
+  transform: translate(2px, -2px);
+}
+.destination-arrow {
+  transition: transform 0.32s var(--sg-spring);
+}
+
+/* ---------- Common cards and rows across workspaces ---------- */
+.batch-card,
+.test-card,
+.event-card,
+.report-card,
+.destination-card,
+.household-row,
+.review-queue-row,
+.agenda-class,
+.balance-row {
+  transition:
+    transform 0.4s var(--sg-spring),
+    box-shadow 0.4s var(--sg-ease),
+    background-color 0.2s var(--sg-ease);
+}
+.batch-card:hover,
+.test-card:hover,
+.event-card:hover,
+.report-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sg-shadow-lg);
+}
+.workbench .record-nav button[aria-current="page"],
+.workbench .household-record .record-nav button[aria-current="page"],
+.workbench .assignment-filters button[aria-pressed="true"],
+.filter-chips button[aria-pressed="true"] {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+  border-color: transparent;
+}
+
+/* Filters and view switches share one control: a soft chip track with a sage pill for the choice. */
+.workbench :is(.segmented, .view-switch),
+.family-view-nav,
+.app-layout .settings-tabs {
+  gap: 4px;
+  padding: 4px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--sg-chip);
+}
+.workbench :is(.segmented, .view-switch) > button,
+.family-view-nav > button,
+.app-layout .settings-tabs > button {
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--sg-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.workbench :is(.segmented, .view-switch) > button:hover,
+.family-view-nav > button:hover,
+.app-layout .settings-tabs > button:hover {
+  background: color-mix(in srgb, var(--sg-panel) 70%, transparent);
+  color: var(--sg-ink);
+}
+.workbench :is(.segmented, .view-switch) > button[aria-pressed="true"],
+.family-view-nav > button[aria-pressed="true"],
+.app-layout .settings-tabs > button[aria-pressed="true"] {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+  box-shadow: 0 6px 14px -8px rgba(46, 90, 66, 0.7);
+}
+.app-layout .settings-tabs > button[aria-pressed="true"] > span {
+  background: var(--sg-panel);
+  color: var(--sg-accent-text);
+  font-size: 12px;
+}
+
+/* ---------- Home: attention sized to its content, live status per area ---------- */
+.home-grid {
+  align-items: start;
+}
+.home-attention h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+.home-attention .attention-row {
+  padding: 14px 6px;
+  font-size: 15px;
+  font-weight: 550;
+}
+.home-attention .attention-row svg {
+  margin-left: auto;
+  color: var(--sg-muted);
+}
+.home-areas {
+  margin-top: 8px;
+}
+.home-areas h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.home-areas ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  margin: 0;
+  padding: 6px 18px;
+  list-style: none;
+  border: 1px solid var(--sg-edge);
+  border-radius: 24px;
+  background: var(--sg-panel);
+}
+.home-areas li {
+  border-bottom: 1px solid var(--sg-edge-soft);
+}
+/* Only the last row loses its rule: one item when the count is odd, two when even. */
+.home-areas li:last-child,
+.home-areas li:nth-last-child(2):nth-child(odd) {
+  border-bottom: 0;
+}
+.app-layout .area-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--sg-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.area-row:hover strong {
+  color: var(--sg-accent-text);
+}
+.area-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--sg-stage);
+  color: var(--sg-accent);
+}
+.area-icon .tulsi-art {
+  width: 36px;
+  height: 36px;
+}
+.area-text {
+  flex: 1;
+  min-width: 0;
+}
+.area-text strong,
+.area-text small {
+  display: block;
+}
+.area-text strong {
+  font-size: 15px;
+}
+.area-text small {
+  margin-top: 2px;
+  color: var(--sg-ink-2);
+  font-size: 13.5px;
+}
+.area-row > svg {
+  flex: none;
+  color: var(--sg-muted);
+}
+@media (max-width: 900px) {
+  .home-areas ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-areas li:nth-last-child(2):nth-child(odd) {
+    border-bottom: 1px solid var(--sg-edge-soft);
+  }
+}
+
+/* ---------- Portal: teacher's next class, family balance ---------- */
+.teaching-focus,
+.family-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 26px 30px;
+  border-radius: 28px;
+}
+.teaching-focus {
+  background: var(--sg-stage);
+}
+.family-balance {
+  border: 1px solid var(--sg-edge);
+  background: var(--sg-panel);
+}
+.teaching-focus h2,
+.family-balance h2 {
+  margin: 10px 0 6px;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.teaching-focus p,
+.family-balance p {
+  margin: 0;
+  color: var(--sg-ink-2);
+}
+.teaching-focus-actions,
+.family-balance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.teaching-focus-actions {
+  margin-top: 18px;
+}
+.teaching-focus-art {
+  width: min(160px, 26vw);
+  height: auto;
+}
+.learner-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.learner-picker select {
+  min-height: 40px;
+}
+.practice-growth .practice-today {
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 13.5px;
+}
+.learning-class-row > .ui-action {
+  flex: none;
+}
+@media (max-width: 640px) {
+  .teaching-focus,
+  .family-balance {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 22px 20px;
+  }
+  .teaching-focus-art {
+    display: none;
+  }
+}
+
+/* ---------- Learning portal ---------- */
+.learning-continue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  padding: 30px 32px;
+  border-radius: 28px;
+  background: var(--sg-stage);
+}
+.learning-continue .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sg-accent) 14%, transparent);
+  color: var(--sg-accent-text);
+  letter-spacing: 0.04em;
+}
+.learning-continue .eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sg-warm);
+}
+.learning-continue h2 {
+  margin: 16px 0 8px;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.learning-continue-copy > p {
+  margin: 0 0 22px;
+  color: var(--sg-ink-2);
+  font-size: 14px;
+}
+.continue-art {
+  width: min(190px, 28vw);
+  height: auto;
+}
+.practice-growth {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(390px, 100%);
+  padding: 14px 22px 14px 12px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--sg-panel) 78%, transparent);
+  box-shadow: 0 14px 34px -22px rgba(34, 38, 31, 0.45);
+}
+.practice-growth .eyebrow {
+  display: block;
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--sg-muted);
+  letter-spacing: 0.09em;
+}
+.practice-growth .eyebrow::before {
+  content: none;
+}
+.practice-growth .tulsi-art {
+  flex: none;
+  width: 104px;
+  height: 104px;
+}
+.practice-growth > div {
+  flex: 1;
+  min-width: 0;
+}
+.practice-growth strong {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.practice-growth p {
+  margin: 3px 0 10px;
+  color: var(--sg-ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.growth-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sg-accent) 14%, transparent);
+}
+.growth-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--sg-accent), #6e9a61);
+  transition: width 0.8s var(--sg-ease);
+}
+.practice-growth small {
+  display: block;
+  margin-top: 6px;
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.learning-panel {
+  border-radius: 24px;
+  background: var(--sg-panel);
+}
+.learning-panel .art-state {
+  margin: 6px 0 18px;
+}
+.ui-empty.art-state > div {
+  color: var(--sg-ink-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.practice-check.done {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+@media (max-width: 900px) {
+  .learning-continue {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 20px;
+  }
+  .continue-art {
+    display: none;
+  }
+}
+
+/* ---------- Shell: compact top, scrolling nav, account pinned to the bottom ---------- */
+.app-layout > aside {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px 14px 12px;
+}
+.sidebar-top {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 0 4px 12px;
+}
+.app-layout > aside .school-switch {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--sg-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.app-layout > aside select.school-switch {
+  min-height: 36px;
+  padding: 0 10px;
+}
+.app-layout > aside .sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 2px 6px 12px;
+  gap: 2px;
+}
+.app-layout > aside nav button {
+  min-height: 36px;
+  padding: 7px 12px;
+  gap: 10px;
+}
+.app-layout > aside .nav-group {
+  margin-top: 12px;
+  gap: 2px;
+}
+.app-layout > aside .nav-group-label {
+  margin: 0 0 4px;
+  padding: 0 12px;
+}
+.account-menu {
+  position: relative;
+  flex: none;
+  padding-top: 10px;
+  border-top: 1px solid var(--sg-edge);
+}
+.app-layout .account-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--sg-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.app-layout .account-button:hover {
+  background: var(--sg-hover);
+}
+.account-button > span:not(.initials) {
+  flex: 1;
+  min-width: 0;
+}
+.account-button strong,
+.account-button small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-button strong {
+  font-size: 14px;
+}
+.account-button small {
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.account-button .initials {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+.account-button > svg {
+  flex: none;
+  color: var(--sg-muted);
+  transition: transform 0.2s var(--sg-ease);
+}
+.account-button[aria-expanded="false"] > svg {
+  transform: rotate(180deg);
+}
+.account-menu-list {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: grid;
+  padding: 6px;
+  border: 1px solid var(--sg-edge);
+  border-radius: 16px;
+  background: var(--sg-panel);
+  box-shadow: var(--sg-shadow-lg);
+}
+.account-menu-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sg-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.account-menu-list button:hover,
+.account-menu-list button:focus-visible {
+  background: var(--sg-hover);
+}
+/* On tablets and phones the sidebar is a drawer behind the menu button. */
+@media (max-width: 900px) {
+  .app-layout > aside {
+    display: none;
+  }
+  .app-layout.nav-open > aside {
+    display: flex;
+  }
+  .app-layout > aside .sidebar-nav {
+    flex-wrap: nowrap;
+    overflow-x: hidden;
+  }
+  .app-layout > aside nav button {
+    white-space: normal;
+  }
+}
+.crumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.portal-tabbar {
+  display: none;
+}
+@media (max-width: 640px) {
+  .crumb-root {
+    display: none;
+  }
+  .portal-tabbar {
+    position: fixed;
+    z-index: 35;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--sg-edge);
+    background: color-mix(in srgb, var(--sg-panel) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+  .portal-tabbar button {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-height: 52px;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--sg-ink-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .portal-tabbar button[aria-current="page"] {
+    background: var(--sg-stage);
+    color: var(--sg-accent-text);
+  }
+  .app-layout.has-tabbar .workspace {
+    padding-bottom: 76px;
+  }
+}
+
+/* ---------- Page structure: one header, focused panels, menus ---------- */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 4px 0 26px;
+}
+.page-header h1 {
+  margin: 0;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 700;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.page-header p {
+  margin: 8px 0 0;
+  max-width: 60ch;
+  color: var(--sg-ink-2);
+  font-size: 15px;
+}
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.page-actions:empty {
+  display: none;
+}
+.page-actions .button,
+.more-menu > .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.more-menu {
+  position: relative;
+}
+.more-menu-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 250px;
+  padding: 6px;
+  border: 1px solid var(--sg-edge);
+  border-radius: 16px;
+  background: var(--sg-panel);
+  box-shadow: var(--sg-shadow-lg);
+}
+.more-menu-list button {
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sg-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.more-menu-list button:hover,
+.more-menu-list button:focus-visible {
+  background: var(--sg-hover);
+}
+.workflow-panel {
+  margin: 0 0 26px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--sg-edge);
+  border-radius: 24px;
+  background: var(--sg-panel);
+  box-shadow: var(--sg-shadow-lg);
+}
+.workflow-panel[hidden] {
+  display: none;
+}
+.workflow-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.workflow-panel h2 {
+  margin: 0;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 22px;
+  font-weight: 650;
+}
+.workflow-panel > header p {
+  margin: 6px 0 0;
+  color: var(--sg-muted);
+  font-size: 14px;
+}
+.app-layout .workflow-panel-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-chip);
+  color: var(--sg-ink-2);
+}
+.app-layout .workflow-panel-close:hover {
+  background: var(--sg-hover);
+}
+/* Disclosures stay for secondary edits, with a chevron that matches the brand. */
+.workbench details > summary {
+  list-style: none;
+}
+.workbench details > summary::-webkit-details-marker {
+  display: none;
+}
+.workbench details > summary::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 12px 2px 2px;
+  border-right: 2px solid var(--sg-accent);
+  border-bottom: 2px solid var(--sg-accent);
+  transform: rotate(-45deg);
+  transition: transform 0.2s var(--sg-ease);
+}
+.workbench details[open] > summary::before {
+  transform: rotate(45deg);
+}
+.workbench .task-disclosure {
+  border-radius: 18px;
+}
+.workbench .task-disclosure > summary {
+  color: var(--sg-ink);
+}
+.task-disclosure[open] > summary {
+  border-radius: 18px 18px 0 0;
+}
+.app-layout button.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  margin: 0 0 14px -4px;
+  padding: 4px 8px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--sg-accent-text);
+  font-size: 14px;
+  font-weight: 600;
+  width: auto;
+}
+.app-layout button.back-link:hover {
+  background: var(--sg-hover);
+}
+.initials {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--sg-stage);
+  color: var(--sg-accent-text);
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Curriculum ---------- */
+.lesson-hero-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: start;
+}
+.app-layout .copy-link {
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--sg-accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.lesson-material .toolbar p {
+  margin: 0;
+}
+.lesson-material .toolbar small {
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.written-notes {
+  margin: 4px 0 16px;
+}
+.written-notes > summary {
+  color: var(--sg-ink-2);
+  font-weight: 600;
+}
+.filters-toggle {
+  display: none;
+}
+@media (max-width: 640px) {
+  .filters-toggle {
+    display: inline-flex;
+    margin-bottom: 12px;
+  }
+  .curriculum-filters:not([data-open="true"]) {
+    display: none;
+  }
+  /* The lesson comes first on a phone; the rest of the path follows it. */
+  .curriculum-layout {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 18px;
+  }
+  .workbench .curriculum-outline {
+    display: block;
+  }
+}
+
+/* ---------- Practice room: tanpura, tala and kalam in the lesson player ---------- */
+.practice-room {
+  margin-top: 20px;
+  padding: 18px 20px 16px;
+  border-radius: 20px;
+  background: var(--sg-stage-2);
+  border: 1px solid color-mix(in srgb, var(--sg-accent) 14%, transparent);
+}
+.practice-room-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.practice-room-heading h5 {
+  margin: 4px 0 0;
+  font-family: var(--sg-display);
+  font-variation-settings: "wdth" 112;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--sg-ink);
+}
+.practice-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+}
+.practice-control {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--sg-edge);
+  border-radius: 16px;
+  background: var(--sg-panel);
+}
+.practice-control label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--sg-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.practice-control select {
+  min-height: 40px;
+}
+.practice-tempo output {
+  color: var(--sg-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.app-layout .practice-toggle {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--sg-edge-strong);
+  border-radius: 999px;
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+.app-layout .practice-toggle[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+.practice-kalam legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--sg-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.practice-kalam label {
+  position: relative;
+  display: block;
+}
+.practice-kalam input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.practice-kalam span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--sg-chip);
+  color: var(--sg-ink);
+  font-weight: 650;
+}
+.practice-kalam small {
+  color: var(--sg-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.practice-kalam input:checked + span {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+.practice-kalam input:checked + span small {
+  color: color-mix(in srgb, var(--sg-accent-ink) 82%, transparent);
+}
+.practice-kalam input:focus-visible + span {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+}
+.practice-hint {
+  margin: 12px 2px 0;
+  color: var(--sg-ink-2);
+  font-size: 13.5px;
+}
+.beat-ring {
+  flex: none;
+}
+.beat-ring-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--sg-accent) 16%, transparent);
+  stroke-width: 1.5;
+}
+.beat-bead {
+  fill: var(--sg-chip);
+  stroke: color-mix(in srgb, var(--sg-accent) 30%, transparent);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 0.18s var(--sg-spring),
+    fill 0.18s var(--sg-ease);
+}
+.beat-bead.is-anga {
+  fill: color-mix(in srgb, var(--sg-accent) 22%, var(--sg-panel));
+}
+.beat-bead.is-sam {
+  fill: var(--sg-warm-soft);
+  stroke: var(--sg-warm);
+}
+.beat-bead.is-now {
+  fill: var(--sg-accent);
+  stroke: var(--sg-accent);
+  transform: scale(1.3);
+}
+.beat-bead.is-sam.is-now {
+  fill: var(--sg-warm);
+  stroke: var(--sg-warm);
+}
+.beat-ring-count {
+  fill: var(--sg-ink);
+  font-family: var(--sg-display);
+  font-size: 22px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+.beat-ring-label {
+  fill: var(--sg-muted);
+  /* SVG units: the ring draws at 1.1×, so this reads as 12px. */
+  font-size: 11px;
+  text-anchor: middle;
+}
+@media (max-width: 900px) {
+  .practice-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .practice-room {
+    padding: 14px 14px 12px;
+  }
+  .practice-room-heading h5 {
+    font-size: 16px;
+  }
+  .practice-room .beat-ring {
+    width: 96px;
+    height: 96px;
+  }
+  .practice-control {
+    padding: 12px;
+  }
+  /* Fewer nested gutters on a phone leave the player its width. */
+  .workbench .lesson-reader {
+    padding: 16px;
+  }
+  .music-player {
+    padding: 14px;
+  }
+}
+
+/* ---------- Class calendar: dense rows grouped by week ---------- */
+.agenda-toolbar h2 {
+  margin: 0;
+}
+.calendar {
+  display: grid;
+  gap: 22px;
+}
+.calendar-week h3 {
+  margin: 0 0 8px;
+  color: var(--sg-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.calendar-week ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--sg-edge);
+  border-radius: 20px;
+  background: var(--sg-panel);
+}
+.calendar-week li + li {
+  border-top: 1px solid var(--sg-edge-soft);
+}
+.app-layout .workbench button.calendar-row {
+  display: grid;
+  grid-template-columns: 112px 128px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sg-ink);
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+}
+.app-layout .workbench button.calendar-row:hover {
+  background: var(--sg-inset);
+}
+.calendar-row.is-today .calendar-day {
+  color: var(--sg-accent-text);
+  font-weight: 700;
+}
+.calendar-day {
+  font-weight: 600;
+}
+.calendar-time {
+  color: var(--sg-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.calendar-class strong,
+.calendar-class small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-class small {
+  margin-top: 2px;
+  color: var(--sg-muted);
+  font-size: 13px;
+}
+.calendar-row > svg {
+  color: var(--sg-muted);
+}
+.class-record-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Attendance sheet: one tap per learner ---------- */
+.attendance-sheet {
+  margin-top: 26px;
+}
+.attendance-sheet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.attendance-sheet-heading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.attendance-sheet-heading p {
+  margin: 2px 0 0;
+  color: var(--sg-muted);
+  font-size: 13px;
+}
+.attendance-list {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--sg-edge);
+  border-radius: 20px;
+  background: var(--sg-panel);
+}
+.attendance-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+}
+.attendance-list li + li {
+  border-top: 1px solid var(--sg-edge-soft);
+}
+.attendance-name strong,
+.attendance-name small {
+  display: block;
+}
+.attendance-name small {
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+.attendance-choice {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-chip);
+}
+.attendance-choice label {
+  position: relative;
+  margin: 0;
+}
+.attendance-choice input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.attendance-choice span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 76px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--sg-ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.18s var(--sg-ease), color 0.18s var(--sg-ease);
+}
+.attendance-choice input:focus-visible + span {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+}
+.attendance-choice label:hover span {
+  background: color-mix(in srgb, var(--sg-panel) 70%, transparent);
+}
+.attendance-choice [data-choice="present"] input:checked + span {
+  background: var(--sg-accent);
+  color: var(--sg-accent-ink);
+}
+.attendance-choice [data-choice="late"] input:checked + span {
+  background: var(--sg-warm-soft);
+  color: var(--sg-warm-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sg-warm) 45%, transparent);
+}
+.attendance-choice [data-choice="absent"] input:checked + span {
+  background: var(--sg-danger-soft);
+  color: var(--sg-danger);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sg-danger) 30%, transparent);
+}
+.attendance-choice [data-choice="excused"] input:checked + span {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  box-shadow: inset 0 0 0 1px var(--sg-edge-strong);
+}
+.attendance-notes {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+.attendance-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+.attendance-actions [role="status"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sg-muted);
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  /* Tabs and filters scroll sideways on a phone instead of wrapping into rows. */
+  .workbench :is(.segmented, .view-switch),
+  .workbench .record-nav,
+  .family-view-nav,
+  .app-layout .settings-tabs {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .workbench :is(.segmented, .view-switch) > button,
+  .workbench .record-nav button,
+  .family-view-nav > button,
+  .app-layout .settings-tabs > button {
+    flex: none;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-actions {
+    justify-content: flex-start;
+  }
+  .app-layout .workbench button.calendar-row {
+    grid-template-columns: minmax(0, 1fr) auto 16px;
+    grid-template-areas: "day pill chev" "time pill chev" "class class chev";
+    gap: 2px 10px;
+  }
+  .calendar-day {
+    grid-area: day;
+  }
+  .calendar-time {
+    grid-area: time;
+  }
+  .calendar-class {
+    grid-area: class;
+    margin-top: 4px;
+  }
+  .calendar-row .ui-badge {
+    grid-area: pill;
+  }
+  .calendar-row > svg {
+    grid-area: chev;
+  }
+  .attendance-choice {
+    width: 100%;
+  }
+  .attendance-choice label {
+    flex: 1;
+  }
+  .attendance-choice span {
+    min-width: 0;
+    width: 100%;
+    padding: 0 6px;
+  }
+}
+
+/* ---------- Radii: containers match Tulsi cards, notices stay softer ---------- */
+.workbench :is(.record-card, .statement-record, .review-player, .review-score-panel, .lesson-upload-panel, .allocation-panel, .record-work-panel),
+.music-player {
+  border-radius: 22px;
+}
+.workbench :is(.notice, .export-notice, .record-notice, .submission-receipt),
+.login-card .notice,
+.export-notice {
+  border-radius: 22px;
+}
+
+/* ---------- Settings: People and Integrations behind one sidebar entry ---------- */
+.settings-nav {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: -8px 0 24px;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 18px;
+  background: var(--sg-chip);
+  scrollbar-width: none;
+}
+.app-layout .settings-nav button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sg-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.app-layout .settings-nav button:hover {
+  background: color-mix(in srgb, var(--sg-panel) 70%, transparent);
+}
+.app-layout .settings-nav button[aria-current="page"] {
+  background: var(--sg-panel);
+  color: var(--sg-ink);
+  box-shadow: 0 1px 3px rgba(34, 38, 31, 0.14);
+}
+
+/* ---------- Detail pages sit on the page, like every other record; their sections carry the cards ---------- */
+.workbench :is(.class-record, .statement-record, .review-workspace, .test-detail) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workbench .test-detail {
+  margin-bottom: 26px;
+}
+
+/* ---------- Motion ---------- */
+@keyframes tulsiIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tulsiPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--sg-warm) 50%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--sg-warm) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--sg-warm) 0%, transparent);
+  }
+}
+/* The entrance plays once, on the first load. "backwards" releases transform afterwards so hover lifts still work. */
+:root:not([data-settled]) :is(.content > * > *, .school-home > *, .home-grid > *, .tulsi-login-story > *, .tulsi-login-panel .login-card) {
+  animation: tulsiIn 0.3s var(--sg-ease) backwards;
+}
+:root:not([data-settled]) :is(.school-home, .home-grid, .tulsi-login-story) > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+:root:not([data-settled]) :is(.school-home, .tulsi-login-story) > *:nth-child(n + 3) {
+  animation-delay: 0.08s;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   Mail,
   Monitor,
@@ -12,7 +11,8 @@ import {
 import type { Me } from "../../contracts";
 import { api } from "../../lib/api";
 import { navigate, useRouteValue } from "../../routes";
-import { Badge } from "../../components/ui";
+import { Badge, BackLink } from "../../components/ui";
+import { formatWhen } from "../../lib/when";
 import { WorkflowForm } from "../../components/WorkflowForm";
 import SignIn from "../auth/SignIn";
 import "./Settings.css";
@@ -185,12 +185,7 @@ export default function AccountSettings({
           <>
             {linking ? (
               <>
-                <button
-                  className="settings-back"
-                  onClick={() => go({ action: "", form: "" })}
-                >
-                  <ArrowLeft size={15} /> All sign-in methods
-                </button>
+                <BackLink onClick={() => go({ action: "", form: "" })}>All sign-in methods</BackLink>
                 <div className="settings-card settings-link-method">
                   <h2 ref={heading} tabIndex={-1}>
                     Link a sign-in method
@@ -412,7 +407,7 @@ export default function AccountSettings({
                       {s.current ? "This device" : "Other session"}
                     </strong>
                     <small>
-                      Signed in {new Date(s.createdAt).toLocaleString()}
+                      Signed in {formatWhen(s.createdAt, "dayTime")}
                     </small>
                     <details className="settings-device-detail">
                       <summary>Browser details</summary>
